@@ -1,0 +1,22 @@
+{
+  "name": "mw3d",
+  "version": "0.0.1",
+  "description": "minimal WebGL2 only 3D engine",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/webgl2": "0.0.4",
+    "parcel": "^1.9.7",
+    "typescript": "^2.9.2"
+  },
+  "dependencies": {
+    "@types/gl-matrix": "^2.4.1",
+    "gl-matrix": "^2.7.1"
+  }
+}
