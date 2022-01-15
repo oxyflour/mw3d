@@ -3,13 +3,7 @@ import Cache from '../utils/cache'
 import Renderer from './renderer'
 
 export default class Texture {
-    private compiled = new Cache<Renderer, WebGLTexture | null>()
-    compile(renderer: Renderer) {
-        const compiled = this.compiled.get(renderer)
-        if (compiled) {
-            return compiled
-        }
-
+    compile = Cache.create((renderer: Renderer) => {
         const { ctx } = renderer,
             texture = ctx.createTexture()
         ctx.bindTexture(this.target, texture)
@@ -19,13 +13,10 @@ export default class Texture {
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.LINEAR);
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE);
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE);
-        return this.compiled.set(renderer, texture)
-    }
+        return texture
+    })
     dispose(renderer: Renderer) {
-        const compiled = this.compiled.get(renderer)
-        if (compiled) {
-            renderer.ctx.deleteTexture(compiled)
-        }
+        renderer.ctx.deleteTexture(this.compile.map.del(renderer) || null)
     }
     constructor(
         readonly width: number, readonly height = width,
@@ -37,27 +28,18 @@ export default class Texture {
 }
 
 export class RenderTarget {
-    private compiled = new Cache<Renderer, WebGLFramebuffer | null>()
-    compile(renderer: Renderer) {
-        const compiled = this.compiled.get(renderer)
-        if (compiled) {
-            return compiled
-        }
-
+    compile = Cache.create((renderer: Renderer) => {
         const { ctx } = renderer,
             texture = this.texture.compile(renderer),
             frame = ctx.createFramebuffer()
         ctx.bindFramebuffer(ctx.FRAMEBUFFER, frame)
         ctx.framebufferTexture2D(ctx.FRAMEBUFFER,
             ctx.COLOR_ATTACHMENT0, ctx.TEXTURE_2D, texture, 0)
-        return this.compiled.set(renderer, frame)
-    }
+        return frame
+    })
     dispose(renderer: Renderer) {
         this.texture.dispose(renderer)
-        const compiled = this.compiled.get(renderer)
-        if (compiled) {
-            renderer.ctx.deleteFramebuffer(compiled)
-        }
+        renderer.ctx.deleteFramebuffer(this.compile.map.del(renderer) || null)
     }
     readonly texture: Texture
     constructor(width: number, height: number) {

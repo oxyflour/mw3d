@@ -1,5 +1,3 @@
-import 'babel-polyfill'
-
 import Renderer from './engine/renderer'
 import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'

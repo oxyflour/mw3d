@@ -12,8 +12,8 @@
   "license": "ISC",
   "devDependencies": {
     "@types/webgl2": "0.0.4",
-    "parcel": "^1.9.7",
-    "typescript": "^2.9.2"
+    "typescript": "^4.5.4",
+    "vite": "^2.7.11"
   },
   "dependencies": {
     "@types/gl-matrix": "^2.4.1",

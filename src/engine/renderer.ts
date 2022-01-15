@@ -30,11 +30,10 @@ export type Uniform = { name: string } & ({
 })
 
 export default class Renderer {
-    private cachedLocations = new Cache<Program, { [name: string]: WebGLUniformLocation | null }>()
+    private getLocations = Cache.create((_: Program) => ({ } as Record<string, WebGLUniformLocation | null>))
     private updateUniforms(prog: Program, uniforms: Uniform[]) {
         const { ctx } = this,
-            cache = this.cachedLocations,
-            locs = cache.get(prog) || cache.set(prog, { }),
+            locs = this.getLocations(prog),
             compiled = prog.compile(this)
         for (const { name, type, values } of uniforms) {
             const location = locs[name] || (locs[name] = ctx.getUniformLocation(compiled, name))
@@ -57,29 +56,24 @@ export default class Renderer {
         this.ctx.clearColor(r, g, b, a)
     }
 
-    private cachedSize = {
-        width: this.canvas.width,
-        height: this.canvas.height,
-    }
-    private resize() {
+    private cachedSize = { width: 0, height: 0 }
+    private resize(width: number, height: number) {
         const { ctx, canvas, cachedSize } = this
         ctx.viewport(0, 0,
-            canvas.width = cachedSize.width,
-            canvas.height = cachedSize.height)
+            canvas.width = cachedSize.width = width,
+            canvas.height = cachedSize.height = height)
     }
     get width() {
         return this.cachedSize.width
     }
     set width(val) {
-        this.cachedSize.width = val
-        this.resize()
+        this.resize(val, this.cachedSize.height)
     }
     get height() {
         return this.cachedSize.height
     }
     set height(val) {
-        this.cachedSize.height = val
-        this.resize()
+        this.resize(this.cachedSize.width, val)
     }
 
     readonly ctx: WebGL2RenderingContext
@@ -92,6 +86,9 @@ export default class Renderer {
         this.ctx = ctx
         ctx.enable(ctx.DEPTH_TEST)
         ctx.enable(ctx.CULL_FACE)
+
+        this.cachedSize.width = canvas.width
+        this.cachedSize.height = canvas.height
     }
 
     render(objs: Set<Obj3>, camera: Camera, target = null as null | RenderTarget) {

@@ -3,13 +3,7 @@ import Renderer from './renderer'
 import Cache from '../utils/cache'
 
 export default class Program {
-    private compiled = new Cache<Renderer, WebGLProgram>()
-    compile(renderer: Renderer) {
-        const compiled = this.compiled.get(renderer)
-        if (compiled) {
-            return compiled
-        }
-
+    compile = Cache.create((renderer: Renderer) => {
         const { ctx } = renderer,
             prog = ctx.createProgram()
         if (!prog) {
@@ -41,13 +35,10 @@ export default class Program {
             throw Error(`link webgl2 program failed`)
         }
 
-        return this.compiled.set(renderer, prog)
-    }
+        return prog
+    })
     dispose(renderer: Renderer) {
-        const compiled = this.compiled.get(renderer)
-        if (compiled) {
-            renderer.ctx.deleteProgram(compiled)
-        }
+        renderer.ctx.deleteProgram(this.compile.map.del(renderer) || null)
     }
 
     private static counter = 1
