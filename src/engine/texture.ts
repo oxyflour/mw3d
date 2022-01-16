@@ -30,16 +30,25 @@ export default class Texture {
 export class RenderTarget {
     compile = Cache.create((renderer: Renderer) => {
         const { ctx } = renderer,
-            texture = this.texture.compile(renderer),
-            frame = ctx.createFramebuffer()
-        ctx.bindFramebuffer(ctx.FRAMEBUFFER, frame)
+            texture = this.texture.compile(renderer)
+
+        const frameBuffer = ctx.createFramebuffer()
+        ctx.bindFramebuffer(ctx.FRAMEBUFFER, frameBuffer)
         ctx.framebufferTexture2D(ctx.FRAMEBUFFER,
             ctx.COLOR_ATTACHMENT0, ctx.TEXTURE_2D, texture, 0)
-        return frame
+
+        const depthBuffer = ctx.createRenderbuffer()
+        ctx.bindRenderbuffer(ctx.RENDERBUFFER, depthBuffer)
+        ctx.framebufferRenderbuffer(ctx.FRAMEBUFFER,
+            ctx.DEPTH_ATTACHMENT, ctx.RENDERBUFFER, depthBuffer)
+
+        return { frameBuffer, depthBuffer }
     })
     dispose(renderer: Renderer) {
         this.texture.dispose(renderer)
-        renderer.ctx.deleteFramebuffer(this.compile.map.del(renderer) || null)
+        const { frameBuffer, depthBuffer } = this.compile.map.del(renderer) || { }
+        frameBuffer && renderer.ctx.deleteFramebuffer(frameBuffer)
+        depthBuffer && renderer.ctx.deleteFramebuffer(depthBuffer)
     }
     readonly texture: Texture
     constructor(width: number, height: number) {

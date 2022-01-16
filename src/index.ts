@@ -6,6 +6,7 @@ import { PerspectiveCamera } from './engine/camera'
 import Material, { BasicMaterial } from './engine/material'
 
 import { rand } from './utils/math'
+import Picker from './tool/pick'
 
 const canvas = document.createElement('canvas')
 canvas.style.width = canvas.style.height = '100%'
@@ -18,16 +19,17 @@ const renderer = new Renderer(canvas),
 
 camera.pos.set(0, 0, 300)
 const cube = new Mesh(
-    new BoxGeometry({ size: 100 }),
+    new BoxGeometry({ size: 200 }),
     new BasicMaterial({ color: [1, 0, 0] }))
+cube.pos.set(0, 0, -200)
 scene.add(cube)
 
-const mat = new BasicMaterial({ color: [0, 1, 1] })
 for (let i = 0; i < 100; i ++) {
     const { geo } = cube,
+        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
         mesh = new Mesh(geo, mat)
     mesh.scl.set(rand(0.1, 0.5), rand(0.1, 0.5), rand(0.1, 0.5))
-    mesh.pos.set(rand(-1000, 1000), rand(-1000, 1000), rand(-1000, -500))
+    mesh.pos.set(rand(-200, 200), rand(-200, 200), rand(-200, -200))
     mesh.rot.rotX(rand(0, 10)).rotY(rand(0, 10))
     scene.add(mesh)
 }
@@ -41,13 +43,14 @@ window.addEventListener('resize', () => {
 })
 
 const hovering = {
-    mat: new BasicMaterial({ color: new Float32Array([1, 1, 0]) }),
+    mat: new BasicMaterial({ color: [1, 1, 0] }),
     mesh: undefined as undefined | Mesh & { originalMat: Material }
 }
+const picker = new Picker(renderer)
 renderer.canvas.addEventListener('mousemove', evt => {
     const x = evt.clientX,
         y = window.innerHeight - evt.clientY,
-        mesh = renderer.pick(scene, camera, x, y)
+        mesh = picker.pick(scene, camera, x, y)
     if (hovering.mesh !== mesh) {
         if (hovering.mesh) {
             hovering.mesh.mat = hovering.mesh.originalMat
@@ -64,8 +67,3 @@ requestAnimationFrame(function render() {
     cube.rot.rotX(0.02).rotY(0.01)
     renderer.render(scene, camera)
 })
-
-declare var module: any
-if (module && module.hot) {
-    module.hot.dispose(() => location.reload())
-}

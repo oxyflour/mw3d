@@ -22,7 +22,7 @@ export default class Obj3 {
             child.parent = undefined
         }
     }
-    addTo(parent?: Obj3) {
+    addTo(parent: Obj3) {
         if (this.parent) {
             this.parent.children.delete(this)
         }

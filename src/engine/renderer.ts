@@ -93,7 +93,15 @@ export default class Renderer {
 
     render(objs: Set<Obj3>, camera: Camera, target = null as null | RenderTarget) {
         const { ctx } = this
-        ctx.bindFramebuffer(ctx.FRAMEBUFFER, target ? target.compile(this) : null)
+        if (target) {
+            const { frameBuffer, depthBuffer } = target.compile(this)
+            ctx.bindFramebuffer(ctx.FRAMEBUFFER, frameBuffer)
+            ctx.bindRenderbuffer(ctx.RENDERBUFFER, depthBuffer)
+            ctx.renderbufferStorage(ctx.RENDERBUFFER, ctx.DEPTH_COMPONENT16, this.width, this.height)
+        } else {
+            ctx.bindFramebuffer(ctx.FRAMEBUFFER, null)
+        }
+        ctx.clear(ctx.COLOR_BUFFER_BIT | ctx.DEPTH_BUFFER_BIT)
 
         camera.updateIfNecessary()
         for (const obj of objs) {
@@ -120,7 +128,7 @@ export default class Renderer {
                 this.updateUniforms(prog, mat.uniforms)
             }
             if (geo !== mesh.geo && (geo = mesh.geo)) {
-                ctx.bindVertexArray(geo.compile(this, prog))
+                ctx.bindVertexArray(geo.compile(this)(prog))
             }
             const { uniforms, start, count, mode } = mesh
             this.updateUniforms(prog, uniforms)
@@ -131,46 +139,5 @@ export default class Renderer {
                 ctx.drawArrays(mode, start, count)
             }
         }
-    }
-
-    private cachedPickFrame = {
-        width: this.cachedSize.width,
-        height: this.cachedSize.height,
-        frame: new RenderTarget(this.cachedSize.width, this.cachedSize.height),
-    }
-    private cachedPickMats = { } as { [id: number]: BasicMaterial }
-    pick(objs: Set<Obj3>, camera: Camera, x: number, y: number) {
-        const { cachedSize: { width, height }, cachedPickFrame, cachedPickMats, ctx } = this
-        if (cachedPickFrame.width !== width || cachedPickFrame.height !== height) {
-            cachedPickFrame.frame.dispose(this)
-            Object.assign(cachedPickFrame, { width, height, frame: new RenderTarget(width, height) })
-        }
-
-        const meshes = [ ] as { obj: Mesh, mat: Material }[]
-        for (const obj of objs) {
-            if (obj instanceof Mesh) {
-                const mat = obj.mat
-                obj.mat = cachedPickMats[obj.id] ||
-                    (cachedPickMats[obj.id] = new BasicMaterial({
-                        color: new Uint8Array(new Int32Array([obj.id]).buffer)
-                    }))
-                meshes.push({ obj, mat })
-            }
-        }
-
-        const { frame } = cachedPickFrame,
-            list = meshes.map(item => item.obj)
-        this.render(new Set(list), camera, frame)
-
-        const { texture } = frame,
-            rgba = new Uint8Array(4)
-        ctx.readPixels(x, y, 1, 1, texture.format, texture.type, rgba)
-
-        for (const { obj, mat } of meshes) {
-            obj.mat = mat
-        }
-
-        const [id] = Array.from(new Int32Array(rgba.buffer))
-        return list.find(mesh => mesh.id === id)
     }
 }

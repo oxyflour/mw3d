@@ -4,15 +4,7 @@ import Renderer, { Attr } from './renderer'
 import Cache from '../utils/cache'
 
 export default class Geometry {
-    private compiled = new Cache<Renderer, Cache<Program, WebGLVertexArrayObject>>()
-    compile(renderer: Renderer, prog: Program) {
-        const { compiled, attrs } = this,
-            progs = compiled.get(renderer) || compiled.set(renderer, new Cache()),
-            cached = progs.get(prog)
-        if (cached) {
-            return cached
-        }
-
+    compile = Cache.create((renderer: Renderer) => Cache.create((prog: Program) => {
         const { ctx } = renderer,
             arr = ctx.createVertexArray()
         if (!arr) {
@@ -22,7 +14,7 @@ export default class Geometry {
         ctx.bindVertexArray(arr)
 
         const program = prog.compile(renderer)
-        for (const { name, size, type, normalize, stride, offset, values } of attrs) {
+        for (const { name, size, type, normalize, stride, offset, values } of this.attrs) {
             const location = ctx.getAttribLocation(program, name)
             ctx.enableVertexAttribArray(location)
             const buffer = ctx.createBuffer()
@@ -35,15 +27,13 @@ export default class Geometry {
             ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, buffer)
             ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, this.indices, ctx.STATIC_DRAW)
         }
-
-        return progs.set(prog, arr)
-    }
+        return arr
+    }))
     dispose(renderer: Renderer, prog: Program) {
-        const { compiled } = this,
-            progs = compiled.get(renderer) || compiled.set(renderer, new Cache()),
-            cached = progs.get(prog)
-        if (cached) {
-            renderer.ctx.deleteVertexArray(cached)
+        const cache = this.compile.map.get(renderer),
+            arr = cache && cache.map.del(prog)
+        if (arr) {
+            renderer.ctx.deleteVertexArray(arr)
         }
     }
 
@@ -75,6 +65,8 @@ export class BoxGeometry extends Geometry {
                 -h,  h, -h,
                  h, -h, -h,
                  h,  h, -h,
+            ]),
+            normals = new Float32Array([
             ]),
             indices = new Uint16Array([
                 0, 2, 1,  1, 2, 3,

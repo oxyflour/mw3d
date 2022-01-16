@@ -1,6 +1,12 @@
+/// <reference path="../typing.d.ts" />
+
+import { vec4 } from 'gl-matrix'
+
 import Program from './program'
 import { Uniform } from './renderer'
-import { vec4 } from 'gl-matrix'
+
+import vertShader from './shader/vert.glsl?raw'
+import fragShader from './shader/frag.glsl?raw'
 
 export default class Material {
     private static counter = 1
@@ -26,63 +32,24 @@ export interface BasicMaterialOptions {
 }
 
 export class BasicMaterial extends Material {
-    static readonly makeVertexShader = (opts: BasicMaterialOptions) => `#version 300 es
-        in vec4 a_position;
-
-        ${opts.vertexColorAttr ? `
-        in vec4 ${opts.vertexColorAttr};
-        ` : ''}
-
-        uniform mat4 u_view_proj;
-        uniform mat4 u_model_matrix;
-        
-        ${opts.vertexColorAttr ? `
-        out vec4 v_color;
-        ` : ''}
-        
-        void main() {
-            gl_Position = u_view_proj * u_model_matrix * a_position;
-
-            ${opts.vertexColorAttr ? `
-            v_color = ${opts.vertexColorAttr};
-            ` : ''}
-        }
-    `
-    static readonly makeFragmentShader = (opts: BasicMaterialOptions) => `#version 300 es
-        precision mediump float;
-        
-        ${opts.color ? `
-        uniform vec4 u_color;
-        ` : ''}
-
-        ${opts.vertexColorAttr ? `
-        in vec4 v_color;
-        ` : ''}
-        
-        out vec4 outColor;
-        
-        void main() {
-            ${opts.color ? `
-            outColor = u_color;
-            ` : opts.vertexColorAttr ? `
-            outColor = v_color;
-            ` : `
-            outColor = vec4(1., 0., 0., 1.);
-            `}
-        }
-    `
+    static makeShader(src: string, opts: BasicMaterialOptions) {
+        const replaced = src.replace(/\/\/\$/g, '$').replace(/\/\/`/g, '`'),
+            func = new Function('opts', `return \`${replaced}\``)
+        return func(opts)
+    }
 
     static cachedPrograms = { } as { [src: string]: Program }
     constructor(opts = { } as BasicMaterialOptions) {
-        const src = [BasicMaterial.makeVertexShader(opts), BasicMaterial.makeFragmentShader(opts)],
+        const vertSrc = BasicMaterial.makeShader(vertShader, opts),
+            fragSrc = BasicMaterial.makeShader(fragShader, opts),
             cache = BasicMaterial.cachedPrograms,
-            key = src.join('###'),
+            key = `${vertSrc}###${fragSrc}`,
             prog = cache[key] || (cache[key] = new Program([{
                 type: WebGL2RenderingContext.VERTEX_SHADER,
-                src: src[0]
+                src: vertSrc
             }, {
                 type: WebGL2RenderingContext.FRAGMENT_SHADER,
-                src: src[1]
+                src: fragSrc
             }])),
             uniforms = [ ] as Uniform[]
         if (opts.color) {
