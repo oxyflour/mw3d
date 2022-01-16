@@ -9,6 +9,7 @@ import Geometry from './geometry'
 import { RenderTarget } from './texture'
 
 import Cache from '../utils/cache'
+import Light from './light'
 
 export interface Attr {
     name: string
@@ -103,18 +104,25 @@ export default class Renderer {
         }
         ctx.clear(ctx.COLOR_BUFFER_BIT | ctx.DEPTH_BUFFER_BIT)
 
+        const meshes = [] as Mesh[],
+            lights = [] as Light[]
         camera.updateIfNecessary()
         for (const obj of objs) {
             obj.updateIfNecessary()
+            obj.walk(obj => {
+                if (obj instanceof Mesh) {
+                    meshes.push(obj)
+                } else if (obj instanceof Light) {
+                    lights.push(obj)
+                }
+            })
         }
 
-        const sorted = Array.from(objs as Set<Mesh>)
-            .filter(obj => obj instanceof Mesh).sort((a, b) => {
-                return (a.renderOrder - b.renderOrder) ||
-                    (a.mat.prog.id - b.mat.prog.id) ||
-                    (a.mat.id - b.mat.id) ||
-                    (a.geo.id - b.geo.id)
-            })
+        const sorted = meshes.sort((a, b) => 
+            (a.renderOrder - b.renderOrder) ||
+            (a.mat.prog.id - b.mat.prog.id) ||
+            (a.mat.id - b.mat.id) ||
+            (a.geo.id - b.geo.id))
 
         let prog = null as Program | null,
             mat = null as Material | null,
@@ -123,6 +131,9 @@ export default class Renderer {
             if (prog !== mesh.mat.prog && (prog = mesh.mat.prog)) {
                 ctx.useProgram(prog.compile(this))
                 this.updateUniforms(prog, camera.uniforms)
+                for (const light of lights) {
+                    this.updateUniforms(prog, light.uniforms)
+                }
             }
             if (mat !== mesh.mat && (mat = mesh.mat)) {
                 this.updateUniforms(prog, mat.uniforms)
@@ -133,8 +144,7 @@ export default class Renderer {
             const { uniforms, start, count, mode } = mesh
             this.updateUniforms(prog, uniforms)
             if (geo.indices) {
-                const type = geo.indexType
-                ctx.drawElements(mode, count, type, start)
+                ctx.drawElements(mode, count, geo.indexType, start)
             } else {
                 ctx.drawArrays(mode, start, count)
             }

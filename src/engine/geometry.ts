@@ -16,11 +16,13 @@ export default class Geometry {
         const program = prog.compile(renderer)
         for (const { name, size, type, normalize, stride, offset, values } of this.attrs) {
             const location = ctx.getAttribLocation(program, name)
-            ctx.enableVertexAttribArray(location)
-            const buffer = ctx.createBuffer()
-            ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
-            ctx.bufferData(ctx.ARRAY_BUFFER, values, ctx.STATIC_DRAW)
-            ctx.vertexAttribPointer(location, size, type, normalize || false, stride || 0, offset || 0)
+            if (location >= 0) {
+                ctx.enableVertexAttribArray(location)
+                const buffer = ctx.createBuffer()
+                ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
+                ctx.bufferData(ctx.ARRAY_BUFFER, values, ctx.STATIC_DRAW)
+                ctx.vertexAttribPointer(location, size, type, normalize || false, stride || 0, offset || 0)
+            }
         }
         if (this.indices) {
             const buffer = ctx.createBuffer()
@@ -61,26 +63,81 @@ export class BoxGeometry extends Geometry {
                 -h,  h,  h,
                  h, -h,  h,
                  h,  h,  h,
+
                 -h, -h, -h,
                 -h,  h, -h,
                  h, -h, -h,
                  h,  h, -h,
+
+                 h, -h, -h,
+                 h,  h, -h,
+                 h, -h,  h,
+                 h,  h,  h,
+
+                -h, -h, -h,
+                -h,  h, -h,
+                -h, -h,  h,
+                -h,  h,  h,
+
+                -h,  h, -h,
+                 h,  h, -h,
+                -h,  h,  h,
+                 h,  h,  h,
+
+                -h, -h, -h,
+                 h, -h, -h,
+                -h, -h,  h,
+                 h, -h,  h,
             ]),
             normals = new Float32Array([
+                 0,  0,  1,
+                 0,  0,  1,
+                 0,  0,  1,
+                 0,  0,  1,
+
+                 0,  0, -1,
+                 0,  0, -1,
+                 0,  0, -1,
+                 0,  0, -1,
+
+                 1,  0,  0,
+                 1,  0,  0,
+                 1,  0,  0,
+                 1,  0,  0,
+
+                -1,  0,  0,
+                -1,  0,  0,
+                -1,  0,  0,
+                -1,  0,  0,
+
+                 0,  1,  0,
+                 0,  1,  0,
+                 0,  1,  0,
+                 0,  1,  0,
+
+                 0, -1,  0,
+                 0, -1,  0,
+                 0, -1,  0,
+                 0, -1,  0,
             ]),
             indices = new Uint16Array([
-                0, 2, 1,  1, 2, 3,
-                1, 3, 5,  5, 3, 7,
-                5, 7, 4,  4, 7, 6,
-                4, 6, 0,  0, 6, 2,
-                2, 6, 3,  3, 6, 7,
-                4, 0, 5,  5, 0, 1,
+                ...[0, 2, 1,  1, 2, 3],
+                ...[0, 1, 2,  1, 3, 2].map(i => i + 4),
+                ...[0, 1, 2,  1, 3, 2].map(i => i + 8),
+                ...[0, 2, 1,  1, 2, 3].map(i => i + 12),
+                ...[0, 2, 1,  1, 2, 3].map(i => i + 16),
+                ...[0, 1, 2,  1, 3, 2].map(i => i + 20),
             ])
         attrs.push({
             name: 'a_position',
             size: 3,
             type: WebGLRenderingContext.FLOAT,
             values: positions
+        }, {
+            name: 'a_normal',
+            size: 3,
+            type: WebGLRenderingContext.FLOAT,
+            values: normals
         })
         super(attrs, indices)
     }

@@ -29,6 +29,7 @@ export default class Material {
 export interface BasicMaterialOptions {
     color?: Float32Array | Uint8Array | number[],
     vertexColorAttr?: string
+    vertexNormalAttr?: string
 }
 
 export class BasicMaterial extends Material {

@@ -87,4 +87,10 @@ export default class Obj3 {
         }
         // TODO
     }
+    walk(func: (obj: Obj3) => void) {
+        func(this)
+        for (const child of this.children) {
+            child.walk(func)
+        }
+    }
 }
