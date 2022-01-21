@@ -2,14 +2,22 @@ import { mat4, quat, vec3 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
 
 export default class Obj3 {
-    position = vec3.create()
-    rotation = quat.create()
-    scale = vec3.fromValues(1, 1, 1)
+    /**
+     * use `this.position`
+     */
+    pos = vec3.create()
+    /**
+     * use `this.rotation`
+     */
+    rot = quat.create()
+    /**
+     * use `this.scaling`
+     */
+    scl = vec3.fromValues(1, 1, 1)
 
-    // for external uses only
-    pos = new Vec3(this.position)
-    rot = new Quat(this.rotation)
-    scl = new Vec3(this.scale)
+    position = new Vec3(this.pos)
+    rotation = new Quat(this.rot)
+    scaling = new Vec3(this.scl)
 
     private parent?: Obj3
     readonly children = new Set<Obj3>()
@@ -34,24 +42,29 @@ export default class Obj3 {
         return this.parent
     }
 
-    private cachedParent?: Obj3
-    private cachedStatus = { position: vec3.create(), rotation: quat.create(), scale: vec3.create() }
+    private cachedStatus = {
+        parent: null as Obj3 | null,
+        pos: vec3.create(),
+        rot: quat.create(),
+        scl: vec3.create(),
+    }
     readonly worldMatrix = mat4.create()
     protected needsUpdate() {
-        return this.cachedParent !== this.parent ||
-            !vec3.exactEquals(this.position, this.cachedStatus.position) ||
-            !quat.exactEquals(this.rotation, this.cachedStatus.rotation) ||
-            !vec3.exactEquals(this.scale, this.cachedStatus.scale)
+        const cache = this.cachedStatus
+        return cache.parent !== this.parent ||
+            !vec3.exactEquals(this.pos, cache.pos) ||
+            !quat.exactEquals(this.rot, cache.rot) ||
+            !vec3.exactEquals(this.scl, cache.scl)
     }
     protected updateMatrix() {
-        const { rotation, position, scale } = this.cachedStatus
+        const cache = this.cachedStatus
         mat4.fromRotationTranslationScale(
             this.worldMatrix,
-            quat.copy(rotation, this.rotation),
-            vec3.copy(position, this.position),
-            vec3.copy(scale, this.scale))
-        if (this.cachedParent = this.parent) {
-            mat4.multiply(this.worldMatrix, this.cachedParent.worldMatrix, this.worldMatrix)
+            quat.copy(cache.rot, this.rot),
+            vec3.copy(cache.pos, this.pos),
+            vec3.copy(cache.scl, this.scl))
+        if (cache.parent = this.parent) {
+            mat4.multiply(this.worldMatrix, cache.parent.worldMatrix, this.worldMatrix)
         }
         for (const child of this.children) {
             child.updateMatrix()
@@ -72,23 +85,8 @@ export default class Obj3 {
     constructor() {
         this.id = Obj3.counter ++
     }
-    clone() {
-        const cloned = new (this as any).contructor() as this
-        cloned.position = vec3.clone(this.position)
-        cloned.rotation = quat.clone(this.rotation)
-        cloned.scale = vec3.clone(this.scale)
-        if (this.parent) {
-            cloned.addTo(this.parent)
-        }
-    }
-    dispose() {
-        if (this.parent) {
-            this.parent.remove(this)
-        }
-        // TODO
-    }
-    walk(func: (obj: Obj3) => void) {
-        func(this)
+    walk(func: (obj: Obj3, parent?: Obj3) => void) {
+        func(this, this.parent)
         for (const child of this.children) {
             child.walk(func)
         }

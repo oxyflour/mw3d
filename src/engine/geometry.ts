@@ -1,55 +1,19 @@
-import Program from './program'
-import Renderer, { Attr } from './renderer'
-
-import Cache from '../utils/cache'
+export interface Attr {
+    name: string
+    size: number
+    type: number
+    values: number | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array |
+        Uint32Array | Uint8ClampedArray | Float32Array | Float64Array | DataView | ArrayBuffer | null,
+    normalize?: boolean
+    stride?: number
+    offset?: number
+}
 
 export default class Geometry {
-    compile = Cache.create((renderer: Renderer) => Cache.create((prog: Program) => {
-        const { ctx } = renderer,
-            arr = ctx.createVertexArray()
-        if (!arr) {
-            throw Error(`create vertex array failed`)
-        }
-
-        ctx.bindVertexArray(arr)
-
-        const program = prog.compile(renderer)
-        for (const { name, size, type, normalize, stride, offset, values } of this.attrs) {
-            const location = ctx.getAttribLocation(program, name)
-            if (location >= 0) {
-                ctx.enableVertexAttribArray(location)
-                const buffer = ctx.createBuffer()
-                ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
-                ctx.bufferData(ctx.ARRAY_BUFFER, values, ctx.STATIC_DRAW)
-                ctx.vertexAttribPointer(location, size, type, normalize || false, stride || 0, offset || 0)
-            }
-        }
-        if (this.indices) {
-            const buffer = ctx.createBuffer()
-            ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, buffer)
-            ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, this.indices, ctx.STATIC_DRAW)
-        }
-        return arr
-    }))
-    dispose(renderer: Renderer, prog: Program) {
-        const cache = this.compile.map.get(renderer),
-            arr = cache && cache.map.del(prog)
-        if (arr) {
-            renderer.ctx.deleteVertexArray(arr)
-        }
-    }
-
     private static counter = 1
     readonly id: number
-    readonly indexType: number
     constructor(readonly attrs: Attr[], readonly indices?: Uint16Array | Uint32Array) {
         this.id = Geometry.counter ++
-        this.indexType = indices instanceof Uint16Array ?
-            WebGL2RenderingContext.UNSIGNED_SHORT : WebGL2RenderingContext.UNSIGNED_INT
-    }
-    clone() {
-        const { attrs, indices } = this
-        return new (this as any).constructor(JSON.parse(JSON.stringify(attrs)), indices)
     }
 }
 

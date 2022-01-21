@@ -1,16 +1,12 @@
 import Obj3 from './obj3'
 import Geometry from './geometry'
 import Material from './material'
-import { Uniform } from './renderer'
 import { mat4 } from 'gl-matrix'
+import { Uniform } from './uniform'
 
 export default class Mesh extends Obj3 {
     renderOrder = 0
-    private matrixUniform = {
-        name: 'u_model_matrix',
-        type: 'mat4',
-        values: mat4.create()
-    } as Uniform
+    private readonly matrixUniform: Uniform
     constructor(
         public geo: Geometry,
         public mat: Material,
@@ -20,16 +16,15 @@ export default class Mesh extends Obj3 {
         public mode = WebGLRenderingContext.TRIANGLES) {
         super()
 
-        let matrixUniform = this.uniforms.find(uniform => uniform.name === 'u_model_matrix')
-        if (!matrixUniform) {
-            matrixUniform = {
+        this.matrixUniform = this.uniforms.find(uniform => uniform.name === 'u_model_matrix')
+        if (!this.matrixUniform) {
+            this.matrixUniform = {
                 name: 'u_model_matrix',
                 type: 'mat4',
                 values: mat4.create()
             }
-            this.uniforms.push(matrixUniform)
+            this.uniforms.push(this.matrixUniform)
         }
-        this.matrixUniform = matrixUniform
 
         if (this.count < 0) {
             if (geo.indices) {

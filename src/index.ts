@@ -1,12 +1,12 @@
-import Renderer from './engine/renderer'
+import Renderer from './engine/webgl2/renderer'
 import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
+import Material, { BasicMaterial } from './engine/material'
 import { BoxGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
-import Material, { BasicMaterial } from './engine/material'
 
+import Picker from './engine/webgl2/tool/picker'
 import { rand } from './utils/math'
-import Picker from './tool/pick'
 import { DirectionalLight } from './engine/light'
 
 const canvas = document.createElement('canvas')
@@ -20,25 +20,24 @@ const renderer = new Renderer(canvas),
 const camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
     holder = new Obj3()
 holder.add(camera)
-camera.pos.set(0, 0, 500)
+camera.position.set(0, 0, 500)
 scene.add(holder)
 
 const cube = new Mesh(
     new BoxGeometry({ size: 200 }),
-    new BasicMaterial({ color: [1, 0, 0], vertexNormalAttr: 'a_normal' }))
+    new BasicMaterial({ color: [0.9, 0.3, 0.2], vertexNormal: true }))
 scene.add(cube)
 
 const light = new DirectionalLight({ direction: [0, 0, -1] })
 scene.add(light)
 
-for (let i = 0; i < 100; i ++) {
+const mat = new BasicMaterial({ color: [0, 1, 1], vertexNormal: true })
+for (let i = 0; i < 5000; i ++) {
     const { geo } = cube,
-        color = [Math.random(), Math.random(), Math.random()],
-        mat = new BasicMaterial({ color, vertexNormalAttr: 'a_normal' }),
         mesh = new Mesh(geo, mat)
-    mesh.scl.set(rand(0.1, 0.5), rand(0.1, 0.5), rand(0.1, 0.5))
-    mesh.pos.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
-    mesh.rot.rotX(rand(0, 10)).rotY(rand(0, 10))
+    mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
+    mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
+    mesh.rotation.rotX(rand(0, 10)).rotY(rand(0, 10))
     scene.add(mesh)
 }
 
@@ -72,8 +71,8 @@ renderer.canvas.addEventListener('mousemove', evt => {
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
-    cube.rot.rotX(0.02).rotY(0.01)
-    holder.rot.rotY(0.001)
-    light.rot.rotX(0.02)
+    cube.rotation.rotX(0.02).rotY(0.01)
+    holder.rotation.rotY(0.001)
+    light.rotation.rotX(0.02)
     renderer.render(scene, camera)
 })

@@ -1,9 +1,9 @@
-import Camera from '../engine/camera'
-import Material, { BasicMaterial } from '../engine/material'
-import Mesh from '../engine/mesh'
-import Obj3 from '../engine/obj3'
-import Renderer from '../engine/renderer'
-import { RenderTarget } from '../engine/texture'
+import Camera from '../../camera'
+import Material, { BasicMaterial } from '../../material'
+import Mesh from '../../mesh'
+import Obj3 from '../../obj3'
+import Renderer from '../renderer'
+import { RenderTarget } from '../../texture'
 
 export default class Picker {
 	constructor(private readonly renderer: Renderer,
@@ -14,7 +14,7 @@ export default class Picker {
 		}) {
 	}
 
-	private cachedMeshes = {
+	private cache = {
 		list: [] as { obj: Mesh, mat: Material }[],
 		set: new Set<Mesh>(),
 		map: {} as Record<number, Mesh>,
@@ -24,11 +24,11 @@ export default class Picker {
     pick(objs: Set<Obj3>, camera: Camera, x: number, y: number) {
         const { renderer: { width, height, ctx }, cachedPickFrame, cachedPickMats } = this
         if (cachedPickFrame.width !== width || cachedPickFrame.height !== height) {
-            cachedPickFrame.frame.dispose(this.renderer)
+			this.renderer.cache.rt.del(cachedPickFrame.frame)
             Object.assign(cachedPickFrame, { width, height, frame: new RenderTarget(width, height) })
         }
 
-		const { cachedMeshes } = this
+		const { cache } = this
         for (const obj of objs) {
             if (obj instanceof Mesh) {
                 const mat = obj.mat,
@@ -37,27 +37,27 @@ export default class Picker {
 					b = (obj.id & 0xff0000) >> 16
                 obj.mat = cachedPickMats[obj.id] ||
                     (cachedPickMats[obj.id] = new BasicMaterial({ color: new Uint8Array([r, g, b, 255]) }))
-                cachedMeshes.list.push({ obj, mat })
-				cachedMeshes.map[obj.id] = obj
-				cachedMeshes.set.add(obj)
+                cache.list.push({ obj, mat })
+				cache.map[obj.id] = obj
+				cache.set.add(obj)
             }
         }
 
         const { frame } = cachedPickFrame
-        this.renderer.render(cachedMeshes.set, camera, frame)
+        this.renderer.render(cache.set, camera, frame)
 
         const { texture } = frame
-        ctx.readPixels(x, y, 1, 1, texture.format, texture.type, cachedMeshes.pixel)
+        ctx.readPixels(x, y, 1, 1, texture.format, texture.type, cache.pixel)
 
-        for (const { obj, mat } of cachedMeshes.list) {
+        for (const { obj, mat } of cache.list) {
             obj.mat = mat
         }
 
-        const [r, g, b] = cachedMeshes.pixel,
-        	ret = cachedMeshes.map[r + (g << 8) + (b << 16)]
-		cachedMeshes.list = [ ]
-		cachedMeshes.map = { }
-		cachedMeshes.set.clear()
+        const [r, g, b] = cache.pixel,
+        	ret = cache.map[r + (g << 8) + (b << 16)]
+		cache.list = [ ]
+		cache.map = { }
+		cache.set.clear()
 		return ret
     }
 }

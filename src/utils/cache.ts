@@ -1,20 +1,18 @@
-export default class Cache<K extends object, V> {
-    static create<K extends object, V>(func: (k: K) => V) {
-        const map = new Cache<K, V>(),
-            ret = (k: K) => map.get(k) || map.set(k, func(k))
-        return Object.assign(ret, { map })
-    }
-    private data = new WeakMap<K, V>()
-    get(k: K) {
-        return this.data.get(k)
-    }
-    set(k: K, v: V) {
-        this.data.set(k, v)
-        return v
-    }
-    del(k: K) {
-        const v = this.data.get(k)
-        this.data.delete(k)
-        return v
-    }
+export default function cache<K extends object, V>(create: (k: K) => V, dispose?:(k: K, v: V) => void) {
+    const map = new WeakMap<K, V>(),
+        ret = (k: K) => {
+            let v = map.get(k)
+            if (!v) {
+                v = create(k)
+                map.set(k, v)
+            }
+            return v
+        },
+        del = (k: K) => {
+            const v = map.get(k)
+            map.delete(k)
+            dispose(k, v)
+            return v
+        }
+    return Object.assign(ret, { del })
 }
