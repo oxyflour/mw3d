@@ -4,7 +4,7 @@ import { vec4 } from 'gl-matrix'
 
 import vertShader from './webgl2/shader/vert.glsl?raw'
 import fragShader from './webgl2/shader/frag.glsl?raw'
-import { Uniform } from './uniform'
+import Uniform from './uniform'
 import { format } from '../utils/common'
 
 export class Program {
@@ -65,11 +65,7 @@ export class BasicMaterial extends Material {
                 b /= 255
                 a = opts.color.length > 3 ? opts.color[3] / 255 : 1
             }
-            uniforms.push({
-                name: 'u_color',
-                type: 'vec4',
-                values: vec4.fromValues(r, g, b, a)
-            })
+            uniforms.push(new Uniform('u_color', vec4.fromValues(r, g, b, a)))
         }
         super(prog, uniforms)
     }

@@ -7,7 +7,8 @@ import Light from '../light'
 import Texture, { RenderTarget } from '../texture'
 
 import cache from '../../utils/cache'
-import { Uniform } from '../uniform'
+import Uniform from '../uniform'
+import { mat4, vec4 } from 'gl-matrix'
 
 const compileProgram = (renderer: Renderer) => cache((program: Program) => {
 	const { ctx } = renderer,
@@ -125,14 +126,14 @@ export default class Renderer {
         const { ctx } = this,
             locs = this.cache.loc(prog),
             compiled = this.cache.prog(prog)
-        for (const { name, type, values } of uniforms) {
+        for (const { name, values } of uniforms) {
             const location = locs[name] || (locs[name] = ctx.getUniformLocation(compiled, name))
-            if (type === 'vec4') {
+            if (values.length === 4) {
                 ctx.uniform4fv(location, values)
-            } else if (type === 'mat4') {
+            } else if (values.length === 16) {
                 ctx.uniformMatrix4fv(location, false, values)
             } else {
-                throw Error(`not implemented type ${type} for unifrom ${name}`)
+                throw Error(`not implemented type ${typeof values} for unifrom ${name}`)
             }
         }
     }

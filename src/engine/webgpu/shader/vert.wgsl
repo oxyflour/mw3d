@@ -1,5 +1,20 @@
-[[stage(vertex)]]
+[[block]] struct Uniforms {
+  ViewProjectionMatrix : mat4x4<f32>;
+  ModelMatrix : mat4x4<f32>;
+};
+[[binding(0), group(0)]] var<uniform> uniforms : Uniforms;
 
-fn main([[location(0)]] a_position : vec2<f32>) -> [[builtin(position)]] vec4<f32> {
-  return vec4<f32>(a_position, 0.0, 1.0);
+struct VertexOutput {
+  [[builtin(position)]] Position : vec4<f32>;
+  [[location(0)]] Normal : vec3<f32>;
+};
+
+[[stage(vertex)]]
+fn main(
+  [[location(0)]] position : vec4<f32>,
+  [[location(1)]] normal : vec3<f32>) -> VertexOutput {
+  var out : VertexOutput;
+  out.Position = uniforms.ViewProjectionMatrix * uniforms.ModelMatrix * position;
+  out.Normal = normal;
+  return out;
 }
