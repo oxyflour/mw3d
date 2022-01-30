@@ -2,22 +2,13 @@ import { mat4, quat, vec3 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
 
 export default class Obj3 {
-    /**
-     * use `this.position`
-     */
-    pos = vec3.create()
-    /**
-     * use `this.rotation`
-     */
-    rot = quat.create()
-    /**
-     * use `this.scaling`
-     */
-    scl = vec3.fromValues(1, 1, 1)
+    private pos = vec3.create()
+    private rot = quat.create()
+    private scl = vec3.fromValues(1, 1, 1)
 
-    position = new Vec3(this.pos)
-    rotation = new Quat(this.rot)
-    scaling = new Vec3(this.scl)
+    readonly position = new Vec3(this.pos)
+    readonly rotation = new Quat(this.rot)
+    readonly scaling = new Vec3(this.scl)
 
     private parent?: Obj3
     readonly children = new Set<Obj3>()

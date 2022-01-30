@@ -24,7 +24,11 @@ export default class Picker {
     pick(objs: Set<Obj3>, camera: Camera, x: number, y: number) {
         const { renderer: { width, height, ctx }, cachedPickFrame, cachedPickMats } = this
         if (cachedPickFrame.width !== width || cachedPickFrame.height !== height) {
-			this.renderer.cache.rt.del(cachedPickFrame.frame)
+			const { frameBuffer, depthBuffer } = this.renderer.cache.renderTarget(cachedPickFrame.frame)
+			frameBuffer && this.renderer.ctx.deleteFramebuffer(frameBuffer)
+			depthBuffer && this.renderer.ctx.deleteRenderbuffer(depthBuffer)
+			const texture = this.renderer.cache.texture(cachedPickFrame.frame.texture)
+    		texture && this.renderer.ctx.deleteTexture(texture)
             Object.assign(cachedPickFrame, { width, height, frame: new RenderTarget(width, height) })
         }
 

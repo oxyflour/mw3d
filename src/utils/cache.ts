@@ -1,18 +1,17 @@
-export default function cache<K extends object, V>(create: (k: K) => V, dispose?:(k: K, v: V) => void) {
-    const map = new WeakMap<K, V>(),
-        ret = (k: K) => {
-            let v = map.get(k)
-            if (!v) {
-                v = create(k)
-                map.set(k, v)
+export default function cache<A extends any[], V>(create: (...a: A) => V) {
+    const map = new WeakMap<any, any>()
+    return (...a: A) => {
+        let m = map
+        for (const [i, k] of a.entries()) {
+            let n = m.get(k)
+            if (!n) {
+                n = i === a.length - 1 ?
+                    create(...a) :
+                    new WeakMap<any, any>()
+                m.set(k, n)
             }
-            return v
-        },
-        del = (k: K) => {
-            const v = map.get(k)
-            map.delete(k)
-            dispose(k, v)
-            return v
+            m = n
         }
-    return Object.assign(ret, { del })
+        return m as any as V
+    }
 }

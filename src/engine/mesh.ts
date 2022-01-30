@@ -1,11 +1,14 @@
+import { mat4 } from 'gl-matrix'
+
 import Obj3 from './obj3'
 import Geometry from './geometry'
 import Material from './material'
-import { mat4 } from 'gl-matrix'
-import { Uniform } from './uniform'
+import Uniform from './uniform'
 
 export default class Mesh extends Obj3 {
     renderOrder = 0
+    isVisible = true
+
     private readonly matrixUniform: Uniform
     constructor(
         public geo: Geometry,
@@ -18,11 +21,7 @@ export default class Mesh extends Obj3 {
 
         this.matrixUniform = this.uniforms.find(uniform => uniform.name === 'u_model_matrix')
         if (!this.matrixUniform) {
-            this.matrixUniform = {
-                name: 'u_model_matrix',
-                type: 'mat4',
-                values: mat4.create()
-            }
+            this.matrixUniform = new Uniform('u_model_matrix', mat4.create())
             this.uniforms.push(this.matrixUniform)
         }
 
@@ -39,6 +38,6 @@ export default class Mesh extends Obj3 {
     }
     protected updateMatrix() {
         super.updateMatrix()
-        this.matrixUniform.values = this.worldMatrix
+        mat4.copy(this.matrixUniform.values as mat4, this.worldMatrix)
     }
 }
