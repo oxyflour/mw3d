@@ -1,16 +1,5 @@
-struct CameraUniforms {
-  viewProjection : mat4x4<f32>;
-};
-@binding(0)
-@group(0)
-var<uniform> camera : CameraUniforms;
-
-struct MeshUniforms {
-  modelMatrix : mat4x4<f32>;
-};
-@binding(0)
-@group(1)
-var<uniform> mesh : MeshUniforms;
+//${uniform.g0.camera.wgsl}
+//${uniform.g1.mesh.wgsl}
 
 struct VertexOutput {
   @builtin(position)

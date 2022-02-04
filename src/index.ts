@@ -2,7 +2,7 @@ import WebGLRenderer from './engine/webgl2/renderer'
 import WebGPURenderer from './engine/webgpu/renderer'
 import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
-import Material, { BasicMaterial } from './engine/material'
+import { BasicMaterial } from './engine/material'
 import { BoxGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
 
@@ -52,27 +52,27 @@ window.addEventListener('resize', () => {
     renderer.height = canvas.clientHeight
 })
 
-/*
-const hovering = {
-    mat: new BasicMaterial({ color: [1, 1, 0] }),
-    mesh: undefined as undefined | Mesh & { originalMat: Material }
-}
-const picker = new Picker(renderer)
-renderer.canvas.addEventListener('mousemove', evt => {
-    const x = evt.clientX,
-        y = window.innerHeight - evt.clientY,
-        mesh = picker.pick(scene, camera, x, y)
-    if (hovering.mesh !== mesh) {
-        if (hovering.mesh) {
-            hovering.mesh.mat = hovering.mesh.originalMat
-        }
-        if (hovering.mesh = mesh as any) {
-            hovering.mesh.originalMat = hovering.mesh.mat
-            hovering.mesh.mat = hovering.mat
-        }
+if (renderer instanceof WebGLRenderer) {
+    const hovering = {
+        mat: new BasicMaterial({ color: [1, 1, 0] }),
+        mesh: undefined as undefined | Mesh & { originalMat: BasicMaterial }
     }
-})
- */
+    const picker = new Picker(renderer)
+    renderer.canvas.addEventListener('mousemove', evt => {
+        const x = evt.clientX,
+            y = window.innerHeight - evt.clientY,
+            mesh = picker.pick(scene, camera, x, y)
+        if (hovering.mesh !== mesh) {
+            if (hovering.mesh) {
+                hovering.mesh.mat = hovering.mesh.originalMat
+            }
+            if (hovering.mesh = mesh as any) {
+                hovering.mesh.originalMat = hovering.mesh.mat
+                hovering.mesh.mat = hovering.mat
+            }
+        }
+    })
+}
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)

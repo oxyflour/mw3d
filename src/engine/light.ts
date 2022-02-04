@@ -14,7 +14,7 @@ export class DirectionalLight extends Light {
 		super()
 		const [x, y, z] = opts.direction || [0, 0, 1],
 			r = opts.intensity === undefined ? 1 : opts.intensity
-		this.direction.set([x, y, z, r])
+		vec4.set(this.direction, x, y, z, r)
 		this.directionUniform = this.uniforms.find(uniform => uniform.name === 'u_light_direction')
 		if (!this.directionUniform) {
 			this.directionUniform = new Uniform('u_light_direction', vec4.create())
