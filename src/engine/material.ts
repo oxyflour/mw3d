@@ -2,27 +2,22 @@
 
 import { vec4 } from 'gl-matrix'
 
-import vertShader from './webgl2/shader/vert.glsl?raw'
-import fragShader from './webgl2/shader/frag.glsl?raw'
 import Uniform from './uniform'
 import { format } from '../utils/common'
 
-export class Program {
-    private static counter = 1
-    readonly id: number
-    constructor(
-            readonly glsl: { type: number, src: string }[],
-            readonly wgsl: { vert: string, frag: string },
-        ) {
-        this.id = Program.counter ++
-    }
-}
+import wgslVertShader from './webgpu/shader/vert.wgsl?raw'
+import wgslFragShader from './webgpu/shader/frag.wgsl?raw'
+import glslVertShader from './webgl2/shader/vert.glsl?raw'
+import glslFragShader from './webgl2/shader/frag.glsl?raw'
 
 export default class Material {
     private static counter = 1
     readonly id: number
     constructor(
-        readonly prog: Program,
+        readonly shaders: {
+            glsl?: { type: number, src: string }[],
+            wgsl?: { vert: string, frag: string },
+        },
         public uniforms = [ ] as Uniform[],
     ) {
         this.id = Material.counter ++
@@ -38,24 +33,24 @@ export interface BasicMaterialOptions {
 }
 
 export class BasicMaterial extends Material {
-    static cachedPrograms = { } as { [src: string]: Program }
     constructor(opts = { } as BasicMaterialOptions) {
         if (opts.vertexColor && !opts.vertexColorAttr) opts.vertexColorAttr = 'a_color'
         if (opts.vertexNormal && !opts.vertexNormalAttr) opts.vertexNormalAttr = 'a_normal'
-        const vertSrc = format(vertShader, { opts }),
-            fragSrc = format(fragShader, { opts }),
-            cache = BasicMaterial.cachedPrograms,
-            key = `${vertSrc}###${fragSrc}`,
-            prog = cache[key] || (cache[key] = new Program([{
-                type: WebGL2RenderingContext.VERTEX_SHADER,
-                src: vertSrc
-            }, {
-                type: WebGL2RenderingContext.FRAGMENT_SHADER,
-                src: fragSrc
-            }], {
-                vert: vertShader,
-                frag: fragShader,
-            })),
+        const vertSrc = format(glslVertShader, { opts }),
+            fragSrc = format(glslFragShader, { opts }),
+            shaders = {
+                glsl: [{
+                    type: WebGL2RenderingContext.VERTEX_SHADER,
+                    src: vertSrc
+                }, {
+                    type: WebGL2RenderingContext.FRAGMENT_SHADER,
+                    src: fragSrc
+                }],
+                wgsl: {
+                    vert: wgslVertShader,
+                    frag: wgslFragShader,
+                }
+            },
             uniforms = [ ] as Uniform[]
         if (opts.color) {
             let [r, g, b, a = 1] = opts.color
@@ -67,6 +62,6 @@ export class BasicMaterial extends Material {
             }
             uniforms.push(new Uniform('u_color', vec4.fromValues(r, g, b, a)))
         }
-        super(prog, uniforms)
+        super(shaders, uniforms)
     }
 }

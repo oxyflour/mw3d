@@ -14,7 +14,7 @@ export default class Mesh extends Obj3 {
         public geo: Geometry,
         public mat: Material,
         public uniforms = [ ] as Uniform[],
-        public start = 0,
+        public offset = 0,
         public count = -1,
         public mode = WebGLRenderingContext.TRIANGLES) {
         super()

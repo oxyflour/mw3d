@@ -1,6 +1,6 @@
 import Obj3 from '../obj3'
 import Mesh from '../mesh'
-import Material, { Program } from '../material'
+import Material from '../material'
 import Camera from '../camera'
 import Geometry from '../geometry'
 import Light from '../light'
@@ -10,20 +10,28 @@ import cache from '../../utils/cache'
 import Uniform from '../uniform'
 
 class Cache {
-    constructor(readonly renderer: Renderer) { }
+    constructor(readonly ctx: WebGL2RenderingContext) { }
     clearColor = { r: 0, g: 0, b: 0, a: 0 }
     size = { width: 0, height: 0 }
-    loc = cache((_: Program) => {
+    loc = cache((_: WebGLProgram) => {
         return { } as Record<string, WebGLUniformLocation | null>
     })
-    program = cache((program: Program) => {
-        const { ctx } = this.renderer,
+    private cachedProgs = { } as Record<string, WebGLProgram & { progId: number }>
+    program = cache((mat: Material) => {
+        const key = (mat.shaders.glsl || [])
+            .sort((a, b) => a.type - b.type)
+            .map(item => `${item.type}//${item.src}`).join('//')
+        if (this.cachedProgs[key]) {
+            return this.cachedProgs[key]
+        }
+
+        const { ctx } = this,
             prog = ctx.createProgram()
         if (!prog) {
             throw Error(`create webgl2 program failed`)
         }
 
-        for (const { type, src } of program.glsl) {
+        for (const { type, src } of mat.shaders.glsl || []) {
             const shader = ctx.createShader(type)
             if (!shader) {
                 throw Error(`create webgl2 shader (type ${type}) failed`)
@@ -48,10 +56,10 @@ class Cache {
             throw Error(`link webgl2 program failed`)
         }
 
-        return prog
+        return this.cachedProgs[key] = Object.assign(prog, { progId: Object.keys(this.cachedProgs).length })
     })
-    geometry = cache((prog: Program, geo: Geometry) => {
-        const { ctx } = this.renderer,
+    geometry = cache((prog: WebGLProgram, geo: Geometry) => {
+        const { ctx } = this,
             arr = ctx.createVertexArray()
         if (!arr) {
             throw Error(`create vertex array failed`)
@@ -59,9 +67,8 @@ class Cache {
 
         ctx.bindVertexArray(arr)
 
-        const program = this.program(prog)
         for (const { name, size, type, normalize, stride, offset, values } of geo.attrs) {
-            const location = ctx.getAttribLocation(program, name)
+            const location = ctx.getAttribLocation(prog, name)
             if (location >= 0) {
                 ctx.enableVertexAttribArray(location)
                 const buffer = ctx.createBuffer()
@@ -78,7 +85,7 @@ class Cache {
         return arr
     })
     renderTarget = cache((renderTarget: RenderTarget) => {
-        const { ctx } = this.renderer,
+        const { ctx } = this,
             texture = this.texture(renderTarget.texture)
 
         const frameBuffer = ctx.createFramebuffer()
@@ -94,7 +101,7 @@ class Cache {
         return { frameBuffer, depthBuffer }
     })
     texture = cache((text: Texture) => {
-        const { ctx } = this.renderer,
+        const { ctx } = this,
             texture = ctx.createTexture()
         ctx.bindTexture(text.target, texture)
         ctx.texImage2D(text.target, 0, text.format,
@@ -108,14 +115,11 @@ class Cache {
 }
 
 export default class Renderer {
-    readonly cache = new Cache(this)
-
-    private updateUniforms(prog: Program, uniforms: Uniform[]) {
+    private updateUniforms(prog: WebGLProgram, uniforms: Uniform[]) {
         const { ctx } = this,
-            locs = this.cache.loc(prog),
-            compiled = this.cache.program(prog)
+            locs = this.cache.loc(prog)
         for (const { name, values } of uniforms) {
-            const location = locs[name] || (locs[name] = ctx.getUniformLocation(compiled, name))
+            const location = locs[name] || (locs[name] = ctx.getUniformLocation(prog, name))
             if (values.length === 4) {
                 ctx.uniform4fv(location, values)
             } else if (values.length === 16) {
@@ -154,6 +158,7 @@ export default class Renderer {
     }
 
     readonly ctx: WebGL2RenderingContext
+    readonly cache: Cache
     constructor(readonly canvas: HTMLCanvasElement) {
         const ctx = canvas.getContext('webgl2')
         if (!ctx || !(ctx instanceof WebGL2RenderingContext)) {
@@ -164,6 +169,7 @@ export default class Renderer {
         ctx.enable(ctx.DEPTH_TEST)
         ctx.enable(ctx.CULL_FACE)
 
+        this.cache = new Cache(ctx)
         this.cache.size.width = canvas.width
         this.cache.size.height = canvas.height
     }
@@ -181,13 +187,15 @@ export default class Renderer {
         ctx.clear(ctx.COLOR_BUFFER_BIT | ctx.DEPTH_BUFFER_BIT)
 
         const meshes = [] as Mesh[],
-            lights = [] as Light[]
+            lights = [] as Light[],
+            progs = {} as Record<number, WebGLProgram & { progId: number }>
         camera.updateIfNecessary()
         for (const obj of objs) {
             obj.updateIfNecessary()
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)
+                    progs[obj.mat.id] = this.cache.program(obj.mat)
                 } else if (obj instanceof Light) {
                     lights.push(obj)
                 }
@@ -196,16 +204,16 @@ export default class Renderer {
 
         const sorted = meshes.sort((a, b) => 
             (a.renderOrder - b.renderOrder) ||
-            (a.mat.prog.id - b.mat.prog.id) ||
+            (progs[a.mat.id]?.progId - progs[b.mat.id]?.progId) ||
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
 
-        let prog = null as Program | null,
-            mat = null as Material | null,
-            geo = null as Geometry | null
+        let prog: WebGLProgram,
+            mat: Material,
+            geo: Geometry
         for (const mesh of sorted) {
-            if (prog !== mesh.mat.prog && (prog = mesh.mat.prog)) {
-                ctx.useProgram(this.cache.program(prog))
+            if (prog !== progs[mesh.mat.id] && (prog = progs[mesh.mat.id])) {
+                ctx.useProgram(prog)
                 this.updateUniforms(prog, camera.uniforms)
                 for (const light of lights) {
                     this.updateUniforms(prog, light.uniforms)
@@ -217,14 +225,14 @@ export default class Renderer {
             if (geo !== mesh.geo && (geo = mesh.geo)) {
                 ctx.bindVertexArray(this.cache.geometry(prog, geo))
             }
-            const { uniforms, start, count, mode } = mesh
+            const { uniforms, offset, count, mode } = mesh
             this.updateUniforms(prog, uniforms)
             if (geo.indices) {
 				const type = geo.indices instanceof Uint16Array ?
 		            WebGL2RenderingContext.UNSIGNED_SHORT : WebGL2RenderingContext.UNSIGNED_INT
-                ctx.drawElements(mode, count, type, start)
+                ctx.drawElements(mode, count, type, offset)
             } else {
-                ctx.drawArrays(mode, start, count)
+                ctx.drawArrays(mode, offset, count)
             }
         }
     }

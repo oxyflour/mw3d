@@ -1,4 +1,5 @@
-import Renderer from './engine/webgl2/renderer'
+import WebGLRenderer from './engine/webgl2/renderer'
+import WebGPURenderer from './engine/webgpu/renderer'
 import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
 import Material, { BasicMaterial } from './engine/material'
@@ -9,15 +10,17 @@ import Picker from './engine/webgl2/tool/picker'
 import { rand } from './utils/math'
 import { DirectionalLight } from './engine/light'
 
+(async function() {
+
 const canvas = document.createElement('canvas')
 canvas.style.width = canvas.style.height = '100%'
 document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
-const renderer = new Renderer(canvas),
-    scene = new Set<Obj3>()
-
-const camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
+// TODO
+const renderer = 1 ? new WebGLRenderer(canvas) : await WebGPURenderer.create(canvas),
+    scene = new Set<Obj3>(),
+    camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
     holder = new Obj3()
 holder.add(camera)
 camera.position.set(0, 0, 500)
@@ -49,6 +52,7 @@ window.addEventListener('resize', () => {
     renderer.height = canvas.clientHeight
 })
 
+/*
 const hovering = {
     mat: new BasicMaterial({ color: [1, 1, 0] }),
     mesh: undefined as undefined | Mesh & { originalMat: Material }
@@ -68,6 +72,7 @@ renderer.canvas.addEventListener('mousemove', evt => {
         }
     }
 })
+ */
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
@@ -76,3 +81,5 @@ requestAnimationFrame(function render() {
     light.rotation.rotX(0.02)
     renderer.render(scene, camera)
 })
+
+})()
