@@ -12,13 +12,15 @@ import glslFragShader from './webgl2/shader/frag.glsl?raw'
 
 // FIXME: vite glob import with raw is not supported
 import wgslUniformCamera from './webgpu/shader/uniform/g0.camera.wgsl?raw'
-import wgslUniformMesh from './webgpu/shader/uniform/g1.mesh.wgsl?raw'
-import wgslUniformMaterial from './webgpu/shader/uniform/g2.material.wgsl?raw'
+import wgslUniformLight from './webgpu/shader/uniform/g1.light.wgsl?raw'
+import wgslUniformMesh from './webgpu/shader/uniform/g2.mesh.wgsl?raw'
+import wgslUniformMaterial from './webgpu/shader/uniform/g3.material.wgsl?raw'
 const wgslEnv = {
     uniform: {
         g0: { camera: { wgsl: wgslUniformCamera } },
-        g1: { mesh: { wgsl: wgslUniformMesh } },
-        g2: { material: { wgsl: wgslUniformMaterial } },
+        g1: { light: { wgsl: wgslUniformLight } },
+        g2: { mesh: { wgsl: wgslUniformMesh } },
+        g3: { material: { wgsl: wgslUniformMaterial } },
     }
 }
 

@@ -58,7 +58,7 @@ class Cache {
 		})
 		return buffer
 	})
-	uniforms = cache((obj: Camera | Mesh | Material) => {
+	uniforms = cache((obj: Camera | Mesh | Material | Light) => {
 		const map = { } as Record<string, { uniform: Uniform, buffer: GPUBuffer }>,
 			list = [] as { uniform: Uniform, buffer: GPUBuffer }[]
 		for (const uniform of obj.uniforms) {
@@ -67,10 +67,13 @@ class Cache {
 		}
 		return { list, map }
 	})
-	bind = cache((mat: Material, obj: Camera | Mesh | Material) => {
+	bind = cache((mat: Material, obj: Camera | Mesh | Material | Light) => {
 		const pipeline = this.pipeline(mat),
 			uniforms = this.uniforms(obj),
-			index = obj instanceof Camera ? 0 : obj instanceof Mesh ? 1 : 2,
+			index =
+				obj instanceof Camera ? 0 :
+				obj instanceof Light ? 1 :
+				obj instanceof Mesh ? 2 : 3,
 			group = this.device.createBindGroup({
 				layout: pipeline.getBindGroupLayout(index),
 				entries: uniforms.list.map(({ buffer }, binding) => ({
@@ -90,6 +93,13 @@ class Cache {
 					arrayStride: 4 * 3,
 					attributes: [{
 						shaderLocation: 0,
+						offset: 0,
+						format: 'float32x3'
+					}]
+				}, {
+					arrayStride: 4 * 3,
+					attributes: [{
+						shaderLocation: 1,
 						offset: 0,
 						format: 'float32x3'
 					}]
@@ -166,14 +176,14 @@ export default class Renderer {
 			cache.depthTexture.destroy()
 		}
 		cache.depthTexture = this.device.createTexture({
-			size: this.cache.size,
-			format: this.cache.opts.depthFormat,
+			size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
+			format: cache.opts.depthFormat,
 			usage: GPUTextureUsage.RENDER_ATTACHMENT,
 		})
 		this.context.configure({
 			device: this.device,
 			format: this.format,
-			size: this.cache.size,
+			size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
 		})
 	}
 
@@ -215,7 +225,7 @@ export default class Renderer {
 			pass = cmd.beginRenderPass({
 				colorAttachments: [{
 					view: this.context.getCurrentTexture().createView(),
-					loadValue: { r: 0.5, g: 0.5, b: 0.5, a: 1.0 },
+					loadValue: { r: 1, g: 1, b: 1, a: 1.0 },
 					storeOp: 'store',
 				}],
 				depthStencilAttachment: {
@@ -227,43 +237,38 @@ export default class Renderer {
 				}
 			})
 
+		this.updateUniforms(this.cache.uniforms(camera))
+		for (const light of lights) {
+			this.updateUniforms(this.cache.uniforms(light))
+		}
+
         const sorted = meshes.sort((a, b) => 
             (a.renderOrder - b.renderOrder) ||
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
-		this.updateUniforms(this.cache.uniforms(camera))
 
-		let pipeline: GPURenderPipeline,
-			bind: [number, GPUBindGroup],
-			vertexBuffer: GPUBuffer,
-			indexBuffer: GPUBuffer
+		let mat: Material
 		for (const mesh of sorted) {
 			this.updateUniforms(this.cache.uniforms(mesh))
 
-			const currentPipeline = this.cache.pipeline(mesh.mat)
-			if (pipeline !== currentPipeline && (pipeline = currentPipeline)) {
-				pass.setPipeline(pipeline)
+			if (mat !== mesh.mat && (mat = mesh.mat)) {
+				pass.setPipeline(this.cache.pipeline(mesh.mat))
 				pass.setBindGroup(...this.cache.bind(mesh.mat, camera))
 				pass.setBindGroup(...this.cache.bind(mesh.mat, mesh.mat))
+				for (const light of lights) {
+					pass.setBindGroup(...this.cache.bind(mesh.mat, light))
+				}
 				this.updateUniforms(this.cache.uniforms(mesh.mat))
 			}
 
-			const currentBind = this.cache.bind(mesh.mat, mesh)
-			if (bind !== currentBind && (bind = currentBind)) {
-				pass.setBindGroup(...bind)
-			}
+			pass.setBindGroup(...this.cache.bind(mesh.mat, mesh))
 
-			const attrs = this.cache.attrs(mesh.geo),
-				currentVertexBuffer = attrs.map['a_position'].buffer
-			if (vertexBuffer !== currentVertexBuffer && (vertexBuffer = currentVertexBuffer)) {
-				pass.setVertexBuffer(0, vertexBuffer)
-			}
+			const attrs = this.cache.attrs(mesh.geo)
+			pass.setVertexBuffer(0, attrs.map['a_position'].buffer)
+			pass.setVertexBuffer(1, attrs.map['a_normal'].buffer)
 			if (mesh.geo.indices) {
-				const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16',
-					currentIndexBuffer = this.cache.idx(mesh.geo.indices)
-				if (indexBuffer !== currentIndexBuffer && (indexBuffer = currentIndexBuffer)) {
-					pass.setIndexBuffer(indexBuffer, type)
-				}
+				const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
+				pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
 				pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
 			} else {
 				pass.draw(mesh.count, 1, mesh.offset, 0)
