@@ -67,7 +67,7 @@ class Cache {
 		}
 		return { list, map }
 	})
-	bind = cache((obj: Camera | Mesh | Material, mat: Material) => {
+	bind = cache((mat: Material, obj: Camera | Mesh | Material) => {
 		const pipeline = this.pipeline(mat),
 			uniforms = this.uniforms(obj),
 			index = obj instanceof Camera ? 0 : obj instanceof Mesh ? 1 : 2,
@@ -235,19 +235,20 @@ export default class Renderer {
 
 		let pipeline: GPURenderPipeline,
 			bind: [number, GPUBindGroup],
-			vertexBuffer: GPUBuffer
+			vertexBuffer: GPUBuffer,
+			indexBuffer: GPUBuffer
 		for (const mesh of sorted) {
 			this.updateUniforms(this.cache.uniforms(mesh))
 
 			const currentPipeline = this.cache.pipeline(mesh.mat)
 			if (pipeline !== currentPipeline && (pipeline = currentPipeline)) {
 				pass.setPipeline(pipeline)
-				pass.setBindGroup(...this.cache.bind(camera, mesh.mat))
-				this.updateUniforms(this.cache.uniforms(mesh.mat))
+				pass.setBindGroup(...this.cache.bind(mesh.mat, camera))
 				pass.setBindGroup(...this.cache.bind(mesh.mat, mesh.mat))
+				this.updateUniforms(this.cache.uniforms(mesh.mat))
 			}
 
-			const currentBind = this.cache.bind(mesh, mesh.mat)
+			const currentBind = this.cache.bind(mesh.mat, mesh)
 			if (bind !== currentBind && (bind = currentBind)) {
 				pass.setBindGroup(...bind)
 			}
@@ -258,8 +259,11 @@ export default class Renderer {
 				pass.setVertexBuffer(0, vertexBuffer)
 			}
 			if (mesh.geo.indices) {
-				const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
-				pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
+				const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16',
+					currentIndexBuffer = this.cache.idx(mesh.geo.indices)
+				if (indexBuffer !== currentIndexBuffer && (indexBuffer = currentIndexBuffer)) {
+					pass.setIndexBuffer(indexBuffer, type)
+				}
 				pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
 			} else {
 				pass.draw(mesh.count, 1, mesh.offset, 0)
