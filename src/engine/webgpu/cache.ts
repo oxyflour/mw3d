@@ -71,7 +71,8 @@ export default class Cache {
     private cachedUniformBuffer = { buffer: null as GPUBuffer | null, size: 0, offset: 0 }
     private makeUniformBuffer(val: mat4 | vec4) {
         const size = val.length * 4
-        // FIXME: share buffer cause splashing problem
+        /*
+         * FIXME: share buffer cause splashing problem
         return {
             buffer: this.device.createBuffer({
                 size,
@@ -80,9 +81,9 @@ export default class Cache {
             offset: 0,
             size,
         }
-        /*
+         */
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
-            const size = 1024
+            const size = 16 * 1024
             this.cachedUniformBuffer = {
                 buffer: this.device.createBuffer({
                     size,
@@ -95,7 +96,6 @@ export default class Cache {
         const { buffer, offset } = this.cachedUniformBuffer
         this.cachedUniformBuffer.offset = Math.ceil((offset + size) / 256) * 256
         return { buffer, offset, size }
-         */
     }
     uniforms = cache((obj: Camera | Mesh | Material | Light) => {
         const map = { } as Record<string, CachedUniform>,

@@ -7,6 +7,7 @@ import Mesh from '../mesh'
 import Light from '../light'
 
 import Cache from './cache'
+import Geometry from "../geometry"
 
 export default class Renderer {
     private cache: Cache
@@ -144,7 +145,8 @@ export default class Renderer {
                 }
             })
 
-        let pipeline: GPURenderPipeline
+        let pipeline: GPURenderPipeline,
+			geo: Geometry
         for (const mesh of sorted) {
             if (pipeline !== pipelines[mesh.mat.id] && (pipeline = pipelines[mesh.mat.id])) {
                 pass.setPipeline(pipeline)
@@ -153,18 +155,21 @@ export default class Renderer {
                     pass.setBindGroup(...this.cache.bind(pipeline, light))
                 }
             }
+            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
 			if (mat !== mesh.mat && (mat = mesh.mat)) {
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
 			}
-            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
-
-            const attrs = this.cache.attrs(mesh.geo)
-			for (const [slot, attr] of attrs.list.entries()) {
-            	pass.setVertexBuffer(slot, attr.buffer)
+			if (geo !== mesh.geo && (geo = mesh.geo)) {
+				const attrs = this.cache.attrs(mesh.geo)
+				for (const [slot, attr] of attrs.list.entries()) {
+					pass.setVertexBuffer(slot, attr.buffer)
+				}
+            	if (geo.indices) {
+					const type = geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
+					pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
+				}
 			}
-            if (mesh.geo.indices) {
-                const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
-                pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
+            if (geo.indices) {
                 pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
             } else {
                 pass.draw(mesh.count, 1, mesh.offset, 0)
