@@ -73,6 +73,7 @@ export default class Cache {
         const size = val.length * 4
         /*
          * FIXME: share buffer cause splashing problem
+         */
         return {
             buffer: this.device.createBuffer({
                 size,
@@ -81,7 +82,6 @@ export default class Cache {
             offset: 0,
             size,
         }
-         */
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
             const size = 16 * 1024
             this.cachedUniformBuffer = {
@@ -137,13 +137,13 @@ export default class Cache {
         return [index, group] as [number, GPUBindGroup]
     })
 
-	private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
+    private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
     pipeline = cache((mat: Material) => {
         const code = mat.shaders.wgsl,
-			key = `${code.vert}//${code.frag}`
-		if (this.cachedPipelines[key]) {
-			return this.cachedPipelines[key]
-		}
+            key = `${code.vert}//${code.frag}`
+        if (this.cachedPipelines[key]) {
+            return this.cachedPipelines[key]
+        }
 
         const pipelineId = Object.keys(this.cachedPipelines).length
         return this.cachedPipelines[key] = Object.assign(this.device.createRenderPipeline({

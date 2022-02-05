@@ -59,10 +59,10 @@ export default class Renderer {
         if (cache.depthTexture) {
             cache.depthTexture.destroy()
         }
-		const size = {
-			width: this.width * devicePixelRatio,
-			height: this.height * devicePixelRatio
-		}
+        const size = {
+            width: this.width * devicePixelRatio,
+            height: this.height * devicePixelRatio
+        }
         cache.depthTexture = this.device.createTexture({
             size,
             format: cache.opts.depthFormat,
@@ -88,6 +88,49 @@ export default class Renderer {
         }
     }
 
+    private cachedRenderPass = {
+        objs: new Set<Obj3>(),
+        bundle: null as null | GPURenderBundle
+    }
+    private runRenderPass(
+            pass: GPURenderPassEncoder | GPURenderBundleEncoder,
+            sorted: Mesh[],
+            lights: Light[],
+            camera: Camera,
+            pipelines: Record<number, GPURenderPipeline & { pipelineId: number }>) {
+        let pipeline: GPURenderPipeline,
+            mat: Material,
+            geo: Geometry
+        for (const mesh of sorted) {
+            if (pipeline !== pipelines[mesh.mat.id] && (pipeline = pipelines[mesh.mat.id])) {
+                pass.setPipeline(pipeline)
+                pass.setBindGroup(...this.cache.bind(pipeline, camera))
+                for (const light of lights) {
+                    pass.setBindGroup(...this.cache.bind(pipeline, light))
+                }
+            }
+            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
+            if (mat !== mesh.mat && (mat = mesh.mat)) {
+                pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
+            }
+            if (geo !== mesh.geo && (geo = mesh.geo)) {
+                const attrs = this.cache.attrs(mesh.geo)
+                for (const [slot, attr] of attrs.list.entries()) {
+                    pass.setVertexBuffer(slot, attr.buffer)
+                }
+                if (geo.indices) {
+                    const type = geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
+                    pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
+                }
+            }
+            if (geo.indices) {
+                pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
+            } else {
+                pass.draw(mesh.count, 1, mesh.offset, 0)
+            }
+        }
+    }
+
     render(objs: Set<Obj3>, camera: Camera) {
         if (this.width !== this.cache.size.width ||
             this.height !== this.cache.size.height ||
@@ -97,14 +140,14 @@ export default class Renderer {
 
         const meshes = [] as Mesh[],
             lights = [] as Light[],
-			pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
+            pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
         camera.updateIfNecessary()
         for (const obj of objs) {
             obj.updateIfNecessary()
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)
-					pipelines[obj.mat.id] = this.cache.pipeline(obj.mat)
+                    pipelines[obj.mat.id] = this.cache.pipeline(obj.mat)
                 } else if (obj instanceof Light) {
                     lights.push(obj)
                 }
@@ -121,13 +164,13 @@ export default class Renderer {
         for (const light of lights) {
             this.updateUniforms(this.cache.uniforms(light))
         }
-		let mat: Material
+        let mat: Material
         for (const mesh of sorted) {
             this.updateUniforms(this.cache.uniforms(mesh))
-			if (mat !== mesh.mat && (mat = mesh.mat)) {
+            if (mat !== mesh.mat && (mat = mesh.mat)) {
                 this.updateUniforms(this.cache.uniforms(mat))
-			}
-		}
+            }
+        }
 
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginRenderPass({
@@ -145,37 +188,17 @@ export default class Renderer {
                 }
             })
 
-        let pipeline: GPURenderPipeline,
-			geo: Geometry
-        for (const mesh of sorted) {
-            if (pipeline !== pipelines[mesh.mat.id] && (pipeline = pipelines[mesh.mat.id])) {
-                pass.setPipeline(pipeline)
-                pass.setBindGroup(...this.cache.bind(pipeline, camera))
-                for (const light of lights) {
-                    pass.setBindGroup(...this.cache.bind(pipeline, light))
-                }
-            }
-            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
-			if (mat !== mesh.mat && (mat = mesh.mat)) {
-                pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
-			}
-			if (geo !== mesh.geo && (geo = mesh.geo)) {
-				const attrs = this.cache.attrs(mesh.geo)
-				for (const [slot, attr] of attrs.list.entries()) {
-					pass.setVertexBuffer(slot, attr.buffer)
-				}
-            	if (geo.indices) {
-					const type = geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
-					pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
-				}
-			}
-            if (geo.indices) {
-                pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
-            } else {
-                pass.draw(mesh.count, 1, mesh.offset, 0)
-            }
+        // TODO: auto caching
+        if (this.cachedRenderPass.objs !== objs && (this.cachedRenderPass.objs = objs)) {
+            const encoder = this.device.createRenderBundleEncoder({
+                colorFormats: [this.cache.opts.fragmentFormat],
+                depthStencilFormat: this.cache.opts.depthFormat
+            })
+            this.runRenderPass(encoder, sorted, lights, camera, pipelines)
+            this.cachedRenderPass.bundle = encoder.finish()
         }
 
+        pass.executeBundles([this.cachedRenderPass.bundle])
         pass.endPass()
         this.device.queue.submit([cmd.finish()])
     }
