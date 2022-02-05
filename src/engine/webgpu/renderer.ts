@@ -195,6 +195,7 @@ export default class Renderer {
         /*
          * TODO: auto caching
          *
+         */
         if (this.cachedRenderPass.objs !== objs && (this.cachedRenderPass.objs = objs)) {
             const encoder = this.device.createRenderBundleEncoder({
                 colorFormats: [this.cache.opts.fragmentFormat],
@@ -204,8 +205,7 @@ export default class Renderer {
             this.cachedRenderPass.bundle = encoder.finish()
         }
         pass.executeBundles([this.cachedRenderPass.bundle])
-         */
-        this.runRenderPass(pass, sorted, lights, camera, pipelines)
+        //this.runRenderPass(pass, sorted, lights, camera, pipelines)
 
         pass.endPass()
         this.device.queue.submit([cmd.finish()])

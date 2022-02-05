@@ -5,24 +5,11 @@ import { vec4 } from 'gl-matrix'
 import Uniform from './uniform'
 import { format } from '../utils/common'
 
+import uniform from './webgpu/shader/uniform'
 import wgslVertShader from './webgpu/shader/vert.wgsl?raw'
 import wgslFragShader from './webgpu/shader/frag.wgsl?raw'
 import glslVertShader from './webgl2/shader/vert.glsl?raw'
 import glslFragShader from './webgl2/shader/frag.glsl?raw'
-
-// FIXME: vite glob import with raw is not supported
-import wgslUniformCamera from './webgpu/shader/uniform/g0.camera.wgsl?raw'
-import wgslUniformLight from './webgpu/shader/uniform/g1.light.wgsl?raw'
-import wgslUniformMesh from './webgpu/shader/uniform/g2.mesh.wgsl?raw'
-import wgslUniformMaterial from './webgpu/shader/uniform/g3.material.wgsl?raw'
-const wgslEnv = {
-    uniform: {
-        g0: { camera: { wgsl: wgslUniformCamera } },
-        g1: { light: { wgsl: wgslUniformLight } },
-        g2: { mesh: { wgsl: wgslUniformMesh } },
-        g3: { material: { wgsl: wgslUniformMaterial } },
-    }
-}
 
 export default class Material {
     private static counter = 1
@@ -61,8 +48,8 @@ export class BasicMaterial extends Material {
                     src: fragSrc
                 }],
                 wgsl: {
-                    vert: format(wgslVertShader, wgslEnv),
-                    frag: format(wgslFragShader, wgslEnv)
+                    vert: format(wgslVertShader, { uniform }),
+                    frag: format(wgslFragShader, { uniform })
                 }
             },
             uniforms = [ ] as Uniform[]

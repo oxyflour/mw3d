@@ -37,7 +37,7 @@ const light = new DirectionalLight({ direction: [0, 0, -1] })
 scene.add(light)
 
 const mat = new BasicMaterial({ color: [0, 1, 1], vertexNormal: true })
-for (let i = 0; i < 5000; i ++) {
+for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))

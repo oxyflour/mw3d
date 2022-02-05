@@ -6,6 +6,7 @@ import Camera from "../camera"
 import Mesh from "../mesh"
 import Material from "../material"
 import Light from "../light"
+import uniform from "./shader/uniform"
 
 interface CachedAttr {
     attr: Attr
@@ -32,6 +33,8 @@ export default class Cache {
     constructor(readonly device: GPUDevice, readonly opts: {
         fragmentFormat: GPUTextureFormat
         depthFormat: GPUTextureFormat
+        useDynamicOffset?: boolean
+        uniformBufferBatchSize?: number
     }) { }
     idx = cache((val: Uint32Array | Uint16Array) => {
         const buffer = this.device.createBuffer({
@@ -84,7 +87,7 @@ export default class Cache {
         }
          */
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
-            const size = 16 * 1024
+            const size = this.opts.uniformBufferBatchSize || 256 * 16
             this.cachedUniformBuffer = {
                 buffer: this.device.createBuffer({
                     size,
@@ -114,28 +117,26 @@ export default class Cache {
             index =
                 obj instanceof Camera ? 0 :
                 obj instanceof Light ? 1 :
-                obj instanceof Mesh ? 2 : 3,
+                obj instanceof Mesh ? 2 :
+                obj instanceof Material ? 3 : -1,
             buffers = uniforms.list.map(item => item.buffer),
-            offsets = uniforms.list.map(item => item.offset),
+            offsets = this.opts.useDynamicOffset ? uniforms.list.map(item => item.offset) : undefined,
             cached = this.cachedBinds.find(item =>
                 item.pipeline === pipeline &&
                 item.index === index &&
                 item.buffers.length === buffers.length &&
                 item.buffers.every((buffer, idx) => buffer === buffers[idx])),
             group = cached ? cached.group : this.device.createBindGroup({
-                // FIXME: `getBindGroupLayout` does not support dynamic offsets
                 layout: pipeline.getBindGroupLayout(index),
                 entries: uniforms.list.map(({ buffer, offset, size }, binding) => ({
                     binding,
-                    resource: { buffer, offset, size }
-                }))
+                    resource: { buffer, size, offset: this.opts.useDynamicOffset ? 0 : offset }
+                })),
             })
-        // TODO: enable cache
-        // this.cachedBinds.push({ pipeline, index, buffers, group })
-        // TODO: enable dynamic offsets
-        offsets
-        // return [index, group, offsets] as [number, GPUBindGroup, number[]]
-        return [index, group] as [number, GPUBindGroup]
+        if (this.opts.useDynamicOffset && !cached) {
+            this.cachedBinds.push({ pipeline, index, buffers, group })
+        }
+        return [index, group, offsets] as [number, GPUBindGroup, number[] | undefined]
     })
 
     private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
@@ -183,7 +184,15 @@ export default class Cache {
                 depthWriteEnabled: true,
                 depthCompare: 'less',
                 format: this.opts.depthFormat,
-            }
+            },
+            layout: this.opts.useDynamicOffset ? this.device.createPipelineLayout({
+                bindGroupLayouts: [
+                    this.device.createBindGroupLayout(uniform.g0.camera.layout),
+                    this.device.createBindGroupLayout(uniform.g1.light.layout),
+                    this.device.createBindGroupLayout(uniform.g2.mesh.layout),
+                    this.device.createBindGroupLayout(uniform.g3.material.layout),
+                ]
+            }) : undefined
         }), { pipelineId })
     })
 }
