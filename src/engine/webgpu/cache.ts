@@ -7,6 +7,25 @@ import Mesh from "../mesh"
 import Material from "../material"
 import Light from "../light"
 
+interface CachedAttr {
+    attr: Attr
+    buffer: GPUBuffer
+}
+
+interface CachedUniform {
+    uniform: Uniform
+    buffer: GPUBuffer
+    offset: number
+    size: number
+}
+
+interface CachedBind {
+    pipeline: GPURenderPipeline
+    index: number
+    buffers: GPUBuffer[]
+    group: GPUBindGroup
+}
+
 export default class Cache {
     size = { width: 0, height: 0 }
     depthTexture: GPUTexture
@@ -26,7 +45,7 @@ export default class Cache {
         buffer.unmap()
         return buffer
     })
-    attr = cache((val: Float32Array) => {
+    private makeAttrBuffer(val: Float32Array) {
         const buffer = this.device.createBuffer({
             size: val.length * 4,
             usage: GPUBufferUsage.VERTEX,
@@ -35,51 +54,90 @@ export default class Cache {
         new Float32Array(buffer.getMappedRange()).set(val)
         buffer.unmap()
         return buffer
-    })
+    }
     attrs = cache((geo: Geometry) => {
-        const map = { } as Record<string, { attr: Attr, buffer: GPUBuffer }>,
-            list = [] as { attr: Attr, buffer: GPUBuffer }[]
+        const map = { } as Record<string, CachedAttr>,
+            list = [] as CachedAttr[]
         for (const attr of geo.attrs) {
             if (!(attr.values instanceof Float32Array)) {
                 throw Error(`attr.values is not supported`)
             }
-            const buffer = this.attr(attr.values)
+            const buffer = this.makeAttrBuffer(attr.values)
             list.push(map[attr.name] = { attr, buffer })
         }
         return { list, map }
     })
-    uniform = cache((val: mat4 | vec4) => {
-        const buffer = this.device.createBuffer({
-            size: 4 * val.length,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        })
-        return buffer
-    })
+
+    private cachedUniformBuffer = { buffer: null as GPUBuffer | null, size: 0, offset: 0 }
+    private makeUniformBuffer(val: mat4 | vec4) {
+        const size = val.length * 4
+        // FIXME: share buffer cause splashing problem
+        return {
+            buffer: this.device.createBuffer({
+                size,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+            }),
+            offset: 0,
+            size,
+        }
+        /*
+        if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
+            const size = 1024
+            this.cachedUniformBuffer = {
+                buffer: this.device.createBuffer({
+                    size,
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+                }),
+                offset: 0,
+                size,
+            }
+        }
+        const { buffer, offset } = this.cachedUniformBuffer
+        this.cachedUniformBuffer.offset = Math.ceil((offset + size) / 256) * 256
+        return { buffer, offset, size }
+         */
+    }
     uniforms = cache((obj: Camera | Mesh | Material | Light) => {
-        const map = { } as Record<string, { uniform: Uniform, buffer: GPUBuffer }>,
-            list = [] as { uniform: Uniform, buffer: GPUBuffer }[]
+        const map = { } as Record<string, CachedUniform>,
+            list = [] as CachedUniform[]
         for (const uniform of obj.uniforms) {
-            const buffer = this.uniform(uniform.values)
-            list.push(map[uniform.name] = { uniform, buffer })
+            const { buffer, offset, size } = this.makeUniformBuffer(uniform.values)
+            list.push(map[uniform.name] = { uniform, buffer, offset, size })
         }
         return { list, map }
     })
+
+    private cachedBinds = [] as CachedBind[]
     bind = cache((pipeline: GPURenderPipeline, obj: Camera | Mesh | Material | Light) => {
         const uniforms = this.uniforms(obj),
             index =
                 obj instanceof Camera ? 0 :
                 obj instanceof Light ? 1 :
                 obj instanceof Mesh ? 2 : 3,
-            group = this.device.createBindGroup({
+            buffers = uniforms.list.map(item => item.buffer),
+            offsets = uniforms.list.map(item => item.offset),
+            cached = this.cachedBinds.find(item =>
+                item.pipeline === pipeline &&
+                item.index === index &&
+                item.buffers.length === buffers.length &&
+                item.buffers.every((buffer, idx) => buffer === buffers[idx])),
+            group = cached ? cached.group : this.device.createBindGroup({
+                // FIXME: `getBindGroupLayout` does not support dynamic offsets
                 layout: pipeline.getBindGroupLayout(index),
-                entries: uniforms.list.map(({ buffer }, binding) => ({
+                entries: uniforms.list.map(({ buffer, offset, size }, binding) => ({
                     binding,
-                    resource: { buffer }
+                    resource: { buffer, offset, size }
                 }))
             })
+        // TODO: enable cache
+        // this.cachedBinds.push({ pipeline, index, buffers, group })
+        // TODO: enable dynamic offsets
+        offsets
+        // return [index, group, offsets] as [number, GPUBindGroup, number[]]
         return [index, group] as [number, GPUBindGroup]
     })
-	private cachedPipelines = { } as Record<string, GPURenderPipeline>
+
+	private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
     pipeline = cache((mat: Material) => {
         const code = mat.shaders.wgsl,
 			key = `${code.vert}//${code.frag}`
@@ -87,10 +145,12 @@ export default class Cache {
 			return this.cachedPipelines[key]
 		}
 
-        return this.cachedPipelines[key] = this.device.createRenderPipeline({
+        const pipelineId = Object.keys(this.cachedPipelines).length
+        return this.cachedPipelines[key] = Object.assign(this.device.createRenderPipeline({
             vertex: {
                 module: this.device.createShaderModule({ code: code.vert }),
                 entryPoint: 'main',
+                // TODO
                 buffers: [{
                     arrayStride: 4 * 3,
                     attributes: [{
@@ -123,6 +183,6 @@ export default class Cache {
                 depthCompare: 'less',
                 format: this.opts.depthFormat,
             }
-        })
+        }), { pipelineId })
     })
 }

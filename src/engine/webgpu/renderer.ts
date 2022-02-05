@@ -75,11 +75,11 @@ export default class Renderer {
     }
 
     private updateUniforms(uniforms: ReturnType<Renderer['cache']['uniforms']>) {
-        for (const { buffer, uniform: { values } } of uniforms.list) {
+        for (const { buffer, offset, uniform: { values } } of uniforms.list) {
             const array = values as Float32Array
             this.device.queue.writeBuffer(
                 buffer,
-                0,
+                offset,
                 array.buffer,
                 array.byteOffset,
                 array.byteLength,
@@ -96,7 +96,7 @@ export default class Renderer {
 
         const meshes = [] as Mesh[],
             lights = [] as Light[],
-			pipelines = { } as Record<number, GPURenderPipeline>
+			pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
         camera.updateIfNecessary()
         for (const obj of objs) {
             obj.updateIfNecessary()
@@ -109,6 +109,24 @@ export default class Renderer {
                 }
             })
         }
+
+        const sorted = meshes.sort((a, b) => 
+            (a.renderOrder - b.renderOrder) ||
+            (pipelines[a.mat.id].pipelineId - pipelines[b.mat.id].pipelineId) ||
+            (a.mat.id - b.mat.id) ||
+            (a.geo.id - b.geo.id))
+
+        this.updateUniforms(this.cache.uniforms(camera))
+        for (const light of lights) {
+            this.updateUniforms(this.cache.uniforms(light))
+        }
+		let mat: Material
+        for (const mesh of sorted) {
+            this.updateUniforms(this.cache.uniforms(mesh))
+			if (mat !== mesh.mat && (mat = mesh.mat)) {
+                this.updateUniforms(this.cache.uniforms(mat))
+			}
+		}
 
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginRenderPass({
@@ -126,18 +144,7 @@ export default class Renderer {
                 }
             })
 
-        this.updateUniforms(this.cache.uniforms(camera))
-        for (const light of lights) {
-            this.updateUniforms(this.cache.uniforms(light))
-        }
-
-        const sorted = meshes.sort((a, b) => 
-            (a.renderOrder - b.renderOrder) ||
-            (a.mat.id - b.mat.id) ||
-            (a.geo.id - b.geo.id))
-
-        let pipeline: GPURenderPipeline,
-			mat: Material
+        let pipeline: GPURenderPipeline
         for (const mesh of sorted) {
             if (pipeline !== pipelines[mesh.mat.id] && (pipeline = pipelines[mesh.mat.id])) {
                 pass.setPipeline(pipeline)
@@ -146,18 +153,15 @@ export default class Renderer {
                     pass.setBindGroup(...this.cache.bind(pipeline, light))
                 }
             }
-
 			if (mat !== mesh.mat && (mat = mesh.mat)) {
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
-                this.updateUniforms(this.cache.uniforms(mat))
 			}
-
             pass.setBindGroup(...this.cache.bind(pipeline, mesh))
-            this.updateUniforms(this.cache.uniforms(mesh))
 
             const attrs = this.cache.attrs(mesh.geo)
-            pass.setVertexBuffer(0, attrs.map['a_position'].buffer)
-            pass.setVertexBuffer(1, attrs.map['a_normal'].buffer)
+			for (const [slot, attr] of attrs.list.entries()) {
+            	pass.setVertexBuffer(slot, attr.buffer)
+			}
             if (mesh.geo.indices) {
                 const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
                 pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)

@@ -18,7 +18,9 @@ document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
 // TODO
-const renderer = 0 ? new WebGLRenderer(canvas) : await WebGPURenderer.create(canvas),
+const renderer = location.search.includes('use-webgpu') ?
+        await WebGPURenderer.create(canvas) :
+        new WebGLRenderer(canvas),
     scene = new Set<Obj3>(),
     camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
     holder = new Obj3()
