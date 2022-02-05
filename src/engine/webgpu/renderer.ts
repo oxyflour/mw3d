@@ -1,129 +1,12 @@
 /// <reference path="../../../node_modules/@webgpu/types/dist/index.d.ts" />
 
 import Camera from "../camera"
-import Geometry, { Attr } from "../geometry"
 import Material from "../material"
 import Obj3 from "../obj3"
-import cache from "../../utils/cache"
 import Mesh from '../mesh'
 import Light from '../light'
-import Uniform from '../uniform'
-import { mat4, vec4 } from 'gl-matrix'
 
-class Cache {
-    size = { width: 0, height: 0 }
-    depthTexture: GPUTexture
-    constructor(readonly device: GPUDevice, readonly opts: {
-        fragmentFormat: GPUTextureFormat
-        depthFormat: GPUTextureFormat
-    }) { }
-    attr = cache((val: Float32Array) => {
-        const buffer = this.device.createBuffer({
-            size: val.length * 4,
-            usage: GPUBufferUsage.VERTEX,
-            mappedAtCreation: true
-        })
-        new Float32Array(buffer.getMappedRange()).set(val)
-        buffer.unmap()
-        return buffer
-    })
-    idx = cache((val: Uint32Array | Uint16Array) => {
-        const buffer = this.device.createBuffer({
-            size: val.length * (val instanceof Uint32Array ? 4 : 2),
-            usage: GPUBufferUsage.INDEX,
-            mappedAtCreation: true
-        })
-        const map = buffer.getMappedRange(),
-            arr = val instanceof Uint32Array ? new Uint32Array(map) : new Uint16Array(map)
-        arr.set(val)
-        buffer.unmap()
-        return buffer
-    })
-    attrs = cache((geo: Geometry) => {
-        const map = { } as Record<string, { attr: Attr, buffer: GPUBuffer }>,
-            list = [] as { attr: Attr, buffer: GPUBuffer }[]
-        for (const attr of geo.attrs) {
-            if (!(attr.values instanceof Float32Array)) {
-                throw Error(`attr.values is not supported`)
-            }
-            const buffer = this.attr(attr.values)
-            list.push(map[attr.name] = { attr, buffer })
-        }
-        return { list, map }
-    })
-    uniform = cache((val: mat4 | vec4) => {
-        const buffer = this.device.createBuffer({
-            size: 4 * val.length,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        })
-        return buffer
-    })
-    uniforms = cache((obj: Camera | Mesh | Material | Light) => {
-        const map = { } as Record<string, { uniform: Uniform, buffer: GPUBuffer }>,
-            list = [] as { uniform: Uniform, buffer: GPUBuffer }[]
-        for (const uniform of obj.uniforms) {
-            const buffer = this.uniform(uniform.values)
-            list.push(map[uniform.name] = { uniform, buffer })
-        }
-        return { list, map }
-    })
-    bind = cache((mat: Material, obj: Camera | Mesh | Material | Light) => {
-        const pipeline = this.pipeline(mat),
-            uniforms = this.uniforms(obj),
-            index =
-                obj instanceof Camera ? 0 :
-                obj instanceof Light ? 1 :
-                obj instanceof Mesh ? 2 : 3,
-            group = this.device.createBindGroup({
-                layout: pipeline.getBindGroupLayout(index),
-                entries: uniforms.list.map(({ buffer }, binding) => ({
-                    binding,
-                    resource: { buffer }
-                }))
-            })
-        return [index, group] as [number, GPUBindGroup]
-    })
-    pipeline = cache((mat: Material) => {
-        const code = mat.shaders.wgsl
-        return this.device.createRenderPipeline({
-            vertex: {
-                module: this.device.createShaderModule({ code: code.vert }),
-                entryPoint: 'main',
-                buffers: [{
-                    arrayStride: 4 * 3,
-                    attributes: [{
-                        shaderLocation: 0,
-                        offset: 0,
-                        format: 'float32x3'
-                    }]
-                }, {
-                    arrayStride: 4 * 3,
-                    attributes: [{
-                        shaderLocation: 1,
-                        offset: 0,
-                        format: 'float32x3'
-                    }]
-                }]
-            },
-            fragment: {
-                module: this.device.createShaderModule({ code: code.frag }),
-                entryPoint: 'main',
-                targets: [{
-                    format: this.opts.fragmentFormat
-                }]
-            },
-            primitive: {
-                topology: 'triangle-list',
-                cullMode: 'back'
-            },
-            depthStencil: {
-                depthWriteEnabled: true,
-                depthCompare: 'less',
-                format: this.opts.depthFormat,
-            }
-        })
-    })
-}
+import Cache from './cache'
 
 export default class Renderer {
     private cache: Cache
@@ -175,15 +58,19 @@ export default class Renderer {
         if (cache.depthTexture) {
             cache.depthTexture.destroy()
         }
+		const size = {
+			width: this.width * devicePixelRatio,
+			height: this.height * devicePixelRatio
+		}
         cache.depthTexture = this.device.createTexture({
-            size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
+            size,
             format: cache.opts.depthFormat,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         })
         this.context.configure({
-            device: this.device,
+            size,
             format: this.format,
-            size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
+            device: this.device,
         })
     }
 
@@ -208,13 +95,15 @@ export default class Renderer {
         }
 
         const meshes = [] as Mesh[],
-            lights = [] as Light[]
+            lights = [] as Light[],
+			pipelines = { } as Record<number, GPURenderPipeline>
         camera.updateIfNecessary()
         for (const obj of objs) {
             obj.updateIfNecessary()
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)
+					pipelines[obj.mat.id] = this.cache.pipeline(obj.mat)
                 } else if (obj instanceof Light) {
                     lights.push(obj)
                 }
@@ -247,21 +136,24 @@ export default class Renderer {
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
 
-        let mat: Material
+        let pipeline: GPURenderPipeline,
+			mat: Material
         for (const mesh of sorted) {
-            this.updateUniforms(this.cache.uniforms(mesh))
-
-            if (mat !== mesh.mat && (mat = mesh.mat)) {
-                pass.setPipeline(this.cache.pipeline(mesh.mat))
-                pass.setBindGroup(...this.cache.bind(mesh.mat, camera))
-                pass.setBindGroup(...this.cache.bind(mesh.mat, mesh.mat))
+            if (pipeline !== pipelines[mesh.mat.id] && (pipeline = pipelines[mesh.mat.id])) {
+                pass.setPipeline(pipeline)
+                pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 for (const light of lights) {
-                    pass.setBindGroup(...this.cache.bind(mesh.mat, light))
+                    pass.setBindGroup(...this.cache.bind(pipeline, light))
                 }
-                this.updateUniforms(this.cache.uniforms(mesh.mat))
             }
 
-            pass.setBindGroup(...this.cache.bind(mesh.mat, mesh))
+			if (mat !== mesh.mat && (mat = mesh.mat)) {
+                pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
+                this.updateUniforms(this.cache.uniforms(mat))
+			}
+
+            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
+            this.updateUniforms(this.cache.uniforms(mesh))
 
             const attrs = this.cache.attrs(mesh.geo)
             pass.setVertexBuffer(0, attrs.map['a_position'].buffer)
