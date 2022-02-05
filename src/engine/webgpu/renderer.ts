@@ -140,10 +140,12 @@ export default class Renderer {
 
         const meshes = [] as Mesh[],
             lights = [] as Light[],
+            updated = [] as Mesh[],
+            afterUpdate = (obj: Obj3) => obj instanceof Mesh && updated.push(obj),
             pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
-        camera.updateIfNecessary()
+        camera.updateIfNecessary({ afterUpdate })
         for (const obj of objs) {
-            obj.updateIfNecessary()
+            obj.updateIfNecessary({ afterUpdate })
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)
@@ -164,9 +166,11 @@ export default class Renderer {
         for (const light of lights) {
             this.updateUniforms(this.cache.uniforms(light))
         }
+        for (const mesh of updated) {
+            this.updateUniforms(this.cache.uniforms(mesh))
+        }
         let mat: Material
         for (const mesh of sorted) {
-            this.updateUniforms(this.cache.uniforms(mesh))
             if (mat !== mesh.mat && (mat = mesh.mat)) {
                 this.updateUniforms(this.cache.uniforms(mat))
             }
@@ -188,7 +192,9 @@ export default class Renderer {
                 }
             })
 
-        // TODO: auto caching
+        /*
+         * TODO: auto caching
+         *
         if (this.cachedRenderPass.objs !== objs && (this.cachedRenderPass.objs = objs)) {
             const encoder = this.device.createRenderBundleEncoder({
                 colorFormats: [this.cache.opts.fragmentFormat],
@@ -197,8 +203,10 @@ export default class Renderer {
             this.runRenderPass(encoder, sorted, lights, camera, pipelines)
             this.cachedRenderPass.bundle = encoder.finish()
         }
-
         pass.executeBundles([this.cachedRenderPass.bundle])
+         */
+        this.runRenderPass(pass, sorted, lights, camera, pipelines)
+
         pass.endPass()
         this.device.queue.submit([cmd.finish()])
     }

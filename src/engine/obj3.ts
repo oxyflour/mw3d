@@ -61,12 +61,15 @@ export default class Obj3 {
             child.updateMatrix()
         }
     }
-    updateIfNecessary() {
+    updateIfNecessary(opts = { } as {
+        afterUpdate:(obj: Obj3) => void
+    }) {
         if (this.needsUpdate()) {
             this.updateMatrix()
+            opts.afterUpdate && opts.afterUpdate(this)
         } else {
             for (const child of this.children) {
-                child.updateIfNecessary()
+                child.updateIfNecessary(opts)
             }
         }
     }

@@ -73,7 +73,7 @@ export default class Cache {
         const size = val.length * 4
         /*
          * FIXME: share buffer cause splashing problem
-         */
+         *
         return {
             buffer: this.device.createBuffer({
                 size,
@@ -82,6 +82,7 @@ export default class Cache {
             offset: 0,
             size,
         }
+         */
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
             const size = 16 * 1024
             this.cachedUniformBuffer = {
