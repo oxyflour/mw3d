@@ -16,13 +16,13 @@ uniform mat4 u_view_proj;
 uniform mat4 u_model_matrix;
 
 void main() {
-	gl_Position = u_view_proj * u_model_matrix * a_position;
+    gl_Position = u_view_proj * u_model_matrix * a_position;
 
 //${opts.vertexNormalAttr ? `
-	v_normal = mat3(u_model_matrix) * ${opts.vertexNormalAttr};
+    v_normal = mat3(u_model_matrix) * ${opts.vertexNormalAttr};
 //` : ''}
 
 //${opts.vertexColorAttr ? `
-	v_color = ${opts.vertexColorAttr};
+    v_color = ${opts.vertexColorAttr};
 //` : ''}
 }

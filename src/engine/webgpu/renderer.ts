@@ -12,200 +12,200 @@ import { mat4, vec4 } from 'gl-matrix'
 
 class Cache {
     size = { width: 0, height: 0 }
-	depthTexture: GPUTexture
-	constructor(readonly device: GPUDevice, readonly opts: {
-		fragmentFormat: GPUTextureFormat
-		depthFormat: GPUTextureFormat
-	}) { }
-	attr = cache((val: Float32Array) => {
-		const buffer = this.device.createBuffer({
-			size: val.length * 4,
-			usage: GPUBufferUsage.VERTEX,
-			mappedAtCreation: true
-		})
-		new Float32Array(buffer.getMappedRange()).set(val)
-		buffer.unmap()
-		return buffer
-	})
-	idx = cache((val: Uint32Array | Uint16Array) => {
-		const buffer = this.device.createBuffer({
-			size: val.length * (val instanceof Uint32Array ? 4 : 2),
-			usage: GPUBufferUsage.INDEX,
-			mappedAtCreation: true
-		})
-		const map = buffer.getMappedRange(),
-			arr = val instanceof Uint32Array ? new Uint32Array(map) : new Uint16Array(map)
-		arr.set(val)
-		buffer.unmap()
-		return buffer
-	})
-	attrs = cache((geo: Geometry) => {
-		const map = { } as Record<string, { attr: Attr, buffer: GPUBuffer }>,
-			list = [] as { attr: Attr, buffer: GPUBuffer }[]
-		for (const attr of geo.attrs) {
-			if (!(attr.values instanceof Float32Array)) {
-				throw Error(`attr.values is not supported`)
-			}
-			const buffer = this.attr(attr.values)
-			list.push(map[attr.name] = { attr, buffer })
-		}
-		return { list, map }
-	})
-	uniform = cache((val: mat4 | vec4) => {
-		const buffer = this.device.createBuffer({
-			size: 4 * val.length,
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		})
-		return buffer
-	})
-	uniforms = cache((obj: Camera | Mesh | Material | Light) => {
-		const map = { } as Record<string, { uniform: Uniform, buffer: GPUBuffer }>,
-			list = [] as { uniform: Uniform, buffer: GPUBuffer }[]
-		for (const uniform of obj.uniforms) {
-			const buffer = this.uniform(uniform.values)
-			list.push(map[uniform.name] = { uniform, buffer })
-		}
-		return { list, map }
-	})
-	bind = cache((mat: Material, obj: Camera | Mesh | Material | Light) => {
-		const pipeline = this.pipeline(mat),
-			uniforms = this.uniforms(obj),
-			index =
-				obj instanceof Camera ? 0 :
-				obj instanceof Light ? 1 :
-				obj instanceof Mesh ? 2 : 3,
-			group = this.device.createBindGroup({
-				layout: pipeline.getBindGroupLayout(index),
-				entries: uniforms.list.map(({ buffer }, binding) => ({
-					binding,
-					resource: { buffer }
-				}))
-			})
-		return [index, group] as [number, GPUBindGroup]
-	})
-	pipeline = cache((mat: Material) => {
-		const code = mat.shaders.wgsl
-		return this.device.createRenderPipeline({
-			vertex: {
-				module: this.device.createShaderModule({ code: code.vert }),
-				entryPoint: 'main',
-				buffers: [{
-					arrayStride: 4 * 3,
-					attributes: [{
-						shaderLocation: 0,
-						offset: 0,
-						format: 'float32x3'
-					}]
-				}, {
-					arrayStride: 4 * 3,
-					attributes: [{
-						shaderLocation: 1,
-						offset: 0,
-						format: 'float32x3'
-					}]
-				}]
-			},
-			fragment: {
-				module: this.device.createShaderModule({ code: code.frag }),
-				entryPoint: 'main',
-				targets: [{
-					format: this.opts.fragmentFormat
-				}]
-			},
-			primitive: {
-				topology: 'triangle-list',
-				cullMode: 'back'
-			},
-			depthStencil: {
-				depthWriteEnabled: true,
-				depthCompare: 'less',
-				format: this.opts.depthFormat,
-			}
-		})
-	})
+    depthTexture: GPUTexture
+    constructor(readonly device: GPUDevice, readonly opts: {
+        fragmentFormat: GPUTextureFormat
+        depthFormat: GPUTextureFormat
+    }) { }
+    attr = cache((val: Float32Array) => {
+        const buffer = this.device.createBuffer({
+            size: val.length * 4,
+            usage: GPUBufferUsage.VERTEX,
+            mappedAtCreation: true
+        })
+        new Float32Array(buffer.getMappedRange()).set(val)
+        buffer.unmap()
+        return buffer
+    })
+    idx = cache((val: Uint32Array | Uint16Array) => {
+        const buffer = this.device.createBuffer({
+            size: val.length * (val instanceof Uint32Array ? 4 : 2),
+            usage: GPUBufferUsage.INDEX,
+            mappedAtCreation: true
+        })
+        const map = buffer.getMappedRange(),
+            arr = val instanceof Uint32Array ? new Uint32Array(map) : new Uint16Array(map)
+        arr.set(val)
+        buffer.unmap()
+        return buffer
+    })
+    attrs = cache((geo: Geometry) => {
+        const map = { } as Record<string, { attr: Attr, buffer: GPUBuffer }>,
+            list = [] as { attr: Attr, buffer: GPUBuffer }[]
+        for (const attr of geo.attrs) {
+            if (!(attr.values instanceof Float32Array)) {
+                throw Error(`attr.values is not supported`)
+            }
+            const buffer = this.attr(attr.values)
+            list.push(map[attr.name] = { attr, buffer })
+        }
+        return { list, map }
+    })
+    uniform = cache((val: mat4 | vec4) => {
+        const buffer = this.device.createBuffer({
+            size: 4 * val.length,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        })
+        return buffer
+    })
+    uniforms = cache((obj: Camera | Mesh | Material | Light) => {
+        const map = { } as Record<string, { uniform: Uniform, buffer: GPUBuffer }>,
+            list = [] as { uniform: Uniform, buffer: GPUBuffer }[]
+        for (const uniform of obj.uniforms) {
+            const buffer = this.uniform(uniform.values)
+            list.push(map[uniform.name] = { uniform, buffer })
+        }
+        return { list, map }
+    })
+    bind = cache((mat: Material, obj: Camera | Mesh | Material | Light) => {
+        const pipeline = this.pipeline(mat),
+            uniforms = this.uniforms(obj),
+            index =
+                obj instanceof Camera ? 0 :
+                obj instanceof Light ? 1 :
+                obj instanceof Mesh ? 2 : 3,
+            group = this.device.createBindGroup({
+                layout: pipeline.getBindGroupLayout(index),
+                entries: uniforms.list.map(({ buffer }, binding) => ({
+                    binding,
+                    resource: { buffer }
+                }))
+            })
+        return [index, group] as [number, GPUBindGroup]
+    })
+    pipeline = cache((mat: Material) => {
+        const code = mat.shaders.wgsl
+        return this.device.createRenderPipeline({
+            vertex: {
+                module: this.device.createShaderModule({ code: code.vert }),
+                entryPoint: 'main',
+                buffers: [{
+                    arrayStride: 4 * 3,
+                    attributes: [{
+                        shaderLocation: 0,
+                        offset: 0,
+                        format: 'float32x3'
+                    }]
+                }, {
+                    arrayStride: 4 * 3,
+                    attributes: [{
+                        shaderLocation: 1,
+                        offset: 0,
+                        format: 'float32x3'
+                    }]
+                }]
+            },
+            fragment: {
+                module: this.device.createShaderModule({ code: code.frag }),
+                entryPoint: 'main',
+                targets: [{
+                    format: this.opts.fragmentFormat
+                }]
+            },
+            primitive: {
+                topology: 'triangle-list',
+                cullMode: 'back'
+            },
+            depthStencil: {
+                depthWriteEnabled: true,
+                depthCompare: 'less',
+                format: this.opts.depthFormat,
+            }
+        })
+    })
 }
 
 export default class Renderer {
-	private cache: Cache
-	private device: GPUDevice
-	private format: GPUTextureFormat
-	private context: GPUCanvasContext
-	private constructor(
-		public readonly canvas: HTMLCanvasElement,
-		private readonly opts = { } as {
-			adaptorOptions?: GPURequestAdapterOptions
-			deviceDescriptor?: GPUDeviceDescriptor
-			canvasConfig?: GPUCanvasConfiguration
-		}) {
-	}
-	private async init() {
-		const adaptor = await navigator.gpu.requestAdapter(this.opts.adaptorOptions)
-		if (!adaptor) {
-			throw Error(`get gpu device failed`)
-		}
+    private cache: Cache
+    private device: GPUDevice
+    private format: GPUTextureFormat
+    private context: GPUCanvasContext
+    private constructor(
+        public readonly canvas: HTMLCanvasElement,
+        private readonly opts = { } as {
+            adaptorOptions?: GPURequestAdapterOptions
+            deviceDescriptor?: GPUDeviceDescriptor
+            canvasConfig?: GPUCanvasConfiguration
+        }) {
+    }
+    private async init() {
+        const adaptor = await navigator.gpu.requestAdapter(this.opts.adaptorOptions)
+        if (!adaptor) {
+            throw Error(`get gpu device failed`)
+        }
 
-		const context = this.context = this.canvas.getContext('webgpu')
-		if (!context) {
-			throw Error(`get context failed`)
-		}
+        const context = this.context = this.canvas.getContext('webgpu')
+        if (!context) {
+            throw Error(`get context failed`)
+        }
 
-		const device = this.device = this.opts.canvasConfig?.device ||
-				await adaptor.requestDevice(this.opts.deviceDescriptor),
-			format = this.format = this.opts.canvasConfig?.format || this.context.getPreferredFormat(adaptor)
-		this.cache = new Cache(device, {
-			fragmentFormat: format,
-			depthFormat: 'depth24plus',
-		})
+        const device = this.device = this.opts.canvasConfig?.device ||
+                await adaptor.requestDevice(this.opts.deviceDescriptor),
+            format = this.format = this.opts.canvasConfig?.format || this.context.getPreferredFormat(adaptor)
+        this.cache = new Cache(device, {
+            fragmentFormat: format,
+            depthFormat: 'depth24plus',
+        })
 
-		this.width = this.canvas.clientWidth
-		this.height = this.canvas.clientHeight
-		this.resize()
-		return this
-	}
-	static async create(canvas: HTMLCanvasElement) {
-		return await new Renderer(canvas).init()
-	}
+        this.width = this.canvas.clientWidth
+        this.height = this.canvas.clientHeight
+        this.resize()
+        return this
+    }
+    static async create(canvas: HTMLCanvasElement) {
+        return await new Renderer(canvas).init()
+    }
 
-	width: number
-	height: number
-	private resize() {
-		const { cache } = this
-		cache.size.width = this.width
-		cache.size.height = this.height
-		if (cache.depthTexture) {
-			cache.depthTexture.destroy()
-		}
-		cache.depthTexture = this.device.createTexture({
-			size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
-			format: cache.opts.depthFormat,
-			usage: GPUTextureUsage.RENDER_ATTACHMENT,
-		})
-		this.context.configure({
-			device: this.device,
-			format: this.format,
-			size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
-		})
-	}
+    width: number
+    height: number
+    private resize() {
+        const { cache } = this
+        cache.size.width = this.width
+        cache.size.height = this.height
+        if (cache.depthTexture) {
+            cache.depthTexture.destroy()
+        }
+        cache.depthTexture = this.device.createTexture({
+            size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
+            format: cache.opts.depthFormat,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        })
+        this.context.configure({
+            device: this.device,
+            format: this.format,
+            size: { width: this.width * devicePixelRatio, height: this.height * devicePixelRatio },
+        })
+    }
 
-	private updateUniforms(uniforms: ReturnType<Renderer['cache']['uniforms']>) {
-		for (const { buffer, uniform: { values } } of uniforms.list) {
-			const array = values as Float32Array
-			this.device.queue.writeBuffer(
-				buffer,
-				0,
-				array.buffer,
-				array.byteOffset,
-				array.byteLength,
-			)
-		}
-	}
+    private updateUniforms(uniforms: ReturnType<Renderer['cache']['uniforms']>) {
+        for (const { buffer, uniform: { values } } of uniforms.list) {
+            const array = values as Float32Array
+            this.device.queue.writeBuffer(
+                buffer,
+                0,
+                array.buffer,
+                array.byteOffset,
+                array.byteLength,
+            )
+        }
+    }
 
-	render(objs: Set<Obj3>, camera: Camera) {
-		if (this.width !== this.cache.size.width ||
-			this.height !== this.cache.size.height ||
-			!this.cache.depthTexture) {
-			this.resize()
-		}
+    render(objs: Set<Obj3>, camera: Camera) {
+        if (this.width !== this.cache.size.width ||
+            this.height !== this.cache.size.height ||
+            !this.cache.depthTexture) {
+            this.resize()
+        }
 
         const meshes = [] as Mesh[],
             lights = [] as Light[]
@@ -221,61 +221,61 @@ export default class Renderer {
             })
         }
 
-		const cmd = this.device.createCommandEncoder(),
-			pass = cmd.beginRenderPass({
-				colorAttachments: [{
-					view: this.context.getCurrentTexture().createView(),
-					loadValue: { r: 1, g: 1, b: 1, a: 1.0 },
-					storeOp: 'store',
-				}],
-				depthStencilAttachment: {
-					view: this.cache.depthTexture.createView(),
-					depthLoadValue: 1.0,
-					depthStoreOp: 'store',
-					stencilLoadValue: 0,
-					stencilStoreOp: 'store'
-				}
-			})
+        const cmd = this.device.createCommandEncoder(),
+            pass = cmd.beginRenderPass({
+                colorAttachments: [{
+                    view: this.context.getCurrentTexture().createView(),
+                    loadValue: { r: 1, g: 1, b: 1, a: 1.0 },
+                    storeOp: 'store',
+                }],
+                depthStencilAttachment: {
+                    view: this.cache.depthTexture.createView(),
+                    depthLoadValue: 1.0,
+                    depthStoreOp: 'store',
+                    stencilLoadValue: 0,
+                    stencilStoreOp: 'store'
+                }
+            })
 
-		this.updateUniforms(this.cache.uniforms(camera))
-		for (const light of lights) {
-			this.updateUniforms(this.cache.uniforms(light))
-		}
+        this.updateUniforms(this.cache.uniforms(camera))
+        for (const light of lights) {
+            this.updateUniforms(this.cache.uniforms(light))
+        }
 
         const sorted = meshes.sort((a, b) => 
             (a.renderOrder - b.renderOrder) ||
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
 
-		let mat: Material
-		for (const mesh of sorted) {
-			this.updateUniforms(this.cache.uniforms(mesh))
+        let mat: Material
+        for (const mesh of sorted) {
+            this.updateUniforms(this.cache.uniforms(mesh))
 
-			if (mat !== mesh.mat && (mat = mesh.mat)) {
-				pass.setPipeline(this.cache.pipeline(mesh.mat))
-				pass.setBindGroup(...this.cache.bind(mesh.mat, camera))
-				pass.setBindGroup(...this.cache.bind(mesh.mat, mesh.mat))
-				for (const light of lights) {
-					pass.setBindGroup(...this.cache.bind(mesh.mat, light))
-				}
-				this.updateUniforms(this.cache.uniforms(mesh.mat))
-			}
+            if (mat !== mesh.mat && (mat = mesh.mat)) {
+                pass.setPipeline(this.cache.pipeline(mesh.mat))
+                pass.setBindGroup(...this.cache.bind(mesh.mat, camera))
+                pass.setBindGroup(...this.cache.bind(mesh.mat, mesh.mat))
+                for (const light of lights) {
+                    pass.setBindGroup(...this.cache.bind(mesh.mat, light))
+                }
+                this.updateUniforms(this.cache.uniforms(mesh.mat))
+            }
 
-			pass.setBindGroup(...this.cache.bind(mesh.mat, mesh))
+            pass.setBindGroup(...this.cache.bind(mesh.mat, mesh))
 
-			const attrs = this.cache.attrs(mesh.geo)
-			pass.setVertexBuffer(0, attrs.map['a_position'].buffer)
-			pass.setVertexBuffer(1, attrs.map['a_normal'].buffer)
-			if (mesh.geo.indices) {
-				const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
-				pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
-				pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
-			} else {
-				pass.draw(mesh.count, 1, mesh.offset, 0)
-			}
-		}
+            const attrs = this.cache.attrs(mesh.geo)
+            pass.setVertexBuffer(0, attrs.map['a_position'].buffer)
+            pass.setVertexBuffer(1, attrs.map['a_normal'].buffer)
+            if (mesh.geo.indices) {
+                const type = mesh.geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
+                pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
+                pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
+            } else {
+                pass.draw(mesh.count, 1, mesh.offset, 0)
+            }
+        }
 
-		pass.endPass()
-		this.device.queue.submit([cmd.finish()])
-	}
+        pass.endPass()
+        this.device.queue.submit([cmd.finish()])
+    }
 }

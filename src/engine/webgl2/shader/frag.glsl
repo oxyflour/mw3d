@@ -19,16 +19,16 @@ out vec4 outColor;
 
 void main() {
 //${opts.color ? `
-	outColor = u_color;
+    outColor = u_color;
 //` : opts.vertexColorAttr ? `
-	outColor = v_color;
+    outColor = v_color;
 //` : `
-	outColor = vec4(1., 0., 0., 1.);
+    outColor = vec4(1., 0., 0., 1.);
 //`}
 
 //${opts.vertexNormalAttr ? `
-	vec3 normal = normalize(v_normal);
-	float light = dot(normal, u_light_direction.xyz * -1. * u_light_direction.w);
-	outColor.rgb *= light;
+    vec3 normal = normalize(v_normal);
+    float light = dot(normal, u_light_direction.xyz * -1. * u_light_direction.w);
+    outColor.rgb *= light;
 //` : ''}
 }

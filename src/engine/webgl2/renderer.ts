@@ -228,8 +228,8 @@ export default class Renderer {
             const { uniforms, offset, count, mode } = mesh
             this.updateUniforms(prog, uniforms)
             if (geo.indices) {
-				const type = geo.indices instanceof Uint16Array ?
-		            WebGL2RenderingContext.UNSIGNED_SHORT : WebGL2RenderingContext.UNSIGNED_INT
+                const type = geo.indices instanceof Uint16Array ?
+                    WebGL2RenderingContext.UNSIGNED_SHORT : WebGL2RenderingContext.UNSIGNED_INT
                 ctx.drawElements(mode, count, type, offset)
             } else {
                 ctx.drawArrays(mode, offset, count)
