@@ -43,9 +43,9 @@ export default class Obj3 {
     protected needsUpdate() {
         const cache = this.cachedStatus
         return cache.parent !== this.parent ||
-            !vec3.exactEquals(this.pos, cache.pos) ||
-            !quat.exactEquals(this.rot, cache.rot) ||
-            !vec3.exactEquals(this.scl, cache.scl)
+            this.position.isDirty ||
+            this.rotation.isDirty ||
+            this.scaling.isDirty
     }
     protected updateMatrix() {
         const cache = this.cachedStatus
@@ -57,6 +57,7 @@ export default class Obj3 {
         if (cache.parent = this.parent) {
             mat4.multiply(this.worldMatrix, cache.parent.worldMatrix, this.worldMatrix)
         }
+        this.position.isDirty = this.rotation.isDirty = this.scaling.isDirty = false
         for (const child of this.children) {
             child.updateMatrix()
         }
