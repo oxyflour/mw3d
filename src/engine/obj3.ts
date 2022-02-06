@@ -1,6 +1,9 @@
 import { mat4, quat, vec3 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
 
+import init from './wasm/obj3.as.ts'
+init().then(({ add }) => console.log(add(1, 2)))
+
 export default class Obj3 {
     private pos = vec3.create()
     private rot = quat.create()
