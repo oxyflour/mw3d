@@ -37,8 +37,9 @@ const light = new DirectionalLight({ direction: [0, 0, -1] })
 scene.add(light)
 
 const mat = new BasicMaterial({ color: [0, 1, 1], vertexNormal: true })
-for (let i = 0; i < 10000; i ++) {
+for (let i = 0; i < 5000; i ++) {
     const { geo } = cube,
+        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()], vertexNormal: true }),
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
@@ -69,7 +70,7 @@ if (renderer instanceof WebGLRenderer) {
                 hovering.mesh.mat = hovering.mesh.originalMat
             }
             if (hovering.mesh = mesh as any) {
-                hovering.mesh.originalMat = hovering.mesh.mat
+                hovering.mesh.originalMat = hovering.mesh.mat as BasicMaterial
                 hovering.mesh.mat = hovering.mat
             }
         }

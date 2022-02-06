@@ -131,6 +131,7 @@ export default class Renderer {
         }
     }
 
+    private cachedMaterials = { } as Record<number, boolean>
     render(objs: Set<Obj3>, camera: Camera) {
         if (this.width !== this.cache.size.width ||
             this.height !== this.cache.size.height ||
@@ -140,8 +141,8 @@ export default class Renderer {
 
         const meshes = [] as Mesh[],
             lights = [] as Light[],
-            updated = [] as Mesh[],
-            afterUpdate = (obj: Obj3) => obj instanceof Mesh && updated.push(obj),
+            updated = [] as (Mesh | Light | Material)[],
+            afterUpdate = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
             pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
         camera.updateIfNecessary({ afterUpdate })
         for (const obj of objs) {
@@ -150,6 +151,10 @@ export default class Renderer {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)
                     pipelines[obj.mat.id] = this.cache.pipeline(obj.mat)
+                    if (!this.cachedMaterials[obj.mat.id] &&
+                        (this.cachedMaterials[obj.mat.id] = true)) {
+                        updated.push(obj.mat)
+                    }
                 } else if (obj instanceof Light) {
                     lights.push(obj)
                 }
@@ -163,17 +168,8 @@ export default class Renderer {
             (a.geo.id - b.geo.id))
 
         this.updateUniforms(this.cache.uniforms(camera))
-        for (const light of lights) {
-            this.updateUniforms(this.cache.uniforms(light))
-        }
-        for (const mesh of updated) {
-            this.updateUniforms(this.cache.uniforms(mesh))
-        }
-        let mat: Material
-        for (const mesh of sorted) {
-            if (mat !== mesh.mat && (mat = mesh.mat)) {
-                this.updateUniforms(this.cache.uniforms(mat))
-            }
+        for (const obj of updated) {
+            this.updateUniforms(this.cache.uniforms(obj))
         }
 
         const cmd = this.device.createCommandEncoder(),
