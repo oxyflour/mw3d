@@ -89,8 +89,8 @@ export default class Renderer {
     }
 
     private cachedRenderPass = {
-        objs: new Set<Obj3>(),
-        bundle: null as null | GPURenderBundle
+        objs: [] as { mesh: Mesh, mat: Material, geo: Geometry }[],
+        bundles: [] as GPURenderBundle[]
     }
     private runRenderPass(
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
@@ -188,20 +188,20 @@ export default class Renderer {
                 }
             })
 
-        /*
-         * TODO: auto caching
-         *
-         */
-        if (this.cachedRenderPass.objs !== objs && (this.cachedRenderPass.objs = objs)) {
+        if (this.cachedRenderPass.objs.length !== sorted.length ||
+            this.cachedRenderPass.objs.some((item, idx) =>
+                item.mesh !== sorted[idx] &&
+                item.geo !== sorted[idx].geo &&
+                item.mat !== sorted[idx].mat)) {
+            this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat }))
             const encoder = this.device.createRenderBundleEncoder({
                 colorFormats: [this.cache.opts.fragmentFormat],
                 depthStencilFormat: this.cache.opts.depthFormat
             })
             this.runRenderPass(encoder, sorted, lights, camera, pipelines)
-            this.cachedRenderPass.bundle = encoder.finish()
+            this.cachedRenderPass.bundles = [encoder.finish()]
         }
-        pass.executeBundles([this.cachedRenderPass.bundle])
-        //this.runRenderPass(pass, sorted, lights, camera, pipelines)
+        pass.executeBundles(this.cachedRenderPass.bundles)
 
         pass.endPass()
         this.device.queue.submit([cmd.finish()])

@@ -1,3 +1,5 @@
+/// <reference path="../../../node_modules/@webgpu/types/dist/index.d.ts" />
+
 import cache from "../../utils/cache"
 import Geometry, { Attr } from "../geometry"
 import Uniform from '../uniform'
