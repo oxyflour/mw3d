@@ -13,7 +13,7 @@
   "devDependencies": {
     "@types/gl-matrix": "^3.2.0",
     "@types/webgl2": "0.0.4",
-    "@webgpu/types": "^0.1.9",
+    "@webgpu/types": "^0.1.12",
     "typescript": "^4.5.4",
     "vite": "^2.7.13"
   },

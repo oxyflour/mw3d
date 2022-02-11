@@ -176,13 +176,18 @@ export default class Renderer {
             pass = cmd.beginRenderPass({
                 colorAttachments: [{
                     view: this.context.getCurrentTexture().createView(),
+                    loadOp: 'clear',
                     loadValue: { r: 1, g: 1, b: 1, a: 1.0 },
                     storeOp: 'store',
+                    clearValue: { r: 1, g: 1, b: 1, a: 1.0 },
                 }],
                 depthStencilAttachment: {
                     view: this.cache.depthTexture.createView(),
+                    depthLoadOp: 'clear',
+                    depthClearValue: 1.0,
                     depthLoadValue: 1.0,
                     depthStoreOp: 'store',
+                    stencilLoadOp: 'clear',
                     stencilLoadValue: 0,
                     stencilStoreOp: 'store'
                 }
@@ -203,7 +208,7 @@ export default class Renderer {
         }
         pass.executeBundles(this.cachedRenderPass.bundles)
 
-        pass.endPass()
+        pass.end()
         this.device.queue.submit([cmd.finish()])
     }
 }
