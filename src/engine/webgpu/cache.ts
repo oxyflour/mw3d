@@ -10,19 +10,19 @@ import Material from "../material"
 import Light from "../light"
 import uniform from "./shader/uniform"
 
-interface CachedAttr {
+export interface CachedAttr {
     attr: Attr
     buffer: GPUBuffer
 }
 
-interface CachedUniform {
+export interface CachedUniform {
     uniform: Uniform
     buffer: GPUBuffer
     offset: number
     size: number
 }
 
-interface CachedBind {
+export interface CachedBind {
     pipeline: GPURenderPipeline
     index: number
     buffers: GPUBuffer[]

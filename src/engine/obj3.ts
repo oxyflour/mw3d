@@ -1,8 +1,15 @@
+import * as AsBindImported from 'as-bind'
 import { mat4, quat, vec3 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
 
-import init from './wasm/obj3.as.ts'
-init().then(({ add }) => console.log(add(1, 2)))
+import wasmUrl from './wasm/obj3.as.ts'
+type Obj3WasmExp = typeof import('./wasm/obj3.as')
+async function loadWasm() {
+    // AsBind types are broken
+    const { instantiate } = AsBindImported as any,
+        { exports } = await instantiate(fetch(wasmUrl)) as { exports: Obj3WasmExp }
+    return exports
+}
 
 export default class Obj3 {
     private pos = vec3.create()
@@ -23,6 +30,7 @@ export default class Obj3 {
         if (child.parent === this) {
             child.parent = undefined
         }
+        Obj3.initWasm.then(wasm => wasm.removeFrom(child.id, this.id))
     }
     addTo(parent: Obj3) {
         if (this.parent) {
@@ -31,6 +39,7 @@ export default class Obj3 {
         if (this.parent = parent) {
             this.parent.children.add(this)
         }
+        Obj3.initWasm.then(wasm => wasm.addTo(this.id, parent.id))
     }
     getParent() {
         return this.parent
@@ -65,28 +74,35 @@ export default class Obj3 {
             child.updateMatrix()
         }
     }
-    updateIfNecessary(opts = { } as {
-        afterUpdate:(obj: Obj3) => void
-    }) {
+    updateIfNecessary(updated = [] as Obj3[]) {
         if (this.needsUpdate()) {
             this.updateMatrix()
-            opts.afterUpdate && opts.afterUpdate(this)
+            updated.push(this)
         } else {
             for (const child of this.children) {
-                child.updateIfNecessary(opts)
+                child.updateIfNecessary(updated)
             }
         }
+        return updated
     }
 
     private static counter = 0
     readonly id: number
     constructor() {
         this.id = Obj3.counter ++
+        Obj3.initWasm.then(wasm => wasm.create(this.id))
     }
     walk(func: (obj: Obj3, parent?: Obj3) => void) {
         func(this, this.parent)
         for (const child of this.children) {
             child.walk(func)
         }
+    }
+
+    private static initWasm = loadWasm().then(wasm => Obj3.wasmMod = wasm)
+    private static wasmMod: Obj3WasmExp
+    static update(objs: Set<Obj3>) {
+        // too slow
+        Obj3.wasmMod?.update(Array.from(objs).map(obj => obj.id))
     }
 }

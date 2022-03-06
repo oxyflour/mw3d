@@ -6,7 +6,7 @@ import Obj3 from "../obj3"
 import Mesh from '../mesh'
 import Light from '../light'
 
-import Cache from './cache'
+import Cache, { CachedUniform } from './cache'
 import Geometry from "../geometry"
 
 export default class Renderer {
@@ -75,8 +75,8 @@ export default class Renderer {
         })
     }
 
-    private updateUniforms(uniforms: ReturnType<Renderer['cache']['uniforms']>) {
-        for (const { buffer, offset, uniform: { values } } of uniforms.list) {
+    private updateUniforms({ list }: { list: CachedUniform[] }) {
+        for (const { buffer, offset, uniform: { values } } of list) {
             const array = values as Float32Array
             this.device.queue.writeBuffer(
                 buffer,
@@ -142,11 +142,11 @@ export default class Renderer {
         const meshes = [] as Mesh[],
             lights = [] as Light[],
             updated = [] as (Mesh | Light | Material)[],
-            afterUpdate = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
+            addToUpdated = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
             pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
-        camera.updateIfNecessary({ afterUpdate })
+        camera.updateIfNecessary().forEach(addToUpdated)
         for (const obj of objs) {
-            obj.updateIfNecessary({ afterUpdate })
+            obj.updateIfNecessary().forEach(addToUpdated)
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)

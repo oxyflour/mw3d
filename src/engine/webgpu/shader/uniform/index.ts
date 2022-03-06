@@ -1,3 +1,5 @@
+/// <reference path="../../../../../node_modules/@webgpu/types/dist/index.d.ts" />
+
 // FIXME: vite glob import with raw is not supported
 import wgslUniformCamera from './g0.camera.wgsl?raw'
 import wgslUniformLight from './g1.light.wgsl?raw'
@@ -10,7 +12,7 @@ export default {
         layout: {
             entries: [{
                 binding: 0,
-                visibility: GPUShaderStage.VERTEX,
+                visibility: globalThis.GPUShaderStage?.VERTEX,
                 buffer: { type: 'uniform', hasDynamicOffset: true }
             }]
         } as GPUBindGroupLayoutDescriptor,
@@ -21,7 +23,7 @@ export default {
         layout: {
             entries: [{
                 binding: 0,
-                visibility: GPUShaderStage.FRAGMENT,
+                visibility: globalThis.GPUShaderStage?.FRAGMENT,
                 buffer: { type: 'uniform', hasDynamicOffset: true }
             }]
         } as GPUBindGroupLayoutDescriptor,
@@ -32,7 +34,7 @@ export default {
         layout: {
             entries: [{
                 binding: 0,
-                visibility: GPUShaderStage.VERTEX,
+                visibility: globalThis.GPUShaderStage?.VERTEX,
                 buffer: { type: 'uniform', hasDynamicOffset: true }
             }]
         } as GPUBindGroupLayoutDescriptor,
@@ -43,7 +45,7 @@ export default {
         layout: {
             entries: [{
                 binding: 0,
-                visibility: GPUShaderStage.FRAGMENT,
+                visibility: globalThis.GPUShaderStage?.FRAGMENT,
                 buffer: { type: 'uniform', hasDynamicOffset: true }
             }]
         } as GPUBindGroupLayoutDescriptor,

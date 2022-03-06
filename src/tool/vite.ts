@@ -2,14 +2,22 @@ import cp from 'child_process'
 import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
-import { PluginOption } from "vite"
+import { PluginOption, WebSocketServer } from "vite"
 
 const suffix = '.as.ts',
     cached = { } as Record<string, string>
-async function compile(file: string, out: string) {
-    console.log(`compiling ${file} ${out}`)
-    await promisify(cp.exec)(`npx asc "${file}" -b ${out}`)
+async function compile(file: string, url: string, ws?: WebSocketServer) {
+    const [out] = url.split('?'),
+        cmd = `npx asc "${file}" --exportRuntime --transform as-bind -b ${out}`
+    try {
+        console.error(`EXEC: ${cmd}`)
+        await promisify(cp.exec)(cmd)
+        ws.send({ type: 'full-reload' })
+    } catch (err) {
+        console.error(err.stderr)
+    }
 }
+
 let timeout = Promise.resolve()
 export default {
     name: 'assembly-loader',
@@ -17,10 +25,7 @@ export default {
     configureServer({ ws, watcher }) {
         watcher.on('change', file => {
             if (file.endsWith(suffix)) {
-                timeout = timeout.then(async () => {
-                    await compile(file, cached[file])
-                    ws.send({ type: 'full-reload' })
-                })
+                timeout = timeout.then(() => compile(file, cached[file], ws))
             }
         })
     },
@@ -29,8 +34,9 @@ export default {
             const file = path.join(path.dirname(importee), src)
             if (!cached[file]) {
                 this.addWatchFile(file)
-                await compile(file, cached[file] =
-                    path.join(os.tmpdir(), `assembly-${Object.keys(cached).length}.wasm`))
+                const tmp = path.join(os.tmpdir(),
+                    `assembly-${Object.keys(cached).length}.wasm?url`)
+                await compile(file, cached[file] = tmp)
             }
             return cached[file]
         }
