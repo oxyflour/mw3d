@@ -1,15 +1,9 @@
-import * as AsBindImported from 'as-bind'
+import loader from '@assemblyscript/loader'
 import { mat4, quat, vec3 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
 
 import wasmUrl from './wasm/obj3.as.ts'
 type Obj3WasmExp = typeof import('./wasm/obj3.as')
-async function loadWasm() {
-    // AsBind types are broken
-    const { instantiate } = AsBindImported as any,
-        { exports } = await instantiate(fetch(wasmUrl)) as { exports: Obj3WasmExp }
-    return exports
-}
 
 export default class Obj3 {
     private pos = vec3.create()
@@ -99,10 +93,10 @@ export default class Obj3 {
         }
     }
 
-    private static initWasm = loadWasm().then(wasm => Obj3.wasmMod = wasm)
-    private static wasmMod: Obj3WasmExp
-    static update(objs: Set<Obj3>) {
-        // too slow
-        Obj3.wasmMod?.update(Array.from(objs).map(obj => obj.id))
+    private static initWasm = loader.instantiateStreaming(fetch(wasmUrl), { console: console as any })
+        .then(({ exports }) => Obj3.wasmMod = exports as any as loader.ASUtil & Obj3WasmExp)
+    private static wasmMod: loader.ASUtil & Obj3WasmExp
+    static update() {
+        Obj3.wasmMod?.update()
     }
 }

@@ -145,6 +145,7 @@ export default class Renderer {
             addToUpdated = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
             pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
         camera.updateIfNecessary().forEach(addToUpdated)
+        Obj3.update()
         for (const obj of objs) {
             obj.updateIfNecessary().forEach(addToUpdated)
             obj.walk(obj => {

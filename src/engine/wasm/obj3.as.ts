@@ -61,10 +61,15 @@ export function addTo(cid: i32, pid: i32): void {
   }
 }
 
-export function update(ids: i32[]): i32[] {
-  const out: i32[] = []
-  for (let i = 0, n = ids.length; i < n; i ++) {
-    objs[ids[i]].update(out)
+export function update(): void {
+  const out: i32[] = [],
+    arr = objs.values()
+  for (let i = 0, n = arr.length; i < n; i ++) {
+    const obj = arr[i]
+    if (obj.parent === -1) {
+      obj.update(out)
+    }
   }
-  return out
 }
+
+export const Int32Array_ID = idof<Int32Array>()

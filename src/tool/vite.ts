@@ -8,9 +8,9 @@ const suffix = '.as.ts',
     cached = { } as Record<string, string>
 async function compile(file: string, url: string, ws?: WebSocketServer) {
     const [out] = url.split('?'),
-        cmd = `npx asc "${file}" --exportRuntime --transform as-bind -b ${out}`
+        cmd = `npx asc "${file}" --sourceMap --exportRuntime -b ${out}`
     try {
-        console.error(`EXEC: ${cmd}`)
+        console.log(`EXEC: ${cmd}`)
         await promisify(cp.exec)(cmd)
         ws.send({ type: 'full-reload' })
     } catch (err) {
