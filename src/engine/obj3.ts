@@ -1,3 +1,4 @@
+/// <reference path="../typing.d.ts" />
 import loader from '@assemblyscript/loader'
 import { mat4, quat, vec3 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
@@ -24,7 +25,7 @@ export default class Obj3 {
         if (child.parent === this) {
             child.parent = undefined
         }
-        Obj3.initWasm.then(wasm => wasm.removeFrom(child.id, this.id))
+        Obj3.initWasm.then(wasm => wasm.removeFrom(child.ptr, this.ptr))
     }
     addTo(parent: Obj3) {
         if (this.parent) {
@@ -33,7 +34,7 @@ export default class Obj3 {
         if (this.parent = parent) {
             this.parent.children.add(this)
         }
-        Obj3.initWasm.then(wasm => wasm.addTo(this.id, parent.id))
+        Obj3.initWasm.then(wasm => wasm.addTo(this.ptr, parent.ptr))
     }
     getParent() {
         return this.parent
@@ -82,9 +83,10 @@ export default class Obj3 {
 
     private static counter = 0
     readonly id: number
+    ptr: number
     constructor() {
         this.id = Obj3.counter ++
-        Obj3.initWasm.then(wasm => wasm.create(this.id))
+        Obj3.initWasm.then(wasm => this.ptr = wasm.create(this.id))
     }
     walk(func: (obj: Obj3, parent?: Obj3) => void) {
         func(this, this.parent)
@@ -96,7 +98,15 @@ export default class Obj3 {
     private static initWasm = loader.instantiateStreaming(fetch(wasmUrl), { console: console as any })
         .then(({ exports }) => Obj3.wasmMod = exports as any as loader.ASUtil & Obj3WasmExp)
     private static wasmMod: loader.ASUtil & Obj3WasmExp
-    static update() {
-        Obj3.wasmMod?.update()
+    static ptrs = new Int32Array(10240)
+    static update(objs: Set<Obj3>) {
+        if (objs.size > this.ptrs.length) {
+            this.ptrs = new Int32Array(objs.size)
+        }
+        let i = 0
+        for (const obj of objs) {
+            this.ptrs[i ++] = obj.ptr
+        }
+        Obj3.wasmMod?.update(this.ptrs, objs.size)
     }
 }

@@ -145,7 +145,8 @@ export default class Renderer {
             addToUpdated = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
             pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
         camera.updateIfNecessary().forEach(addToUpdated)
-        Obj3.update()
+        // TODO: enable this
+        // Obj3.update(objs)
         for (const obj of objs) {
             obj.updateIfNecessary().forEach(addToUpdated)
             obj.walk(obj => {
@@ -186,11 +187,7 @@ export default class Renderer {
                     view: this.cache.depthTexture.createView(),
                     depthLoadOp: 'clear',
                     depthClearValue: 1.0,
-                    depthLoadValue: 1.0,
                     depthStoreOp: 'store',
-                    stencilLoadOp: 'clear',
-                    stencilLoadValue: 0,
-                    stencilStoreOp: 'store'
                 }
             })
 

@@ -1,22 +1,22 @@
 import { mat4 } from '../../../deps/gl-matrix/assembly'
 
-const objs = new Map<i32, Obj3>()
+const objs = new Array<Obj3>(0)
 class Obj3 {
   id: i32
+  disposed: bool
   parent: i32
   children: Set<i32> = new Set<i32>()
   needsUpdate(): bool {
     return false
   }
-  update(out: i32[]): void {
+  update(): void {
     const ids = this.children.values()
     for (let i = 0, n = ids.length; i < n; i ++) {
       const id = ids[i]
-      if (id >= 0 && objs.has(id)) {
+      if (id >= 0) {
         const obj = objs[id]
         if (obj.needsUpdate()) {
-          out.push(id)
-          obj.update(out)
+          obj.update()
         }
       }
     }
@@ -24,50 +24,57 @@ class Obj3 {
 }
 
 export function create(id: i32): i32 {
+  let i = 0
+  for (; i < objs.length; i ++) {
+    const obj = objs[i]
+    if (obj.disposed) {
+      obj.id = id
+      obj.parent = -1
+      return i
+    }
+  }
   const obj = new Obj3()
   obj.id = id
   obj.parent = -1
-  objs.set(id, obj)
-  return objs.size
+  objs.push(obj)
+  return i
 }
 
-export function dispose(id: i32): void {
-  objs.delete(id)
+export function dispose(ptr: i32): void {
+  objs[ptr].disposed = true
 }
 
-export function removeFrom(cid: i32, pid: i32): void {
-  const child = objs[cid]
+export function removeFrom(cptr: i32, pptr: i32): void {
+  const child = objs[cptr]
   if (child) {
     child.parent = -1
   }
-  const parent = objs[pid]
+  const parent = objs[pptr]
   if (parent) {
-    parent.children.delete(cid)
+    parent.children.delete(cptr)
   }
 }
 
-export function addTo(cid: i32, pid: i32): void {
-  const child = objs[cid]
+export function addTo(cptr: i32, pptr: i32): void {
+  const child = objs[cptr]
   if (child) {
-    const pid = child.parent
-    if (pid >= 0 && objs.has(pid)) {
-      objs[pid].children.delete(cid)
+    const pptr = child.parent
+    if (pptr >= 0) {
+      objs[pptr].children.delete(cptr)
     }
-    child.parent = pid
+    child.parent = pptr
   }
-  const parent = objs[pid]
+  const parent = objs[pptr]
   if (parent) {
-    parent.children.add(cid)
+    parent.children.add(cptr)
   }
 }
 
-export function update(): void {
-  const out: i32[] = [],
-    arr = objs.values()
-  for (let i = 0, n = arr.length; i < n; i ++) {
-    const obj = arr[i]
+export function update(ptrs: Int32Array, len: i32): void {
+  for (let i = 0, n = ptrs.length; i < n; i ++) {
+    const obj = objs[ptrs[i]]
     if (obj.parent === -1) {
-      obj.update(out)
+      obj.update()
     }
   }
 }
