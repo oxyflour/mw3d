@@ -7,16 +7,16 @@
 
 struct VertexInput {
   @location(0)
-  position: vec4<f32>;
+  position: vec4<f32>,
   @location(1)
-  normal: vec3<f32>;
+  normal: vec3<f32>,
 }
 
 struct VertexOutput {
   @builtin(position)
-  position : vec4<f32>;
+  position : vec4<f32>,
   @location(0)
-  normal: vec3<f32>;
+  normal: vec3<f32>,
 };
 
 @stage(vertex)
@@ -31,7 +31,7 @@ fn vertMain(input: VertexInput) -> VertexOutput {
 
 struct FragInput {
   @location(0)
-  normal: vec3<f32>;
+  normal: vec3<f32>,
 };
 
 @stage(fragment)

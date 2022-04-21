@@ -72,6 +72,7 @@ export default class Renderer {
             size,
             format: this.format,
             device: this.device,
+            compositingAlphaMode: 'premultiplied',
         })
     }
 
