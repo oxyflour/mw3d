@@ -1,12 +1,21 @@
 import { mat4 } from 'gl-matrix'
 
 import Obj3 from './obj3'
-import Uniform from './uniform'
+import { Uniform } from './uniform'
 
 export default class Camera extends Obj3 {
-    private viewMatrix = mat4.create()
     private viewProjection = mat4.create()
-    readonly uniforms = [new Uniform('u_view_proj', this.viewProjection)]
+    private viewMatrix = mat4.create()
+
+    readonly bindingGroup = 0
+    readonly uniforms = {
+        viewProjection: {
+            value: this.viewProjection,
+            binding: 0,
+            offset: 0,
+        } as Uniform,
+    }
+
     protected updateMatrix() {
         super.updateMatrix()
         mat4.invert(this.viewMatrix, this.worldMatrix)

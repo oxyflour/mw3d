@@ -1,13 +1,10 @@
-import WebGLRenderer from './engine/webgl2/renderer'
 import WebGPURenderer from './engine/webgpu/renderer'
 import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
+import { rand } from './utils/math'
 import { BasicMaterial } from './engine/material'
 import { BoxGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
-
-import Picker from './engine/webgl2/tool/picker'
-import { rand } from './utils/math'
 import { DirectionalLight } from './engine/light'
 
 (async function() {
@@ -18,9 +15,7 @@ document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
 // TODO
-const renderer = location.search.includes('use-webgpu') ?
-        await WebGPURenderer.create(canvas) :
-        new WebGLRenderer(canvas),
+const renderer = await WebGPURenderer.create(canvas),
     scene = new Set<Obj3>(),
     camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
     holder = new Obj3()
@@ -30,16 +25,15 @@ scene.add(holder)
 
 const cube = new Mesh(
     new BoxGeometry({ size: 200 }),
-    new BasicMaterial({ color: [0.9, 0.3, 0.2], vertexNormal: true }))
+    new BasicMaterial({ color: [0.9, 0.3, 0.2] }))
 scene.add(cube)
 
 const light = new DirectionalLight({ direction: [0, 0, -1] })
 scene.add(light)
 
-const mat = new BasicMaterial({ color: [0, 1, 1], vertexNormal: true })
 for (let i = 0; i < 5000; i ++) {
     const { geo } = cube,
-        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()], vertexNormal: true }),
+        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
@@ -54,28 +48,6 @@ window.addEventListener('resize', () => {
     renderer.width = canvas.clientWidth
     renderer.height = canvas.clientHeight
 })
-
-if (renderer instanceof WebGLRenderer) {
-    const hovering = {
-        mat: new BasicMaterial({ color: [1, 1, 0] }),
-        mesh: undefined as undefined | Mesh & { originalMat: BasicMaterial }
-    }
-    const picker = new Picker(renderer)
-    renderer.canvas.addEventListener('mousemove', evt => {
-        const x = evt.clientX,
-            y = window.innerHeight - evt.clientY,
-            mesh = picker.pick(scene, camera, x, y)
-        if (hovering.mesh !== mesh) {
-            if (hovering.mesh) {
-                hovering.mesh.mat = hovering.mesh.originalMat
-            }
-            if (hovering.mesh = mesh as any) {
-                hovering.mesh.originalMat = hovering.mesh.mat as BasicMaterial
-                hovering.mesh.mat = hovering.mat
-            }
-        }
-    })
-}
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)

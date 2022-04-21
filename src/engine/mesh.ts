@@ -3,9 +3,20 @@ import { mat4 } from 'gl-matrix'
 import Obj3 from './obj3'
 import Geometry from './geometry'
 import Material from './material'
-import Uniform from './uniform'
+import { Uniform } from './uniform'
 
 export default class Mesh extends Obj3 {
+    private modelMatrix = mat4.create()
+
+    readonly bindingGroup = 2
+    readonly uniforms = {
+        modelMatrix: {
+            value: this.modelMatrix,
+            binding: 0,
+            offset: 0,
+        } as Uniform
+    }
+
     renderOrder = 0
     isVisible = true
 
@@ -13,17 +24,10 @@ export default class Mesh extends Obj3 {
     constructor(
         public geo: Geometry,
         public mat: Material,
-        public uniforms = [ ] as Uniform[],
         public offset = 0,
         public count = -1,
         public mode = WebGLRenderingContext.TRIANGLES) {
         super()
-
-        this.matrixUniform = this.uniforms.find(uniform => uniform.name === 'u_model_matrix')
-        if (!this.matrixUniform) {
-            this.matrixUniform = new Uniform('u_model_matrix', mat4.create())
-            this.uniforms.push(this.matrixUniform)
-        }
 
         if (this.count < 0) {
             if (geo.indices) {
@@ -38,6 +42,6 @@ export default class Mesh extends Obj3 {
     }
     protected updateMatrix() {
         super.updateMatrix()
-        mat4.copy(this.matrixUniform.values as mat4, this.worldMatrix)
+        mat4.copy(this.modelMatrix, this.worldMatrix)
     }
 }

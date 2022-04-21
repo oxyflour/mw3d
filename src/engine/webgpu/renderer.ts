@@ -75,9 +75,9 @@ export default class Renderer {
         })
     }
 
-    private updateUniforms({ list }: { list: CachedUniform[] }) {
-        for (const { buffer, offset, uniform: { values } } of list) {
-            const array = values as Float32Array
+    private updateUniforms(bindings: CachedUniform[]) {
+        for (const { buffer, offset, uniform: { value } } of bindings) {
+            const array = value as Float32Array
             this.device.queue.writeBuffer(
                 buffer,
                 offset,
@@ -169,9 +169,9 @@ export default class Renderer {
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
 
-        this.updateUniforms(this.cache.uniforms(camera))
+        this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {
-            this.updateUniforms(this.cache.uniforms(obj))
+            this.updateUniforms(this.cache.bindings(obj))
         }
 
         const cmd = this.device.createCommandEncoder(),

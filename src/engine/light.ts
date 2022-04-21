@@ -1,10 +1,18 @@
 import { vec4 } from 'gl-matrix'
 
 import Obj3 from './obj3'
-import Uniform from './uniform'
+import { Uniform } from './uniform'
 
 export default class Light extends Obj3 {
-    readonly uniforms = [] as Uniform[]
+    readonly bindingGroup = 1
+    readonly lightDirection = vec4.create()
+    readonly uniforms = {
+        lightDirection: {
+            value: this.lightDirection,
+            binding: 0,
+            offset: 0,
+        } as Uniform,
+    }
 }
 
 export class DirectionalLight extends Light {
@@ -15,15 +23,10 @@ export class DirectionalLight extends Light {
         const [x, y, z] = opts.direction || [0, 0, 1],
             r = opts.intensity === undefined ? 1 : opts.intensity
         vec4.set(this.direction, x, y, z, r)
-        this.directionUniform = this.uniforms.find(uniform => uniform.name === 'u_light_direction')
-        if (!this.directionUniform) {
-            this.directionUniform = new Uniform('u_light_direction', vec4.create())
-            this.uniforms.push(this.directionUniform)
-        }
     }
     protected updateMatrix() {
         super.updateMatrix()
-        vec4.transformMat4(this.directionUniform.values as vec4, this.direction, this.worldMatrix)
-        this.directionUniform.values[3] = this.direction[3]
+        vec4.transformMat4(this.lightDirection, this.direction, this.worldMatrix)
+        this.lightDirection.values[3] = this.direction[3]
     }
 }

@@ -1,14 +1,13 @@
 /// <reference path="../../../node_modules/@webgpu/types/dist/index.d.ts" />
+import { mat4, vec4 } from 'gl-matrix'
 
 import cache from "../../utils/cache"
 import Geometry, { Attr } from "../geometry"
-import Uniform from '../uniform'
-import { mat4, vec4 } from 'gl-matrix'
+import { Uniform } from '../uniform'
 import Camera from "../camera"
 import Mesh from "../mesh"
 import Material from "../material"
 import Light from "../light"
-import uniform from "./shader/uniform"
 
 export interface CachedAttr {
     attr: Attr
@@ -35,7 +34,6 @@ export default class Cache {
     constructor(readonly device: GPUDevice, readonly opts: {
         fragmentFormat: GPUTextureFormat
         depthFormat: GPUTextureFormat
-        useDynamicOffset?: boolean
         uniformBufferBatchSize?: number
     }) { }
     idx = cache((val: Uint32Array | Uint16Array) => {
@@ -76,18 +74,6 @@ export default class Cache {
     private cachedUniformBuffer = { buffer: null as GPUBuffer | null, size: 0, offset: 0 }
     private makeUniformBuffer(val: mat4 | vec4) {
         const size = val.length * 4
-        /*
-         * FIXME: share buffer cause splashing problem
-         *
-        return {
-            buffer: this.device.createBuffer({
-                size,
-                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-            }),
-            offset: 0,
-            size,
-        }
-         */
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
             const size = this.opts.uniformBufferBatchSize || 256 * 16
             this.cachedUniformBuffer = {
@@ -103,57 +89,41 @@ export default class Cache {
         this.cachedUniformBuffer.offset = Math.ceil((offset + size) / 256) * 256
         return { buffer, offset, size }
     }
-    uniforms = cache((obj: Camera | Mesh | Material | Light) => {
-        const map = { } as Record<string, CachedUniform>,
-            list = [] as CachedUniform[]
-        for (const uniform of obj.uniforms) {
-            const { buffer, offset, size } = this.makeUniformBuffer(uniform.values)
-            list.push(map[uniform.name] = { uniform, buffer, offset, size })
+    bindings = cache((obj: Camera | Mesh | Material | Light) => {
+        const bindings = [] as CachedUniform[]
+        for (const uniform of Object.values(obj.uniforms)) {
+            const { buffer, offset, size } = this.makeUniformBuffer(uniform.value)
+            bindings[uniform.binding] = { uniform, buffer, offset, size }
         }
-        return { list, map }
+        return bindings
     })
 
-    private cachedBinds = [] as CachedBind[]
     bind = cache((pipeline: GPURenderPipeline, obj: Camera | Mesh | Material | Light) => {
-        const uniforms = this.uniforms(obj),
-            index =
-                obj instanceof Camera ? 0 :
-                obj instanceof Light ? 1 :
-                obj instanceof Mesh ? 2 :
-                obj instanceof Material ? 3 : -1,
-            buffers = uniforms.list.map(item => item.buffer),
-            offsets = this.opts.useDynamicOffset ? uniforms.list.map(item => item.offset) : undefined,
-            cached = this.cachedBinds.find(item =>
-                item.pipeline === pipeline &&
-                item.index === index &&
-                item.buffers.length === buffers.length &&
-                item.buffers.every((buffer, idx) => buffer === buffers[idx])),
-            group = cached ? cached.group : this.device.createBindGroup({
+        const bindings = this.bindings(obj),
+            index = obj.bindingGroup,
+            group = this.device.createBindGroup({
                 layout: pipeline.getBindGroupLayout(index),
-                entries: uniforms.list.map(({ buffer, offset, size }, binding) => ({
+                entries: bindings.map(({ buffer, offset, size }, binding) => ({
                     binding,
-                    resource: { buffer, size, offset: this.opts.useDynamicOffset ? 0 : offset }
+                    resource: { buffer, offset, size }
                 })),
             })
-        if (this.opts.useDynamicOffset && !cached) {
-            this.cachedBinds.push({ pipeline, index, buffers, group })
-        }
-        return [index, group, offsets] as [number, GPUBindGroup, number[] | undefined]
+        return [index, group] as [number, GPUBindGroup]
     })
 
     private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
     pipeline = cache((mat: Material) => {
-        const code = mat.shaders.wgsl,
-            key = `${code.vert}//${code.frag}`
-        if (this.cachedPipelines[key]) {
-            return this.cachedPipelines[key]
+        const code = mat.shaders.wgsl
+        if (this.cachedPipelines[code]) {
+            return this.cachedPipelines[code]
         }
 
-        const pipelineId = Object.keys(this.cachedPipelines).length
-        return this.cachedPipelines[key] = Object.assign(this.device.createRenderPipeline({
+        const pipelineId = Object.keys(this.cachedPipelines).length,
+            module = this.device.createShaderModule({ code })
+        return this.cachedPipelines[code] = Object.assign(this.device.createRenderPipeline({
             vertex: {
-                module: this.device.createShaderModule({ code: code.vert }),
-                entryPoint: 'main',
+                module,
+                entryPoint: 'vertMain',
                 // TODO
                 buffers: [{
                     arrayStride: 4 * 3,
@@ -172,8 +142,8 @@ export default class Cache {
                 }]
             },
             fragment: {
-                module: this.device.createShaderModule({ code: code.frag }),
-                entryPoint: 'main',
+                module,
+                entryPoint: 'fragMain',
                 targets: [{
                     format: this.opts.fragmentFormat
                 }]
@@ -187,14 +157,6 @@ export default class Cache {
                 depthCompare: 'less',
                 format: this.opts.depthFormat,
             },
-            layout: this.opts.useDynamicOffset ? this.device.createPipelineLayout({
-                bindGroupLayouts: [
-                    this.device.createBindGroupLayout(uniform.g0.camera.layout),
-                    this.device.createBindGroupLayout(uniform.g1.light.layout),
-                    this.device.createBindGroupLayout(uniform.g2.mesh.layout),
-                    this.device.createBindGroupLayout(uniform.g3.material.layout),
-                ]
-            }) : undefined
         }), { pipelineId })
     })
 }
