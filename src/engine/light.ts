@@ -24,8 +24,8 @@ export class DirectionalLight extends Light {
             r = opts.intensity === undefined ? 1 : opts.intensity
         vec4.set(this.direction, x, y, z, r)
     }
-    protected updateMatrix() {
-        super.updateMatrix()
+    protected update() {
+        super.update()
         vec4.transformMat4(this.lightDirection, this.direction, this.worldMatrix)
         this.lightDirection.values[3] = this.direction[3]
     }

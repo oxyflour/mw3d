@@ -97,13 +97,13 @@ export default class Renderer {
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
             sorted: Mesh[],
             lights: Light[],
-            camera: Camera,
-            pipelines: Record<number, GPURenderPipeline & { pipelineId: number }>) {
+            camera: Camera) {
         let pipeline: GPURenderPipeline,
             mat: Material,
             geo: Geometry
         for (const mesh of sorted) {
-            if (pipeline !== pipelines[mesh.mat.id] && (pipeline = pipelines[mesh.mat.id])) {
+            const cached = this.cache.pipeline(mesh.mat)
+            if (pipeline !== cached && (pipeline = cached)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 for (const light of lights) {
@@ -132,7 +132,6 @@ export default class Renderer {
         }
     }
 
-    private cachedMaterials = { } as Record<number, boolean>
     render(objs: Set<Obj3>, camera: Camera) {
         if (this.width !== this.cache.size.width ||
             this.height !== this.cache.size.height ||
@@ -144,7 +143,7 @@ export default class Renderer {
             lights = [] as Light[],
             updated = [] as (Mesh | Light | Material)[],
             addToUpdated = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
-            pipelines = { } as Record<number, GPURenderPipeline & { pipelineId: number }>
+            pipelineIds = { } as Record<number, number>
         camera.updateIfNecessary().forEach(addToUpdated)
         // TODO: enable this
         // Obj3.update(objs)
@@ -153,10 +152,10 @@ export default class Renderer {
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.isVisible) {
                     meshes.push(obj)
-                    pipelines[obj.mat.id] = this.cache.pipeline(obj.mat)
-                    if (!this.cachedMaterials[obj.mat.id] &&
-                        (this.cachedMaterials[obj.mat.id] = true)) {
+                    pipelineIds[obj.mat.id] = this.cache.pipeline(obj.mat).pipelineId
+                    if (obj.mat.needsUpdate()) {
                         updated.push(obj.mat)
+                        obj.mat.update()
                     }
                 } else if (obj instanceof Light) {
                     lights.push(obj)
@@ -166,7 +165,7 @@ export default class Renderer {
 
         const sorted = meshes.sort((a, b) => 
             (a.renderOrder - b.renderOrder) ||
-            (pipelines[a.mat.id].pipelineId - pipelines[b.mat.id].pipelineId) ||
+            (pipelineIds[a.mat.id] - pipelineIds[b.mat.id]) ||
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
 
@@ -202,7 +201,7 @@ export default class Renderer {
                 colorFormats: [this.cache.opts.fragmentFormat],
                 depthStencilFormat: this.cache.opts.depthFormat
             })
-            this.runRenderPass(encoder, sorted, lights, camera, pipelines)
+            this.runRenderPass(encoder, sorted, lights, camera)
             this.cachedRenderPass.bundles = [encoder.finish()]
         }
         pass.executeBundles(this.cachedRenderPass.bundles)

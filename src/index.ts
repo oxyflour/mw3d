@@ -31,7 +31,7 @@ scene.add(cube)
 const light = new DirectionalLight({ direction: [0, 0, -1] })
 scene.add(light)
 
-for (let i = 0; i < 5000; i ++) {
+for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
         mesh = new Mesh(geo, mat)

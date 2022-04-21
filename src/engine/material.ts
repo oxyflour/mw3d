@@ -1,16 +1,17 @@
 /// <reference path="../typing.d.ts" />
 
 import { vec4 } from 'gl-matrix'
+import { Color4 } from '../utils/math'
 import { Uniform } from './uniform'
 import wgslShader from './webgpu/shader.wgsl?raw'
 
 export default class Material {
-    readonly color = vec4.create()
+    readonly color = new Color4()
 
     readonly bindingGroup = 3
     readonly uniforms = {
         color: {
-            value: this.color,
+            value: this.color.data,
             binding: 0,
             offset: 0,
         } as Uniform
@@ -25,6 +26,13 @@ export default class Material {
         }
     ) {
         this.id = Material.counter ++
+    }
+
+    needsUpdate() {
+        return this.color.needsUpdate()
+    }
+    update() {
+        this.color.update()
     }
 }
 
@@ -43,7 +51,7 @@ export class BasicMaterial extends Material {
                 b /= 255
                 a = opts.color.length > 3 ? opts.color[3] / 255 : 1
             }
-            vec4.set(this.color, r, g, b, a)
+            this.color.set(r, g, b, a)
         }
     }
 }

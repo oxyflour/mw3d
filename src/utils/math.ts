@@ -1,8 +1,28 @@
-import { vec3, quat } from 'gl-matrix'
+import { vec3, quat, vec4 } from 'gl-matrix'
 
-export class Vec3 {
-    isDirty = false
+export class Mutable {
+    protected isDirty = false
+    needsUpdate() {
+        return this.isDirty
+    }
+    update() {
+        this.isDirty = false
+    }
+}
+
+export class Color4 extends Mutable {
+    constructor(readonly data = vec4.create()) {
+        super()
+    }
+    set(r: number, g: number, b: number, a: number, out = this) {
+        vec4.set(this.data, r, g, b, a)
+        return (this.isDirty = true), out
+    }
+}
+
+export class Vec3 extends Mutable {
     constructor(readonly data = vec3.create()) {
+        super()
     }
     set(x: number, y: number, z: number, out = this) {
         vec3.set(out.data, x, y, z)
@@ -10,9 +30,9 @@ export class Vec3 {
     }
 }
 
-export class Quat {
-    isDirty = false
+export class Quat extends Mutable {
     constructor(readonly data = quat.create()) {
+        super()
     }
     rotX(rad: number, out = this) {
         quat.rotateX(out.data, this.data, rad)

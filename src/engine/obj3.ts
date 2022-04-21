@@ -7,13 +7,9 @@ import wasmUrl from './wasm/obj3.as.ts'
 type Obj3WasmExp = typeof import('./wasm/obj3.as')
 
 export default class Obj3 {
-    private pos = vec3.create()
-    private rot = quat.create()
-    private scl = vec3.fromValues(1, 1, 1)
-
-    readonly position = new Vec3(this.pos)
-    readonly rotation = new Quat(this.rot)
-    readonly scaling = new Vec3(this.scl)
+    readonly position = new Vec3()
+    readonly rotation = new Quat()
+    readonly scaling = new Vec3(vec3.fromValues(1, 1, 1))
 
     private parent?: Obj3
     readonly children = new Set<Obj3>()
@@ -42,36 +38,32 @@ export default class Obj3 {
 
     private cachedStatus = {
         parent: null as Obj3 | null,
-        pos: vec3.create(),
-        rot: quat.create(),
-        scl: vec3.create(),
     }
     readonly worldMatrix = mat4.create()
     protected needsUpdate() {
         const cache = this.cachedStatus
         return cache.parent !== this.parent ||
-            this.position.isDirty ||
-            this.rotation.isDirty ||
-            this.scaling.isDirty
+            this.position.needsUpdate() ||
+            this.rotation.needsUpdate() ||
+            this.scaling.needsUpdate()
     }
-    protected updateMatrix() {
+    protected update() {
         const cache = this.cachedStatus
         mat4.fromRotationTranslationScale(
-            this.worldMatrix,
-            quat.copy(cache.rot, this.rot),
-            vec3.copy(cache.pos, this.pos),
-            vec3.copy(cache.scl, this.scl))
+            this.worldMatrix, this.rotation.data, this.position.data, this.scaling.data)
         if (cache.parent = this.parent) {
             mat4.multiply(this.worldMatrix, cache.parent.worldMatrix, this.worldMatrix)
         }
-        this.position.isDirty = this.rotation.isDirty = this.scaling.isDirty = false
+        this.position.update()
+        this.rotation.update()
+        this.scaling.update()
         for (const child of this.children) {
-            child.updateMatrix()
+            child.update()
         }
     }
-    updateIfNecessary(updated = [] as Obj3[]) {
+    updateIfNecessary(updated = [] as any[]) {
         if (this.needsUpdate()) {
-            this.updateMatrix()
+            this.update()
             updated.push(this)
         } else {
             for (const child of this.children) {

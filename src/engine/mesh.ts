@@ -40,8 +40,8 @@ export default class Mesh extends Obj3 {
             }
         }
     }
-    protected updateMatrix() {
-        super.updateMatrix()
+    protected update() {
+        super.update()
         mat4.copy(this.modelMatrix, this.worldMatrix)
     }
 }
