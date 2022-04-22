@@ -132,40 +132,51 @@ export default class Renderer {
         }
     }
 
+    private cachedRenderList = {
+        list: [] as Obj3[],
+        updated: [] as (Mesh | Light | Material)[],
+        addToUpdated: (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && this.cachedRenderList.updated.push(obj),
+        meshes: [] as Mesh[],
+        lights: [] as Light[],
+    }
+    private statics = { ticks: [] as number[], frameTime: 0 }
     render(objs: Set<Obj3>, camera: Camera) {
+        const start = performance.now()
+
         if (this.width !== this.cache.size.width ||
             this.height !== this.cache.size.height ||
             !this.cache.depthTexture) {
             this.resize()
         }
 
-        const meshes = [] as Mesh[],
-            lights = [] as Light[],
-            updated = [] as (Mesh | Light | Material)[],
-            addToUpdated = (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && updated.push(obj),
-            pipelineIds = { } as Record<number, number>
-        camera.updateIfNecessary().forEach(addToUpdated)
+        const { list, updated, addToUpdated } = this.cachedRenderList
+        list.length = updated.length = 0
+        camera.updateIfNecessary(addToUpdated)
         // TODO: enable this
         // Obj3.update(objs)
         for (const obj of objs) {
-            obj.updateIfNecessary().forEach(addToUpdated)
-            obj.walk(obj => {
-                if (obj instanceof Mesh && obj.isVisible) {
-                    meshes.push(obj)
-                    pipelineIds[obj.mat.id] = this.cache.pipeline(obj.mat).pipelineId
-                    if (obj.mat.needsUpdate()) {
-                        updated.push(obj.mat)
-                        obj.mat.update()
-                    }
-                } else if (obj instanceof Light) {
-                    lights.push(obj)
-                }
-            })
+            obj.updateIfNecessary(addToUpdated)
+            obj.walk(obj => list.push(obj))
         }
 
-        const sorted = meshes.sort((a, b) => 
+        const { meshes, lights } = this.cachedRenderList
+        meshes.length = lights.length = 0
+        for (const obj of list) {
+            if (obj instanceof Mesh && obj.isVisible) {
+                meshes.push(obj)
+                if (obj.mat.needsUpdate()) {
+                    updated.push(obj.mat)
+                    obj.mat.update()
+                }
+            } else if (obj instanceof Light) {
+                lights.push(obj)
+            }
+        }
+
+        const { pipeline } = this.cache,
+            sorted = meshes.sort((a, b) => 
             (a.renderOrder - b.renderOrder) ||
-            (pipelineIds[a.mat.id] - pipelineIds[b.mat.id]) ||
+            (pipeline(a.mat).pipelineId - pipeline(b.mat).pipelineId) ||
             (a.mat.id - b.mat.id) ||
             (a.geo.id - b.geo.id))
 
@@ -192,10 +203,10 @@ export default class Renderer {
             })
 
         if (this.cachedRenderPass.objs.length !== sorted.length ||
-            this.cachedRenderPass.objs.some((item, idx) =>
-                item.mesh !== sorted[idx] &&
-                item.geo !== sorted[idx].geo &&
-                item.mat !== sorted[idx].mat)) {
+            this.cachedRenderPass.objs.some((item, idx) => {
+                const mesh = sorted[idx]
+                return item.mesh !== mesh || item.geo !== mesh.geo || item.mat !== mesh.mat
+            })) {
             this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat }))
             const encoder = this.device.createRenderBundleEncoder({
                 colorFormats: [this.cache.opts.fragmentFormat],
@@ -208,5 +219,12 @@ export default class Renderer {
 
         pass.end()
         this.device.queue.submit([cmd.finish()])
+
+        const { ticks } = this.statics
+        ticks.push(performance.now() - start)
+        if (ticks.length > 60 * 20) {
+            this.statics.frameTime = ticks.reduce((a, b) => a + b, 0) / ticks.length
+            ticks.splice(0, 60)
+        }
     }
 }

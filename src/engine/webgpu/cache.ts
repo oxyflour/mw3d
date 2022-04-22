@@ -112,15 +112,21 @@ export default class Cache {
     })
 
     private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
-    pipeline = cache((mat: Material) => {
+    pipeline = (mat: Material) => {
+        if (this.cachedPipelines[mat.id]) {
+            return this.cachedPipelines[mat.id]
+        }
         const code = mat.shaders.wgsl
         if (this.cachedPipelines[code]) {
             return this.cachedPipelines[code]
         }
-
-        const pipelineId = Object.keys(this.cachedPipelines).length,
+        return this.cachedPipelines[mat.id] = this.cachedPipelines[code] = this.pipelineFromMat(mat)
+    }
+    pipelineFromMat = cache((mat: Material) => {
+        const code = mat.shaders.wgsl,
+            pipelineId = Object.keys(this.cachedPipelines).length,
             module = this.device.createShaderModule({ code })
-        return this.cachedPipelines[code] = Object.assign(this.device.createRenderPipeline({
+        return Object.assign(this.device.createRenderPipeline({
             vertex: {
                 module,
                 entryPoint: 'vertMain',

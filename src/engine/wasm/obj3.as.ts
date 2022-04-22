@@ -2,56 +2,56 @@ import { mat4 } from '../../../deps/gl-matrix/assembly'
 
 const objs = new Array<Obj3>(0)
 class Obj3 {
-  id: i32
+  idx: i32
   disposed: bool
   parent: i32
   children: Set<i32> = new Set<i32>()
+
   needsUpdate(): bool {
     return false
   }
   update(): void {
     const ids = this.children.values()
     for (let i = 0, n = ids.length; i < n; i ++) {
-      const id = ids[i]
-      if (id >= 0) {
-        const obj = objs[id]
-        if (obj.needsUpdate()) {
-          obj.update()
-        }
+      const idx = ids[i]
+      if (idx >= 0 && idx < objs.length) {
+        objs[id].update()
       }
     }
   }
 }
 
-export function create(id: i32): i32 {
-  let i = 0
-  for (; i < objs.length; i ++) {
-    const obj = objs[i]
+function getFree() {
+  let idx = 0
+  for (let n = objs.length; idx < n; idx ++) {
+    const obj = objs[idx]
     if (obj.disposed) {
-      obj.id = id
-      obj.parent = -1
-      return i
+      return idx
     }
   }
   const obj = new Obj3()
-  obj.id = id
-  obj.parent = -1
   objs.push(obj)
-  return i
+  return idx
 }
 
-export function dispose(ptr: i32): void {
-  objs[ptr].disposed = true
+export function create(): i32 {
+  const idx = getFree()
+  obj.idx = idx
+  obj.parent = -1
+  obj.disposed = false
+  return obj.idx
 }
 
-export function removeFrom(cptr: i32, pptr: i32): void {
-  const child = objs[cptr]
-  if (child) {
-    child.parent = -1
+export function dispose(idx: i32): void {
+  objs[idx].disposed = true
+}
+
+export function removeFrom(cidx: i32, pidx: i32): void {
+  if (cidx >= 0 && cidx < objs.length) {
+    objs[cidx].parent = -1
   }
-  const parent = objs[pptr]
-  if (parent) {
-    parent.children.delete(cptr)
+  if (pidx >= 0 && pidx < objs.length) {
+    objs[pidx].children.delete(cidx)
   }
 }
 

@@ -61,16 +61,15 @@ export default class Obj3 {
             child.update()
         }
     }
-    updateIfNecessary(updated = [] as any[]) {
+    updateIfNecessary(updated: (obj: Obj3) => void) {
         if (this.needsUpdate()) {
             this.update()
-            updated.push(this)
+            updated && this.walk(updated)
         } else {
             for (const child of this.children) {
                 child.updateIfNecessary(updated)
             }
         }
-        return updated
     }
 
     private static counter = 0
@@ -78,7 +77,7 @@ export default class Obj3 {
     ptr: number
     constructor() {
         this.id = Obj3.counter ++
-        Obj3.initWasm.then(wasm => this.ptr = wasm.create(this.id))
+        Obj3.initWasm.then(wasm => this.ptr = wasm.create())
     }
     walk(func: (obj: Obj3, parent?: Obj3) => void) {
         func(this, this.parent)
