@@ -5,13 +5,13 @@ export interface Attr {
     size: number
     values: Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array |
         Uint32Array | Uint8ClampedArray | Float32Array | Float64Array
-    normalize?: boolean
     stride?: number
     offset?: number
 }
 
 export default class Geometry {
     private static counter = 1
+    readonly type = 'triangle-list' as GPUPrimitiveTopology
     readonly id: number
     readonly min = [Infinity, Infinity, Infinity]
     readonly max = [-Infinity, -Infinity, -Infinity]
@@ -37,10 +37,24 @@ export default class Geometry {
     }
 }
 
+export class LineList extends Geometry {
+    readonly type = 'line-list' as GPUPrimitiveTopology
+    constructor({ from, to }: { from: number[], to: number[] }) {
+        super([{
+            name: 'a_position',
+            size: 3,
+            values: new Float32Array(from.concat(to))
+        }, {
+            name: 'a_normal',
+            size: 3,
+            values: new Float32Array(from.concat(to))
+        }])
+    }
+}
+
 export class BoxGeometry extends Geometry {
-    constructor(opts = { } as { size?: number }) {
-        const { size = 1 } = opts,
-            attrs = [ ] as Attr[],
+    constructor({ size = 1 }: { size?: number }) {
+        const attrs = [ ] as Attr[],
             h = size / 2,
             positions = new Float32Array([
                 -h, -h,  h,

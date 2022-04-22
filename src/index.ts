@@ -3,7 +3,7 @@ import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
 import { rand } from './utils/math'
 import { BasicMaterial } from './engine/material'
-import { BoxGeometry } from './engine/geometry'
+import { BoxGeometry, LineList } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
 import { DirectionalLight } from './engine/light'
 
@@ -27,6 +27,13 @@ const cube = new Mesh(
     new BoxGeometry({ size: 200 }),
     new BasicMaterial({ color: [0.9, 0.3, 0.2] }))
 scene.add(cube)
+
+/*
+const line = new Mesh(
+    new LineList({ from: [0, 0, 0], to: [100, 100, 100] }),
+    cube.mat)
+scene.add(line)
+ */
 
 const light = new DirectionalLight({ direction: [0, 0, -1] })
 scene.add(light)

@@ -103,7 +103,7 @@ export default class Renderer {
             mat: Material,
             geo: Geometry
         for (const mesh of sorted) {
-            const cached = this.cache.pipeline(mesh.mat)
+            const cached = this.cache.pipeline(mesh.geo.type, mesh.mat)
             if (pipeline !== cached && (pipeline = cached)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
@@ -182,13 +182,12 @@ export default class Renderer {
         const { pipeline } = this.cache,
             opaqueSorted = opaque.sort((a, b) => 
                 (a.renderOrder - b.renderOrder) ||
-                (pipeline(a.mat).pipelineId - pipeline(b.mat).pipelineId) ||
+                (pipeline(a.geo.type, a.mat).pipelineId - pipeline(b.geo.type, b.mat).pipelineId) ||
                 (a.mat.id - b.mat.id) ||
                 (a.geo.id - b.geo.id)),
-            transSorted = translucent
-                .map(item => ({ item, dist: vec4.dist(item.center, camera.worldPosition) }))
-                .sort((a, b) => b.dist - a.dist)
-                .map(item => item.item),
+            transSorted = (translucent as (Mesh & { cameraDist: number })[])
+                .map(item => ((item.cameraDist = vec4.dist(item.center, camera.worldPosition)), item))
+                .sort((a, b) => b.cameraDist - a.cameraDist),
             sorted = opaqueSorted.concat(transSorted)
 
         this.updateUniforms(this.cache.bindings(camera))

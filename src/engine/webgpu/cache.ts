@@ -111,21 +111,21 @@ export default class Cache {
         return [index, group] as [number, GPUBindGroup]
     })
 
-    private cachedPipelines = { } as Record<string, GPURenderPipeline & { pipelineId: number }>
-    pipeline = (mat: Material) => {
-        if (this.cachedPipelines[mat.id]) {
-            return this.cachedPipelines[mat.id]
+    private cachedPipelines = { } as Record<string, Record<string, GPURenderPipeline & { pipelineId: number }>>
+    private cachedPrimitive = { } as Record<string, { primitive: GPUPrimitiveTopology }>
+    pipeline = (primitive: GPUPrimitiveTopology, mat: Material) => {
+        const cache = this.cachedPipelines[primitive] || (this.cachedPipelines[primitive] = { })
+        if (cache[mat.id]) {
+            return cache[mat.id]
         }
-        const code = mat.shaders.wgsl,
-            key = code + '###' + (mat.color.a < 1)
-        if (this.cachedPipelines[key]) {
-            return this.cachedPipelines[key]
+        const code = mat.shaders.wgsl + '###' + (mat.color.a < 1)
+        if (cache[code]) {
+            return cache[mat.id] = cache[code]
         }
-        return this.cachedPipelines[mat.id] =
-            this.cachedPipelines[key] =
-            this.pipelineFromMat(mat)
+        const geo = this.cachedPrimitive[primitive] || (this.cachedPrimitive[primitive] = { primitive })
+        return cache[mat.id] = cache[code] = this.buildPipeline(geo, mat)
     }
-    pipelineFromMat = cache((mat: Material) => {
+    buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology }, mat: Material) => {
         const code = mat.shaders.wgsl,
             pipelineId = Object.keys(this.cachedPipelines).length,
             module = this.device.createShaderModule({ code })
@@ -170,7 +170,7 @@ export default class Cache {
                 }]
             },
             primitive: {
-                topology: 'triangle-list',
+                topology: geo.primitive,
                 cullMode: 'back'
             },
             depthStencil: {
