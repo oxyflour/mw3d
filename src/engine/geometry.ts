@@ -1,9 +1,10 @@
+import { vec4 } from "gl-matrix"
+
 export interface Attr {
     name: string
     size: number
-    type: number
     values: Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array |
-        Uint32Array | Uint8ClampedArray | Float32Array | Float64Array | DataView | ArrayBuffer | null,
+        Uint32Array | Uint8ClampedArray | Float32Array | Float64Array
     normalize?: boolean
     stride?: number
     offset?: number
@@ -12,8 +13,27 @@ export interface Attr {
 export default class Geometry {
     private static counter = 1
     readonly id: number
+    readonly min = [Infinity, Infinity, Infinity]
+    readonly max = [-Infinity, -Infinity, -Infinity]
+    readonly center = vec4.fromValues(0, 0, 0, 0)
     constructor(readonly attrs: Attr[], readonly indices?: Uint16Array | Uint32Array) {
         this.id = Geometry.counter ++
+        const arr = attrs.find(item => item.name === 'a_position')
+        if (arr) {
+            const { min, max, center } = this,
+                { values } = arr
+            for (let i = 0, n = values.length; i < n; i += 3) {
+                const pos = [values[i], values[i + 1], values[i + 2]]
+                for (let j = 0; j < 3; j ++) {
+                    min[j] = Math.min(min[j], pos[j])
+                    max[j] = Math.max(max[j], pos[j])
+                    center[j] += pos[j]
+                }
+            }
+            for (let j = 0; j < 3; j ++) {
+                center[j] *= values.length ? 3/values.length : 0
+            }
+        }
     }
 }
 
@@ -95,12 +115,10 @@ export class BoxGeometry extends Geometry {
         attrs.push({
             name: 'a_position',
             size: 3,
-            type: WebGLRenderingContext.FLOAT,
             values: positions
         }, {
             name: 'a_normal',
             size: 3,
-            type: WebGLRenderingContext.FLOAT,
             values: normals
         })
         super(attrs, indices)

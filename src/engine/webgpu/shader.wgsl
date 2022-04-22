@@ -38,5 +38,5 @@ struct FragInput {
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
     var n = normalize(input.normal);
     var f = dot(n, uLightDirection.xyz * -1.0 * uLightDirection.w);
-  return vec4<f32>(uMaterialColor.xyz * f, 1.0);
+  return vec4<f32>(uMaterialColor.rgb * f, uMaterialColor.a);
 }

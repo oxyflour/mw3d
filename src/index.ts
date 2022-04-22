@@ -33,7 +33,7 @@ scene.add(light)
 
 for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
-        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
+        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))

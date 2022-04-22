@@ -116,11 +116,14 @@ export default class Cache {
         if (this.cachedPipelines[mat.id]) {
             return this.cachedPipelines[mat.id]
         }
-        const code = mat.shaders.wgsl
-        if (this.cachedPipelines[code]) {
-            return this.cachedPipelines[code]
+        const code = mat.shaders.wgsl,
+            key = code + '###' + (mat.color.a < 1)
+        if (this.cachedPipelines[key]) {
+            return this.cachedPipelines[key]
         }
-        return this.cachedPipelines[mat.id] = this.cachedPipelines[code] = this.pipelineFromMat(mat)
+        return this.cachedPipelines[mat.id] =
+            this.cachedPipelines[key] =
+            this.pipelineFromMat(mat)
     }
     pipelineFromMat = cache((mat: Material) => {
         const code = mat.shaders.wgsl,
@@ -151,6 +154,18 @@ export default class Cache {
                 module,
                 entryPoint: 'fragMain',
                 targets: [{
+                    blend: mat.color.a < 1 ? {
+                        color: {
+                            operation: 'add',
+                            srcFactor: 'src-alpha',
+                            dstFactor: 'one-minus-src-alpha',
+                        },
+                        alpha: {
+                            operation: 'add',
+                            srcFactor: 'one',
+                            dstFactor: 'zero',
+                        }
+                    } : undefined,
                     format: this.opts.fragmentFormat
                 }]
             },

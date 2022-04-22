@@ -8,6 +8,7 @@ import Light from '../light'
 
 import Cache, { CachedUniform } from './cache'
 import Geometry from "../geometry"
+import { vec4 } from "gl-matrix"
 
 export default class Renderer {
     private cache: Cache
@@ -136,7 +137,8 @@ export default class Renderer {
         list: [] as Obj3[],
         updated: [] as (Mesh | Light | Material)[],
         addToUpdated: (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && this.cachedRenderList.updated.push(obj),
-        meshes: [] as Mesh[],
+        opaque: [] as Mesh[],
+        translucent: [] as Mesh[],
         lights: [] as Light[],
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
@@ -159,14 +161,18 @@ export default class Renderer {
             obj.walk(obj => list.push(obj))
         }
 
-        const { meshes, lights } = this.cachedRenderList
-        meshes.length = lights.length = 0
+        const { opaque, translucent, lights } = this.cachedRenderList
+        opaque.length = translucent.length = lights.length = 0
         for (const obj of list) {
             if (obj instanceof Mesh && obj.isVisible) {
-                meshes.push(obj)
                 if (obj.mat.needsUpdate()) {
                     updated.push(obj.mat)
                     obj.mat.update()
+                }
+                if (obj.mat.color.a < 1) {
+                    translucent.push(obj)
+                } else {
+                    opaque.push(obj)
                 }
             } else if (obj instanceof Light) {
                 lights.push(obj)
@@ -174,11 +180,16 @@ export default class Renderer {
         }
 
         const { pipeline } = this.cache,
-            sorted = meshes.sort((a, b) => 
-            (a.renderOrder - b.renderOrder) ||
-            (pipeline(a.mat).pipelineId - pipeline(b.mat).pipelineId) ||
-            (a.mat.id - b.mat.id) ||
-            (a.geo.id - b.geo.id))
+            opaqueSorted = opaque.sort((a, b) => 
+                (a.renderOrder - b.renderOrder) ||
+                (pipeline(a.mat).pipelineId - pipeline(b.mat).pipelineId) ||
+                (a.mat.id - b.mat.id) ||
+                (a.geo.id - b.geo.id)),
+            transSorted = translucent
+                .map(item => ({ item, dist: vec4.dist(item.center, camera.worldPosition) }))
+                .sort((a, b) => b.dist - a.dist)
+                .map(item => item.item),
+            sorted = opaqueSorted.concat(transSorted)
 
         this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {

@@ -1,4 +1,4 @@
-import { mat4 } from 'gl-matrix'
+import { mat4, vec4 } from 'gl-matrix'
 
 import Obj3 from './obj3'
 import Geometry from './geometry'
@@ -19,14 +19,14 @@ export default class Mesh extends Obj3 {
 
     renderOrder = 0
     isVisible = true
+    readonly center = vec4.fromValues(0, 0, 0, 0)
 
     private readonly matrixUniform: Uniform
     constructor(
         public geo: Geometry,
         public mat: Material,
         public offset = 0,
-        public count = -1,
-        public mode = WebGLRenderingContext.TRIANGLES) {
+        public count = -1) {
         super()
 
         if (this.count < 0) {
@@ -43,5 +43,6 @@ export default class Mesh extends Obj3 {
     protected update() {
         super.update()
         mat4.copy(this.modelMatrix, this.worldMatrix)
+        vec4.transformMat4(this.center, this.geo.center, this.modelMatrix)
     }
 }

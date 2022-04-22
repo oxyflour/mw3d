@@ -14,6 +14,9 @@ export class Color4 extends Mutable {
     constructor(readonly data = vec4.create()) {
         super()
     }
+    get a() {
+        return this.data[3]
+    }
     set(r: number, g: number, b: number, a: number, out = this) {
         vec4.set(this.data, r, g, b, a)
         return (this.isDirty = true), out

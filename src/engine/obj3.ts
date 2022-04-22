@@ -1,6 +1,6 @@
 /// <reference path="../typing.d.ts" />
 import loader from '@assemblyscript/loader'
-import { mat4, quat, vec3 } from 'gl-matrix'
+import { mat4, quat, vec3, vec4 } from 'gl-matrix'
 import { Vec3, Quat } from '../utils/math'
 
 import wasmUrl from './wasm/obj3.as.ts'
@@ -40,6 +40,7 @@ export default class Obj3 {
         parent: null as Obj3 | null,
     }
     readonly worldMatrix = mat4.create()
+    readonly worldPosition = vec4.create()
     protected needsUpdate() {
         const cache = this.cachedStatus
         return cache.parent !== this.parent ||
@@ -54,9 +55,14 @@ export default class Obj3 {
         if (cache.parent = this.parent) {
             mat4.multiply(this.worldMatrix, cache.parent.worldMatrix, this.worldMatrix)
         }
+
         this.position.update()
         this.rotation.update()
         this.scaling.update()
+
+        vec4.set(this.worldPosition, 0, 0, 0, 0)
+        vec4.transformMat4(this.worldPosition, this.worldPosition, this.worldMatrix)
+
         for (const child of this.children) {
             child.update()
         }
