@@ -12,6 +12,7 @@ export interface Attr {
 export default class Geometry {
     private static counter = 1
     readonly type = 'triangle-list' as GPUPrimitiveTopology
+    readonly count: number
     readonly id: number
     readonly min = [Infinity, Infinity, Infinity]
     readonly max = [-Infinity, -Infinity, -Infinity]
@@ -34,21 +35,59 @@ export default class Geometry {
                 center[j] *= values.length ? 3/values.length : 0
             }
         }
+        if (indices) {
+            this.count = {
+                'triangle-list': this.indices.length,
+                'line-list': this.indices.length,
+            }[this.type] || -1
+        } else if (arr) {
+            this.count = {
+                'triangle-list': arr.values.length / 3,
+                'line-list': arr.values.length / 6,
+            }[this.type] || -1
+        }
     }
 }
 
 export class LineList extends Geometry {
-    readonly type = 'line-list' as GPUPrimitiveTopology
-    constructor({ from, to }: { from: number[], to: number[] }) {
+    readonly type: GPUPrimitiveTopology
+    constructor({ lines }: { lines: [number, number, number][][] }) {
+        const pos = [] as number[],
+            idx = [] as number[]
+        for (const pts of lines) {
+            const start = pos.length / 3
+            for (const [x, y, z] of pts) {
+                pos.push(x, y, z)
+            }
+            for (let i = 0; i < pts.length - 1; i ++) {
+                idx.push(start + i, start + i + 1)
+            }
+        }
         super([{
             name: 'a_position',
             size: 3,
-            values: new Float32Array(from.concat(to))
+            values: new Float32Array(pos)
         }, {
             name: 'a_normal',
             size: 3,
-            values: new Float32Array(from.concat(to))
-        }])
+            values: new Float32Array(pos.length)
+        }], new Uint32Array(idx))
+        this.type = 'line-list'
+    }
+}
+
+export class BoxLines extends LineList {
+    constructor({ size = 1 }: { size?: number }) {
+        const h = size / 2
+        super({
+            lines: [
+                [[-h, -h, -h], [-h,  h, -h], [-h,  h,  h], [-h, -h,  h], [-h, -h, -h],
+                 [ h, -h, -h], [ h,  h, -h], [ h,  h,  h], [ h, -h,  h], [ h, -h, -h]],
+                [[-h,  h,  h], [ h,  h,  h]],
+                [[-h, -h,  h], [ h, -h,  h]],
+                [[-h,  h, -h], [ h,  h, -h]],
+            ]
+        })
     }
 }
 

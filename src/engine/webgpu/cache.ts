@@ -125,6 +125,7 @@ export default class Cache {
         const geo = this.cachedPrimitive[primitive] || (this.cachedPrimitive[primitive] = { primitive })
         return cache[mat.id] = cache[code] = this.buildPipeline(geo, mat)
     }
+
     buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology }, mat: Material) => {
         const code = mat.shaders.wgsl,
             pipelineId = Object.keys(this.cachedPipelines).length,

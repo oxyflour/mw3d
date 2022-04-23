@@ -107,11 +107,11 @@ export default class Renderer {
             if (pipeline !== cached && (pipeline = cached)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
+                pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
                 for (const light of lights) {
                     pass.setBindGroup(...this.cache.bind(pipeline, light))
                 }
             }
-            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
             if (mat !== mesh.mat && (mat = mesh.mat)) {
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
             }
@@ -125,10 +125,12 @@ export default class Renderer {
                     pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
                 }
             }
+            pass.setBindGroup(...this.cache.bind(pipeline, mesh))
+            const count = mesh.count > 0 ? mesh.count : mesh.geo.count
             if (geo.indices) {
-                pass.drawIndexed(mesh.count, 1, mesh.offset, 0)
+                pass.drawIndexed(count, 1, mesh.offset, 0)
             } else {
-                pass.draw(mesh.count, 1, mesh.offset, 0)
+                pass.draw(count, 1, mesh.offset, 0)
             }
         }
     }
