@@ -1,9 +1,8 @@
 /// <reference path="../typing.d.ts" />
 
-import { vec4 } from 'gl-matrix'
 import { Color4 } from '../utils/math'
 import { Uniform } from './uniform'
-import wgslShader from './webgpu/shader.wgsl?raw'
+import code from './webgpu/shader.wgsl?raw'
 
 export default class Material {
     readonly color = new Color4()
@@ -20,10 +19,7 @@ export default class Material {
     private static counter = 1
     readonly id: number
     constructor(
-        readonly shaders: {
-            glsl?: { type: number, src: string }[],
-            wgsl?: string,
-        }
+        readonly shaders: { code: string }
     ) {
         this.id = Material.counter ++
     }
@@ -42,7 +38,7 @@ export interface BasicMaterialOptions {
 
 export class BasicMaterial extends Material {
     constructor(opts = { } as BasicMaterialOptions) {
-        super({ wgsl: wgslShader })
+        super({ code })
         if (opts.color) {
             let [r, g, b, a = 1] = opts.color
             if (opts.color instanceof Uint8Array) {

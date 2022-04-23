@@ -118,7 +118,7 @@ export default class Cache {
         if (cache[mat.id]) {
             return cache[mat.id]
         }
-        const code = mat.shaders.wgsl + '###' + (mat.color.a < 1)
+        const code = mat.shaders.code + '###' + (mat.color.a < 1)
         if (cache[code]) {
             return cache[mat.id] = cache[code]
         }
@@ -127,7 +127,7 @@ export default class Cache {
     }
 
     buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology }, mat: Material) => {
-        const code = mat.shaders.wgsl,
+        const { code } = mat.shaders,
             pipelineId = Object.keys(this.cachedPipelines).length,
             module = this.device.createShaderModule({ code })
         return Object.assign(this.device.createRenderPipeline({
@@ -153,7 +153,8 @@ export default class Cache {
             },
             fragment: {
                 module,
-                entryPoint: 'fragMain',
+                // TODO
+                entryPoint: geo.primitive.startsWith('triangle-') ? 'fragMainNormal' : 'fragMain',
                 targets: [{
                     blend: mat.color.a < 1 ? {
                         color: {

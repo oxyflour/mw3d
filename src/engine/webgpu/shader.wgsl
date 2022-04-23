@@ -6,17 +6,13 @@
 // vert
 
 struct VertexInput {
-  @location(0)
-  position: vec4<f32>,
-  @location(1)
-  normal: vec3<f32>,
+  @location(0) position: vec4<f32>,
+  @location(1) normal: vec3<f32>,
 }
 
 struct VertexOutput {
-  @builtin(position)
-  position : vec4<f32>,
-  @location(0)
-  normal: vec3<f32>,
+  @builtin(position) position : vec4<f32>,
+  @location(0) normal: vec3<f32>,
 };
 
 @stage(vertex)
@@ -30,13 +26,19 @@ fn vertMain(input: VertexInput) -> VertexOutput {
 // frag
 
 struct FragInput {
-  @location(0)
-  normal: vec3<f32>,
+  @location(0) normal: vec3<f32>,
 };
 
 @stage(fragment)
-fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
+fn fragMainNormal(input: FragInput) -> @location(0) vec4<f32> {
   var n = normalize(input.normal);
   var f = dot(n, uLightDirection.xyz * -1.0 * uLightDirection.w);
   return vec4<f32>(uMaterialColor.rgb * f, uMaterialColor.a);
+}
+
+@stage(fragment)
+fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
+  // FIXME: we need this line or the layout will change
+  var d = uLightDirection;
+  return uMaterialColor;
 }
