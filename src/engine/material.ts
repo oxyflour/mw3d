@@ -1,7 +1,6 @@
 /// <reference path="../typing.d.ts" />
 
 import { Color4 } from '../utils/math'
-import { Uniform } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
 export default class Material {
@@ -9,11 +8,7 @@ export default class Material {
 
     readonly bindingGroup = 3
     readonly uniforms = {
-        color: {
-            value: this.color.data,
-            binding: 0,
-            offset: 0,
-        } as Uniform
+        color: this.color.data,
     }
 
     private static counter = 1

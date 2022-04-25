@@ -39,12 +39,12 @@ export default class Geometry {
             this.count = {
                 'triangle-list': this.indices.length,
                 'line-list': this.indices.length,
-            }[this.type] || -1
+            }[this.type] || 0
         } else if (arr) {
             this.count = {
                 'triangle-list': arr.values.length / 3,
                 'line-list': arr.values.length / 6,
-            }[this.type] || -1
+            }[this.type] || 0
         }
     }
 }

@@ -1,13 +1,10 @@
 import { mat4, vec4 } from "gl-matrix"
 
-/*
-export default class Uniform {
-    constructor(readonly name: string, readonly values: mat4 | vec4) {
-    }
+export type UniformValue = mat4 | vec4
+export type UniformDefine = {
+    value: UniformValue
+    binding?: number
+    order?: number
 }
- */
-export interface Uniform {
-    value: mat4 | vec4
-    binding: number
-    offset: number
-}
+export type Uniform = UniformValue | UniformDefine
+export type Uniforms = Record<string, Uniform>

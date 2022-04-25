@@ -1,23 +1,17 @@
 import { vec4 } from 'gl-matrix'
 
 import Obj3 from './obj3'
-import { Uniform } from './uniform'
 
 export default class Light extends Obj3 {
     readonly bindingGroup = 1
     readonly lightDirection = vec4.create()
     readonly uniforms = {
-        lightDirection: {
-            value: this.lightDirection,
-            binding: 0,
-            offset: 0,
-        } as Uniform,
+        lightDirection: this.lightDirection,
     }
 }
 
 export class DirectionalLight extends Light {
     readonly direction = vec4.create()
-    readonly directionUniform: Uniform
     constructor(readonly opts: { direction?: number[], intensity?: number }) {
         super()
         const [x, y, z] = opts.direction || [0, 0, 1],

@@ -3,18 +3,14 @@ import { mat4, vec4 } from 'gl-matrix'
 import Obj3 from './obj3'
 import Geometry from './geometry'
 import Material from './material'
-import { Uniform } from './uniform'
+import { Uniform, Uniforms } from './uniform'
 
 export default class Mesh extends Obj3 {
     private modelMatrix = mat4.create()
 
     readonly bindingGroup = 2
     readonly uniforms = {
-        modelMatrix: {
-            value: this.modelMatrix,
-            binding: 0,
-            offset: 0,
-        } as Uniform
+        modelMatrix: this.modelMatrix,
     }
 
     renderOrder = 0

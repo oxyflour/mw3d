@@ -3,7 +3,7 @@ import { mat4, vec4 } from 'gl-matrix'
 
 import cache from "../../utils/cache"
 import Geometry, { Attr } from "../geometry"
-import { Uniform } from '../uniform'
+import { UniformDefine, Uniforms, UniformValue } from '../uniform'
 import Camera from "../camera"
 import Mesh from "../mesh"
 import Material from "../material"
@@ -15,7 +15,7 @@ export interface CachedAttr {
 }
 
 export interface CachedUniform {
-    uniform: Uniform
+    uniforms: { value: UniformValue, offset: number }[]
     buffer: GPUBuffer
     offset: number
     size: number
@@ -72,8 +72,7 @@ export default class Cache {
     })
 
     private cachedUniformBuffer = { buffer: null as GPUBuffer | null, size: 0, offset: 0 }
-    private makeUniformBuffer(val: mat4 | vec4) {
-        const size = val.length * 4
+    private makeUniformBuffer(size: number) {
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
             const size = this.opts.uniformBufferBatchSize || 256 * 16
             this.cachedUniformBuffer = {
@@ -90,10 +89,22 @@ export default class Cache {
         return { buffer, offset, size }
     }
     bindings = cache((obj: Camera | Mesh | Material | Light) => {
+        const buffers = [] as { size: 0, uniforms: { value: UniformValue, offset: number }[] }[],
+            sorted = Object.values(obj.uniforms as Uniforms)
+                .map(item => (item as UniformDefine).value ? item as UniformDefine : { value: item as UniformValue })
+                .map((item, order) => ({ order, binding: 0, ...item }))
+                .sort((a, b) => (a.binding - b.binding) || (a.order - b.order))
+        for (const uniform of sorted) {
+            const { binding, value } = uniform,
+                item = buffers[binding] || (buffers[binding] = { size: 0, uniforms: [] }),
+                offset = item.size
+            item.size += value.length * 4
+            item.uniforms.push({ value, offset })
+        }
         const bindings = [] as CachedUniform[]
-        for (const uniform of Object.values(obj.uniforms)) {
-            const { buffer, offset, size } = this.makeUniformBuffer(uniform.value)
-            bindings[uniform.binding] = { uniform, buffer, offset, size }
+        for (const [binding, { uniforms, size }] of buffers.entries()) {
+            const { buffer, offset } = this.makeUniformBuffer(size)
+            bindings[binding] = { uniforms, buffer, offset, size }
         }
         return bindings
     })

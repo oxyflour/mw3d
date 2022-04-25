@@ -78,15 +78,18 @@ export default class Renderer {
     }
 
     private updateUniforms(bindings: CachedUniform[]) {
-        for (const { buffer, offset, uniform: { value } } of bindings) {
-            const array = value as Float32Array
-            this.device.queue.writeBuffer(
-                buffer,
-                offset,
-                array.buffer,
-                array.byteOffset,
-                array.byteLength,
-            )
+        for (const { buffer, offset, uniforms } of bindings) {
+            const start = offset
+            for (const { value, offset } of uniforms) {
+                const array = value instanceof Float32Array ? value : new Float32Array(value)
+                this.device.queue.writeBuffer(
+                    buffer,
+                    start + offset,
+                    array.buffer,
+                    array.byteOffset,
+                    array.byteLength,
+                )
+            }
         }
     }
 

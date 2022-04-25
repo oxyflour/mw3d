@@ -1,7 +1,6 @@
 import { mat4 } from 'gl-matrix'
 
 import Obj3 from './obj3'
-import { Uniform } from './uniform'
 
 export default class Camera extends Obj3 {
     private viewProjection = mat4.create()
@@ -9,11 +8,8 @@ export default class Camera extends Obj3 {
 
     readonly bindingGroup = 0
     readonly uniforms = {
-        viewProjection: {
-            value: this.viewProjection,
-            binding: 0,
-            offset: 0,
-        } as Uniform,
+        viewProjection: this.viewProjection,
+        worldPosition: this.worldPosition,
     }
 
     protected update() {
