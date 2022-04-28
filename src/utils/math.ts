@@ -18,7 +18,7 @@ export function range(from: number, to = 0, delta = Math.sign(to - from)) {
     return ret
 }
 
-export function defineAttrs<T extends Record<string, number>>(
+export function defineArrayProp<T extends Record<string, number>>(
         dict: T,
         data = new Float32Array(Object.keys(dict).length)) {
     const obj = new Mutable() as any as T & Mutable & { data: Float32Array }

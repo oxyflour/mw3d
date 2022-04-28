@@ -1,10 +1,10 @@
 /// <reference path="../typing.d.ts" />
 
-import { defineAttrs } from '../utils/math'
+import { defineArrayProp } from '../utils/math'
 import code from './webgpu/shader.wgsl?raw'
 
 export default class Material {
-    readonly prop = defineAttrs({
+    readonly prop = defineArrayProp({
         r: 0,
         g: 1,
         b: 2,

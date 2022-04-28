@@ -26,7 +26,7 @@ scene.add(holder)
 
 const cube = new Mesh(
     new BoxGeometry({ size: 200 }),
-    new BasicMaterial({ color: [0.9, 0.3, 0.2], roughness: 0.5, metallic: 0.5 }))
+    new BasicMaterial({ color: [0.9, 0.3, 0.2], roughness: 0.2, metallic: 1 }))
 scene.add(cube)
 
 const line = new Mesh(
@@ -34,14 +34,16 @@ const line = new Mesh(
     cube.mat)
 scene.add(line)
 
-const light = new DirectionalLight({ direction: [0, 0, -1], intensity: 5 })
-light.position.set(200, 200, 200)
+const light = new DirectionalLight({ direction: [0, 0, -1], intensity: 5 }),
+    handle = new Obj3()
+light.position.set(0, 0, 300)
 light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
-scene.add(light)
+handle.add(light)
+scene.add(handle)
 
-for (let i = 0; i < 0; i ++) {
+for (let i = 0; i < 5000; i ++) {
     const { geo } = cube,
-        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
+        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
@@ -61,6 +63,7 @@ requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.01)
     holder.rotation.rotY(0.001)
+    handle.rotation.rotX(0.005)
     renderer.render(scene, camera)
 })
 
