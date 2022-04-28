@@ -15,13 +15,13 @@ class Obj3 {
     for (let i = 0, n = ids.length; i < n; i ++) {
       const idx = ids[i]
       if (idx >= 0 && idx < objs.length) {
-        objs[id].update()
+        objs[idx].update()
       }
     }
   }
 }
 
-function getFree() {
+function getFree(): i32 {
   let idx = 0
   for (let n = objs.length; idx < n; idx ++) {
     const obj = objs[idx]
@@ -36,6 +36,7 @@ function getFree() {
 
 export function create(): i32 {
   const idx = getFree()
+  const obj = new Obj3()
   obj.idx = idx
   obj.parent = -1
   obj.disposed = false

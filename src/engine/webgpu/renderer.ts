@@ -81,7 +81,10 @@ export default class Renderer {
         for (const { buffer, offset, uniforms } of bindings) {
             const start = offset
             for (const { value, offset } of uniforms) {
-                const array = value instanceof Float32Array ? value : new Float32Array(value)
+                const array =
+                    typeof value === 'number' ? new Float32Array([value]) :
+                    value instanceof Float32Array ? value :
+                    new Float32Array(value)
                 this.device.queue.writeBuffer(
                     buffer,
                     start + offset,
@@ -120,8 +123,8 @@ export default class Renderer {
             }
             if (geo !== mesh.geo && (geo = mesh.geo)) {
                 const attrs = this.cache.attrs(mesh.geo)
-                for (const [slot, attr] of attrs.list.entries()) {
-                    pass.setVertexBuffer(slot, attr.buffer)
+                for (const [slot, { buffer }] of attrs.entries()) {
+                    pass.setVertexBuffer(slot, buffer)
                 }
                 if (geo.indices) {
                     const type = geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
@@ -174,7 +177,7 @@ export default class Renderer {
                     updated.push(obj.mat)
                     obj.mat.update()
                 }
-                if (obj.mat.color.a < 1) {
+                if (obj.mat.prop.a < 1) {
                     translucent.push(obj)
                 } else {
                     opaque.push(obj)

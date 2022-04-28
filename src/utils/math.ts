@@ -10,6 +10,33 @@ export class Mutable {
     }
 }
 
+export function range(from: number, to = 0, delta = Math.sign(to - from)) {
+    const ret = [] as number[]
+    for (let i = from; delta > 0 ? (i < to) : (i > to); i += delta) {
+        ret.push(i)
+    }
+    return ret
+}
+
+export function defineAttrs<T extends Record<string, number>>(
+        dict: T,
+        data = new Float32Array(Object.keys(dict).length)) {
+    const obj = new Mutable() as any as T & Mutable & { data: Float32Array }
+    obj.data = data
+    for (const [key, idx] of Object.entries(dict)) {
+        Object.defineProperty(obj, key, {
+            get() {
+                return data[idx]
+            },
+            set(val) {
+                (obj as any).isDirty = true
+                data[idx] = val
+            }
+        })
+    }
+    return obj
+}
+
 export class Color4 extends Mutable {
     constructor(readonly data = vec4.create()) {
         super()

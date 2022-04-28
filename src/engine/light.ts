@@ -5,9 +5,10 @@ import Obj3 from './obj3'
 export default class Light extends Obj3 {
     readonly bindingGroup = 1
     readonly lightDirection = vec4.create()
-    readonly uniforms = {
-        lightDirection: this.lightDirection,
-    }
+    readonly uniforms = [
+        this.lightDirection,
+        this.worldPosition
+    ]
 }
 
 export class DirectionalLight extends Light {

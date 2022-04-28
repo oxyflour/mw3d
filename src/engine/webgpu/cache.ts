@@ -2,15 +2,14 @@
 import { mat4, vec4 } from 'gl-matrix'
 
 import cache from "../../utils/cache"
-import Geometry, { Attr } from "../geometry"
-import { UniformDefine, Uniforms, UniformValue } from '../uniform'
+import Geometry from "../geometry"
+import { Uniform, UniformDefine, UniformValue } from '../uniform'
 import Camera from "../camera"
 import Mesh from "../mesh"
 import Material from "../material"
 import Light from "../light"
 
 export interface CachedAttr {
-    attr: Attr
     buffer: GPUBuffer
 }
 
@@ -59,16 +58,15 @@ export default class Cache {
         return buffer
     }
     attrs = cache((geo: Geometry) => {
-        const map = { } as Record<string, CachedAttr>,
-            list = [] as CachedAttr[]
-        for (const attr of geo.attrs) {
-            if (!(attr.values instanceof Float32Array)) {
+        const list = [] as CachedAttr[]
+        for (const array of [geo.positions, geo.normals]) {
+            if (!(array instanceof Float32Array)) {
                 throw Error(`attr.values is not supported`)
             }
-            const buffer = this.makeAttrBuffer(attr.values)
-            list.push(map[attr.name] = { attr, buffer })
+            const buffer = this.makeAttrBuffer(array)
+            list.push({ buffer })
         }
-        return { list, map }
+        return list
     })
 
     private cachedUniformBuffer = { buffer: null as GPUBuffer | null, size: 0, offset: 0 }
@@ -90,7 +88,7 @@ export default class Cache {
     }
     bindings = cache((obj: Camera | Mesh | Material | Light) => {
         const buffers = [] as { size: 0, uniforms: { value: UniformValue, offset: number }[] }[],
-            sorted = Object.values(obj.uniforms as Uniforms)
+            sorted = (obj.uniforms as Uniform[])
                 .map(item => (item as UniformDefine).value ? item as UniformDefine : { value: item as UniformValue })
                 .map((item, order) => ({ order, binding: 0, ...item }))
                 .sort((a, b) => (a.binding - b.binding) || (a.order - b.order))
@@ -98,7 +96,7 @@ export default class Cache {
             const { binding, value } = uniform,
                 item = buffers[binding] || (buffers[binding] = { size: 0, uniforms: [] }),
                 offset = item.size
-            item.size += value.length * 4
+            item.size += typeof value === 'number' ? 4 : value.length * 4
             item.uniforms.push({ value, offset })
         }
         const bindings = [] as CachedUniform[]
@@ -129,7 +127,7 @@ export default class Cache {
         if (cache[mat.id]) {
             return cache[mat.id]
         }
-        const code = mat.shaders.code + '###' + (mat.color.a < 1)
+        const code = mat.shaders.code + '###' + (mat.prop.a < 1)
         if (cache[code]) {
             return cache[mat.id] = cache[code]
         }
@@ -165,9 +163,9 @@ export default class Cache {
             fragment: {
                 module,
                 // TODO
-                entryPoint: geo.primitive.startsWith('triangle-') ? 'fragMainNormal' : 'fragMain',
+                entryPoint: geo.primitive.startsWith('triangle-') ? 'fragMainPBR' : 'fragMain',
                 targets: [{
-                    blend: mat.color.a < 1 ? {
+                    blend: mat.prop.a < 1 ? {
                         color: {
                             operation: 'add',
                             srcFactor: 'src-alpha',

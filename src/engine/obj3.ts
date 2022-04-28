@@ -60,7 +60,7 @@ export default class Obj3 {
         this.rotation.update()
         this.scaling.update()
 
-        vec4.set(this.worldPosition, 0, 0, 0, 0)
+        vec4.set(this.worldPosition, 0, 0, 0, 1)
         vec4.transformMat4(this.worldPosition, this.worldPosition, this.worldMatrix)
 
         for (const child of this.children) {

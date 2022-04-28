@@ -3,21 +3,20 @@ import { mat4, vec4 } from 'gl-matrix'
 import Obj3 from './obj3'
 import Geometry from './geometry'
 import Material from './material'
-import { Uniform, Uniforms } from './uniform'
 
 export default class Mesh extends Obj3 {
     private modelMatrix = mat4.create()
 
     readonly bindingGroup = 2
-    readonly uniforms = {
-        modelMatrix: this.modelMatrix,
-    }
+    readonly uniforms = [
+        this.modelMatrix,
+        this.worldPosition,
+    ]
 
     renderOrder = 0
     isVisible = true
     readonly center = vec4.fromValues(0, 0, 0, 0)
 
-    private readonly matrixUniform: Uniform
     constructor(
         public geo: Geometry,
         public mat: Material,

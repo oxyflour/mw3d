@@ -1,15 +1,22 @@
 /// <reference path="../typing.d.ts" />
 
-import { Color4 } from '../utils/math'
+import { defineAttrs } from '../utils/math'
 import code from './webgpu/shader.wgsl?raw'
 
 export default class Material {
-    readonly color = new Color4()
+    readonly prop = defineAttrs({
+        r: 0,
+        g: 1,
+        b: 2,
+        a: 3,
+        roughness: 4,
+        metallic: 5
+    }, new Float32Array([1.0, 0.765557, 0.336057, 1, 0.1, 1.0]))
 
     readonly bindingGroup = 3
-    readonly uniforms = {
-        color: this.color.data,
-    }
+    readonly uniforms = [
+        this.prop.data
+    ]
 
     private static counter = 1
     readonly id: number
@@ -20,19 +27,19 @@ export default class Material {
     }
 
     needsUpdate() {
-        return this.color.needsUpdate()
+        return this.prop.needsUpdate()
     }
     update() {
-        this.color.update()
+        this.prop.update()
     }
-}
-
-export interface BasicMaterialOptions {
-    color?: Float32Array | Uint8Array | number[],
 }
 
 export class BasicMaterial extends Material {
-    constructor(opts = { } as BasicMaterialOptions) {
+    constructor(opts = { } as {
+        color?: Float32Array | Uint8Array | number[]
+        roughness?: number
+        metallic?: number
+    }) {
         super({ code })
         if (opts.color) {
             let [r, g, b, a = 1] = opts.color
@@ -42,7 +49,9 @@ export class BasicMaterial extends Material {
                 b /= 255
                 a = opts.color.length > 3 ? opts.color[3] / 255 : 1
             }
-            this.color.set(r, g, b, a)
+            Object.assign(this.prop, { r, g, b, a })
         }
+        opts.roughness && (this.prop.roughness = opts.roughness)
+        opts.metallic && (this.prop.metallic = opts.metallic)
     }
 }

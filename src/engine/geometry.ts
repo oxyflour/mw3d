@@ -1,4 +1,5 @@
 import { vec4 } from "gl-matrix"
+import { range } from "../utils/math"
 
 export interface Attr {
     name: string
@@ -11,39 +12,49 @@ export interface Attr {
 
 export default class Geometry {
     private static counter = 1
-    readonly type = 'triangle-list' as GPUPrimitiveTopology
-    readonly count: number
     readonly id: number
+
+    readonly type = 'triangle-list' as GPUPrimitiveTopology
+    readonly positions: Float32Array
+    readonly normals: Float32Array
+    readonly indices: Uint16Array | Uint32Array | undefined
+    readonly count: number
+
     readonly min = [Infinity, Infinity, Infinity]
     readonly max = [-Infinity, -Infinity, -Infinity]
     readonly center = vec4.fromValues(0, 0, 0, 0)
-    constructor(readonly attrs: Attr[], readonly indices?: Uint16Array | Uint32Array) {
+
+    constructor({ positions, normals, indices }: {
+        positions: Float32Array
+        normals?: Float32Array
+        indices?: Uint32Array | Uint16Array
+    }) {
         this.id = Geometry.counter ++
-        const arr = attrs.find(item => item.name === 'a_position')
-        if (arr) {
-            const { min, max, center } = this,
-                { values } = arr
-            for (let i = 0, n = values.length; i < n; i += 3) {
-                const pos = [values[i], values[i + 1], values[i + 2]]
-                for (let j = 0; j < 3; j ++) {
-                    min[j] = Math.min(min[j], pos[j])
-                    max[j] = Math.max(max[j], pos[j])
-                    center[j] += pos[j]
-                }
-            }
+        this.positions = positions
+        this.normals = normals
+        this.indices = indices
+
+        const { min, max, center } = this
+        for (let i = 0, n = positions.length; i < n; i += 3) {
+            const pos = [positions[i], positions[i + 1], positions[i + 2]]
             for (let j = 0; j < 3; j ++) {
-                center[j] *= values.length ? 3/values.length : 0
+                min[j] = Math.min(min[j], pos[j])
+                max[j] = Math.max(max[j], pos[j])
+                center[j] += pos[j]
             }
+        }
+        for (let j = 0; j < 3; j ++) {
+            center[j] /= positions.length ? positions.length/3 : 1
         }
         if (indices) {
             this.count = {
                 'triangle-list': this.indices.length,
                 'line-list': this.indices.length,
             }[this.type] || 0
-        } else if (arr) {
+        } else {
             this.count = {
-                'triangle-list': arr.values.length / 3,
-                'line-list': arr.values.length / 6,
+                'triangle-list': positions.length / 3,
+                'line-list': positions.length / 6,
             }[this.type] || 0
         }
     }
@@ -63,15 +74,11 @@ export class LineList extends Geometry {
                 idx.push(start + i, start + i + 1)
             }
         }
-        super([{
-            name: 'a_position',
-            size: 3,
-            values: new Float32Array(pos)
-        }, {
-            name: 'a_normal',
-            size: 3,
-            values: new Float32Array(pos.length)
-        }], new Uint32Array(idx))
+        super({
+            positions: new Float32Array(pos),
+            normals: new Float32Array(pos.length),
+            indices: new Uint32Array(idx)
+        })
         this.type = 'line-list'
     }
 }
@@ -91,10 +98,44 @@ export class BoxLines extends LineList {
     }
 }
 
+export class SphereGeometry extends Geometry {
+    constructor({
+        radius = 1,
+        phiArr = range(0, 361, 15),
+        thetaArr = range(-90, 91, 15)
+    }: { radius?: number, phiArr?: number[], thetaArr?: number[] }) {
+        const positions = [] as number[],
+            normals = [] as number[],
+            indices = [] as number[]
+        for (const phi of phiArr.map(val => val / 180 * Math.PI)) {
+            for (const theta of thetaArr.map(val => val / 180 * Math.PI)) {
+                const x = radius * Math.sin(phi) * Math.cos(theta),
+                    y = radius * Math.cos(phi) * Math.cos(theta),
+                    z = radius * Math.sin(theta)
+                positions.push(x, y, z)
+                normals.push(x, y, z)
+            }
+        }
+        for (let i = 0, phiNum = phiArr.length; i < phiNum - 1; i ++) {
+            for (let j = 0, thetaNum = thetaArr.length; j < thetaNum - 1; j ++) {
+                const n = thetaNum,
+                    s = i * n + j
+                indices.push(
+                    s, s + 1, s + 1 + n,
+                    s, s + 1 + n, s + n)
+            }
+        }
+        super({
+            positions: new Float32Array(positions),
+            normals: new Float32Array(normals),
+            indices: new Uint32Array(indices)
+        })
+    }
+}
+
 export class BoxGeometry extends Geometry {
     constructor({ size = 1 }: { size?: number }) {
-        const attrs = [ ] as Attr[],
-            h = size / 2,
+        const h = size / 2,
             positions = new Float32Array([
                 -h, -h,  h,
                 -h,  h,  h,
@@ -165,15 +206,6 @@ export class BoxGeometry extends Geometry {
                 ...[0, 2, 1,  1, 2, 3].map(i => i + 16),
                 ...[0, 1, 2,  1, 3, 2].map(i => i + 20),
             ])
-        attrs.push({
-            name: 'a_position',
-            size: 3,
-            values: positions
-        }, {
-            name: 'a_normal',
-            size: 3,
-            values: normals
-        })
-        super(attrs, indices)
+        super({ positions, normals, indices })
     }
 }

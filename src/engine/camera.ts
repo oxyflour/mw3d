@@ -7,10 +7,10 @@ export default class Camera extends Obj3 {
     private viewMatrix = mat4.create()
 
     readonly bindingGroup = 0
-    readonly uniforms = {
-        viewProjection: this.viewProjection,
-        worldPosition: this.worldPosition,
-    }
+    readonly uniforms = [
+        this.viewProjection,
+        this.worldPosition,
+    ]
 
     protected update() {
         super.update()
