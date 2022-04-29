@@ -20,10 +20,10 @@ export function range(from: number, to = 0, delta = Math.sign(to - from)) {
 
 export function defineArrayProp<T extends Record<string, number>>(
         dict: T,
-        data = new Float32Array(Object.keys(dict).length)) {
+        data = new Float32Array(Object.values(dict))) {
     const obj = new Mutable() as any as T & Mutable & { data: Float32Array }
     obj.data = data
-    for (const [key, idx] of Object.entries(dict)) {
+    for (const [idx, key] of Object.keys(dict).entries()) {
         Object.defineProperty(obj, key, {
             get() {
                 return data[idx]

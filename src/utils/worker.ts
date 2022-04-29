@@ -20,10 +20,12 @@ export function hookFunc<M extends ApiDefinition>(
     })
 }
 
-export default function wrap<T extends ApiDefinition>({ num, api, fork }: {
+export default function wrap<T extends ApiDefinition>({ num, api, fork, send, recv }: {
     api: T
     fork: () => Worker
     num: number
+    send?: (args: any[], next: (args: any[], transfer: any[]) => Promise<any>) => Promise<any>
+    recv?: (args: any[], next: (args: any[]) => Promise<any>) => Promise<any>
 }) {
     const workers = [] as Worker[],
         calls = { } as Record<string, { resolve: Function, reject: Function }>
@@ -32,7 +34,10 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork }: {
             const { id, entry, args } = msg.data as { id: string, entry: string[], args: any[] },
                 [func, obj] = entry.reduce(([api], key) => [api?.[key], api], [api as any, null])
             if (func) {
-                func.apply(obj, args)
+                const promise = recv ?
+                    recv(args, () => func.apply(obj, args)) :
+                    func.apply(obj, args)
+                promise
                     .then(ret => postMessage({ id, ret }))
                     .catch(err => postMessage({ id, err }))
             } else {
@@ -59,8 +64,15 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork }: {
         return (...args: any[]) => {
             const selected = workers[Math.floor(Math.random() * workers.length)],
                 id = Math.random().toString(16).slice(2, 10)
-            selected.postMessage({ id, entry, args })
-            return new Promise((resolve, reject) => calls[id] = { resolve, reject })
+            if (send) {
+                return send(args, (args, transfer) => {
+                    selected.postMessage({ id, entry, args }, transfer)
+                    return new Promise((resolve, reject) => calls[id] = { resolve, reject })
+                })
+            } else {
+                selected.postMessage({ id, entry, args })
+                return new Promise((resolve, reject) => calls[id] = { resolve, reject })
+            }
         }
     })
 }

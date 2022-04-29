@@ -16,9 +16,9 @@ export default class Geometry {
 
     readonly type = 'triangle-list' as GPUPrimitiveTopology
     readonly positions: Float32Array
-    readonly normals: Float32Array
-    readonly indices: Uint16Array | Uint32Array | undefined
     readonly count: number
+    readonly normals?: Float32Array
+    readonly indices?: Uint16Array | Uint32Array
 
     readonly min = [Infinity, Infinity, Infinity]
     readonly max = [-Infinity, -Infinity, -Infinity]
@@ -64,11 +64,13 @@ export class LineList extends Geometry {
     readonly type: GPUPrimitiveTopology
     constructor({ lines }: { lines: [number, number, number][][] }) {
         const pos = [] as number[],
+            norm = [] as number[],
             idx = [] as number[]
         for (const pts of lines) {
             const start = pos.length / 3
             for (const [x, y, z] of pts) {
                 pos.push(x, y, z)
+                norm.push(0, 0, 1)
             }
             for (let i = 0; i < pts.length - 1; i ++) {
                 idx.push(start + i, start + i + 1)
@@ -76,7 +78,7 @@ export class LineList extends Geometry {
         }
         super({
             positions: new Float32Array(pos),
-            normals: new Float32Array(pos.length),
+            normals: new Float32Array(norm),
             indices: new Uint32Array(idx)
         })
         this.type = 'line-list'
@@ -113,7 +115,7 @@ export class SphereGeometry extends Geometry {
                     y = radius * Math.cos(phi) * Math.cos(theta),
                     z = radius * Math.sin(theta)
                 positions.push(x, y, z)
-                normals.push(x, y, z)
+                normals.push(x / radius, y / radius, z / radius)
             }
         }
         for (let i = 0, phiNum = phiArr.length; i < phiNum - 1; i ++) {

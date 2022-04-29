@@ -16,8 +16,13 @@ export default class Renderer {
     private format: GPUTextureFormat
     private context: GPUCanvasContext
     private constructor(
-        public readonly canvas: HTMLCanvasElement,
+        public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
         private readonly opts = { } as {
+            size?: {
+                width: number
+                height: number
+            }
+            devicePixelRatio?: number
             adaptorOptions?: GPURequestAdapterOptions
             deviceDescriptor?: GPUDeviceDescriptor
             canvasConfig?: GPUCanvasConfiguration
@@ -29,7 +34,7 @@ export default class Renderer {
             throw Error(`get gpu device failed`)
         }
 
-        const context = this.context = this.canvas.getContext('webgpu')
+        const context = this.context = this.canvas.getContext('webgpu') as GPUCanvasContext
         if (!context) {
             throw Error(`get context failed`)
         }
@@ -42,13 +47,13 @@ export default class Renderer {
             depthFormat: 'depth24plus',
         })
 
-        this.width = this.canvas.clientWidth
-        this.height = this.canvas.clientHeight
+        this.width = this.opts.size?.width || (this.canvas as HTMLCanvasElement).clientWidth
+        this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight
         this.resize()
         return this
     }
-    static async create(canvas: HTMLCanvasElement) {
-        return await new Renderer(canvas).init()
+    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts?: Renderer['opts']) {
+        return await new Renderer(canvas, opts).init()
     }
 
     width: number
@@ -61,8 +66,8 @@ export default class Renderer {
             cache.depthTexture.destroy()
         }
         const size = {
-            width: this.width * devicePixelRatio,
-            height: this.height * devicePixelRatio
+            width: this.width * (this.opts.devicePixelRatio || globalThis.devicePixelRatio),
+            height: this.height * (this.opts.devicePixelRatio || globalThis.devicePixelRatio)
         }
         cache.depthTexture = this.device.createTexture({
             size,

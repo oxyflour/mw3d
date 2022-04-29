@@ -3,9 +3,11 @@ import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
 import { rand } from './utils/math'
 import { BasicMaterial } from './engine/material'
-import { BoxGeometry, BoxLines, LineList, SphereGeometry } from './engine/geometry'
+import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
 import { DirectionalLight } from './engine/light'
+import worker from './engine/worker'
+import gltf from './utils/gltf'
 
 (async function() {
 
@@ -14,10 +16,23 @@ canvas.style.width = canvas.style.height = '100%'
 document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
+const offscreen = document.createElement('canvas') as any
+await worker.init(offscreen.transferControlToOffscreen(), {
+    devicePixelRatio,
+    size: {
+        width: canvas.clientWidth,
+        height: canvas.clientHeight,
+    }
+})
+
+canvas.addEventListener('click', async () => {
+    //console.log(await worker.pick(scene, camera))
+    console.log(gltf.save(scene))
+})
+
 const renderer = await WebGPURenderer.create(canvas),
     scene = new Set<Obj3>()
 
-//
 const camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
     holder = new Obj3()
 camera.position.set(0, 0, 600)
@@ -41,7 +56,7 @@ light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
 handle.add(light)
 scene.add(handle)
 
-for (let i = 0; i < 5000; i ++) {
+for (let i = 0; i < 2; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
@@ -57,6 +72,7 @@ window.addEventListener('resize', () => {
     camera.aspect = canvas.clientWidth / canvas.clientHeight
     renderer.width = canvas.clientWidth
     renderer.height = canvas.clientHeight
+    worker.resize(canvas.clientWidth, canvas.clientHeight)
 })
 
 requestAnimationFrame(function render() {

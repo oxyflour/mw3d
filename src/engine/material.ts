@@ -5,13 +5,13 @@ import code from './webgpu/shader.wgsl?raw'
 
 export default class Material {
     readonly prop = defineArrayProp({
-        r: 0,
-        g: 1,
-        b: 2,
-        a: 3,
-        roughness: 4,
-        metallic: 5
-    }, new Float32Array([1.0, 0.765557, 0.336057, 1, 0.1, 1.0]))
+        r: 1.0,
+        g: 0.765557,
+        b: 0.336057,
+        a: 1,
+        roughness: 0.1,
+        metallic: 1.0
+    })
 
     readonly bindingGroup = 3
     readonly uniforms = [
