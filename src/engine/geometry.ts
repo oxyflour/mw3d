@@ -14,7 +14,7 @@ export default class Geometry {
     private static counter = 1
     readonly id: number
 
-    readonly type = 'triangle-list' as GPUPrimitiveTopology
+    readonly type: GPUPrimitiveTopology
     readonly positions: Float32Array
     readonly count: number
     readonly normals?: Float32Array
@@ -24,7 +24,8 @@ export default class Geometry {
     readonly max = [-Infinity, -Infinity, -Infinity]
     readonly center = vec4.fromValues(0, 0, 0, 0)
 
-    constructor({ positions, normals, indices }: {
+    constructor({ type, positions, normals, indices }: {
+        type?: GPUPrimitiveTopology
         positions: Float32Array
         normals?: Float32Array
         indices?: Uint32Array | Uint16Array
@@ -33,6 +34,7 @@ export default class Geometry {
         this.positions = positions
         this.normals = normals
         this.indices = indices
+        this.type = type || 'triangle-list'
 
         const { min, max, center } = this
         for (let i = 0, n = positions.length; i < n; i += 3) {
@@ -61,7 +63,6 @@ export default class Geometry {
 }
 
 export class LineList extends Geometry {
-    readonly type: GPUPrimitiveTopology
     constructor({ lines }: { lines: [number, number, number][][] }) {
         const pos = [] as number[],
             norm = [] as number[],
@@ -77,11 +78,11 @@ export class LineList extends Geometry {
             }
         }
         super({
+            type: 'line-list',
             positions: new Float32Array(pos),
             normals: new Float32Array(norm),
             indices: new Uint32Array(idx)
         })
-        this.type = 'line-list'
     }
 }
 

@@ -6,7 +6,7 @@ import { BasicMaterial } from './engine/material'
 import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
 import { DirectionalLight } from './engine/light'
-import worker from './engine/worker'
+import Picker from './engine/tool/picker'
 import gltf from './utils/gltf'
 
 (async function() {
@@ -15,20 +15,6 @@ const canvas = document.createElement('canvas')
 canvas.style.width = canvas.style.height = '100%'
 document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
-
-const offscreen = document.createElement('canvas') as any
-await worker.init(offscreen.transferControlToOffscreen(), {
-    devicePixelRatio,
-    size: {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
-    }
-})
-
-canvas.addEventListener('click', async () => {
-    //console.log(await worker.pick(scene, camera))
-    console.log(gltf.save(scene))
-})
 
 const renderer = await WebGPURenderer.create(canvas),
     scene = new Set<Obj3>()
@@ -72,7 +58,6 @@ window.addEventListener('resize', () => {
     camera.aspect = canvas.clientWidth / canvas.clientHeight
     renderer.width = canvas.clientWidth
     renderer.height = canvas.clientHeight
-    worker.resize(canvas.clientWidth, canvas.clientHeight)
 })
 
 requestAnimationFrame(function render() {
@@ -81,6 +66,13 @@ requestAnimationFrame(function render() {
     holder.rotation.rotY(0.001)
     handle.rotation.rotX(0.005)
     renderer.render(scene, camera)
+})
+
+const picker = await Picker.create()
+canvas.addEventListener('click', async evt => {
+    console.log(await picker.pick(scene, camera,
+        { x: evt.clientX, y: evt.clientY },
+        { width: canvas.clientWidth, height: canvas.clientHeight }))
 })
 
 })()

@@ -38,8 +38,10 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
                     recv(args, () => func.apply(obj, args)) :
                     func.apply(obj, args)
                 promise
-                    .then(ret => postMessage({ id, ret }))
-                    .catch(err => postMessage({ id, err }))
+                    .then((ret: any) => postMessage({ id, ret }, {
+                        transfer: ret instanceof ArrayBuffer ? [ret] : []
+                    }))
+                    .catch((err: any) => postMessage({ id, err }))
             } else {
                 const err = new Error(`no function at ${entry.join('.')}`)
                 postMessage({ id, err })

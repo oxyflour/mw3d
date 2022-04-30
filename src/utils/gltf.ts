@@ -2,16 +2,100 @@ import { Accessor, GlTf, MeshPrimitive } from "gltf-loader-ts/lib/gltf"
 
 import Obj3 from "../engine/obj3"
 import Mesh from "../engine/mesh"
-import Material from "../engine/material"
+import Material, { BasicMaterial } from "../engine/material"
 import { version, name } from '../../package.json'
 import { mat4 } from "gl-matrix"
 import Camera from "../engine/camera"
 import Light from "../engine/light"
+import Geometry from "../engine/geometry"
 
 export default {
-    load(gltf: GlTf) {
+    async load(gltf: GlTf) {
+        const list = [] as Set<Obj3>[],
+            { scenes = [], nodes = [], meshes = [], materials = [] } = gltf,
+            { accessors = [], bufferViews = [], buffers = [] } = gltf,
+            bufCache = { } as Record<string, Promise<ArrayBuffer>>,
+            nodeToObj = { } as Record<number, Obj3>,
+            geoCache = { } as Record<number, Geometry>,
+            matCache = { } as Record<number, Material>
+        async function getBuf(uri: string) {
+            const req = await fetch(uri)
+            return await req.arrayBuffer()
+        }
+        async function getArr(idx: number) {
+            const { bufferView, componentType } = accessors[idx],
+                { buffer } = bufferViews[bufferView],
+                { uri } = buffers[buffer],
+                buf = await (bufCache[uri] || (bufCache[uri] = getBuf(uri))),
+                constructor = {
+                    5120: Int8Array,
+                    5121: Uint8Array,
+                    5122: Int16Array,
+                    5123: Uint16Array,
+                    5125: Uint32Array,
+                    5126: Float32Array,
+                }[componentType]
+            return new constructor(buf)
+        }
+        async function getGeo({ attributes, indices, mode }: MeshPrimitive) {
+            const key = [mode, indices, attributes.POSITION, attributes.NORMAL].join('/')
+            return geoCache[key] || (geoCache[key] = new Geometry({
+                type: {
+                    [0]: 'point-list',
+                    [1]: 'line-list',
+                    [3]: 'line-strip',
+                    [4]: 'triangle-list',
+                    [5]: 'triangle-strip',
+                }[mode] as GPUPrimitiveTopology,
+                positions: await getArr(attributes.POSITION) as Float32Array,
+                normals: await getArr(attributes.NORMAL) as Float32Array,
+                indices: indices !== undefined ? await getArr(indices) as any : undefined,
+            }))
+        }
+        async function getMat({ material }: MeshPrimitive) {
+            const { pbrMetallicRoughness = { } } = materials[material] || { },
+                { baseColorFactor, metallicFactor, roughnessFactor } = pbrMetallicRoughness
+            return matCache[material] || (matCache[material] = new BasicMaterial({
+                color: baseColorFactor || [],
+                metallic: metallicFactor,
+                roughness: roughnessFactor,
+            }))
+        }
+        for (const scene of scenes) {
+            const objs = [] as Obj3[]
+            for (const idx of scene.nodes) {
+                const node = nodes[idx],
+                    mesh = nodes[node?.children?.[0]]?.mesh
+                let obj: Obj3
+                if (mesh !== undefined) {
+                    const { primitives: [prim] } = meshes[mesh] || { }
+                    obj = nodeToObj[idx] || (nodeToObj[idx] = new Mesh(await getGeo(prim), await getMat(prim)))
+                    objs.push(obj)
+                } else if (!node.mesh) {
+                    obj = nodeToObj[idx] || (nodeToObj[idx] = new Obj3())
+                    objs.push(obj)
+                }
+                if (obj && node.matrix) {
+                    mat4.getRotation(obj.rotation.data, new Float32Array(node.matrix))
+                    mat4.getScaling(obj.scaling.data, new Float32Array(node.matrix))
+                    mat4.getTranslation(obj.position.data, new Float32Array(node.matrix))
+                }
+            }
+            for (const idx of scene.nodes) {
+                const node = nodes[idx],
+                    mesh = nodes[node?.children?.[0]]?.mesh
+                if (!mesh) {
+                    for (const item of node?.children || []) {
+                        const [child, parent] = [nodeToObj[item], nodeToObj[idx]]
+                        child && parent && child.addTo(parent)
+                    }
+                }
+            }
+            list.push(new Set(objs.filter(item => !item.getParent())))
+        }
+        return list
     },
-    save(...list: Set<Obj3>[]): GlTf {
+    save(list: Set<Obj3>[]): GlTf {
         const objMap = { } as Record<number, Obj3>,
             meshMap = { } as Record<number, Mesh>,
             matMap = { } as Record<number, Material>,
@@ -112,9 +196,8 @@ export default {
             nodes.push({
                 mesh: meshToMesh[mesh.id]
             })
-            const { geo, mat } = mesh
-            if (!geoPrim[geo.id]) {
-                geoPrim[geo.id] = {
+            const { geo, mat } = mesh,
+                geometry = geoPrim[geo.id] || (geoPrim[geo.id] = {
                     attributes: {
                         POSITION: appendBuffer(geo.positions, 'VEC3'),
                         NORMAL: geo.normals && appendBuffer(geo.normals, 'VEC3'),
@@ -127,11 +210,10 @@ export default {
                         'triangle-list': 4,
                         'triangle-strip': 5,
                     } as Record<GPUPrimitiveTopology, number>)[geo.type],
-                }
-            }
+                })
             meshes.push({
                 primitives: [{
-                    ...geoPrim[geo.id],
+                    ...geometry,
                     material: matToMat[mat.id]
                 }]
             })

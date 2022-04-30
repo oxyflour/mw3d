@@ -103,7 +103,8 @@ export default class Renderer {
 
     private cachedRenderPass = {
         objs: [] as { mesh: Mesh, mat: Material, geo: Geometry }[],
-        bundles: [] as GPURenderBundle[]
+        bundles: [] as GPURenderBundle[],
+        dumbLight: new Light()
     }
     private runRenderPass(
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
@@ -119,7 +120,8 @@ export default class Renderer {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
-                for (const light of lights) {
+                // FIXME: light is required
+                for (const light of lights.length ? lights : [this.cachedRenderPass.dumbLight]) {
                     pass.setBindGroup(...this.cache.bind(pipeline, light))
                 }
             }
