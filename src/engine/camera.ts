@@ -23,23 +23,23 @@ export default class Camera extends Obj3 {
 }
 
 export class PerspectiveCamera extends Camera {
-    cachedPerspectiveParams = { fov: 30, aspect: 1, near: 1, far: 1000 }
+    readonly cachedPerspectiveParams: { fov: number, aspect: number, near: number, far: number }
     protected needsUpdate() {
-        const { fov, aspect, near, far } = this.cachedPerspectiveParams
+        const cache = this.cachedPerspectiveParams
         return super.needsUpdate()  ||
-            fov     !== this.fov    ||
-            aspect  !== this.aspect ||
-            near    !== this.near   ||
-            far     !== this.far
+            cache.fov     !== this.fov    ||
+            cache.aspect  !== this.aspect ||
+            cache.near    !== this.near   ||
+            cache.far     !== this.far
     }
     protected update() {
-        super.update()
         const { fov, aspect, near, far } = this
         mat4.perspective(this.projection, fov, aspect, near, far)
         Object.assign(this.cachedPerspectiveParams, { fov, aspect, near, far })
+        super.update()
     }
     constructor(public fov: number, public aspect: number, public near: number, public far: number) {
         super(mat4.perspective(mat4.create(), fov, aspect, near, far))
-        Object.assign(this.cachedPerspectiveParams, { fov, aspect, near, far })
+        this.cachedPerspectiveParams = { fov, aspect, near, far }
     }
 }

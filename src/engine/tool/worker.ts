@@ -20,8 +20,9 @@ async function init(canvas: OffscreenCanvas, opts?: Renderer['opts']) {
 }
 
 export interface PickMesh {
-    worldMatrix: mat4
+    id: number
     geoId: number 
+    worldMatrix: mat4
 }
 
 export interface PickGeo {
@@ -48,32 +49,32 @@ export default wrap({
             renderer.width = width
             renderer.height = height
         },
-        async renderGlTf(data: GlTf, { fov, aspect, near, far }: PerspectiveCamera) {
+        async renderGlTf(data: GlTf, { fov, aspect, near, far, worldMatrix }: PerspectiveCamera) {
             const { renderer, camera, canvas } = await cache,
                 [scene] = await gltf.load(data)
             Object.assign(camera, { fov, aspect, near, far })
+            camera.setWorldMatrix(worldMatrix)
             renderer.render(scene, camera)
             const blob = await (canvas as any).convertToBlob() as Blob
             return await blob.arrayBuffer()
         },
         async render(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
-                     { fov, aspect, near, far }: PerspectiveCamera) {
+                     { fov, aspect, near, far, worldMatrix }: PerspectiveCamera) {
             const { renderer, camera, canvas } = await cache
             Object.assign(camera, { fov, aspect, near, far })
+            camera.setWorldMatrix(worldMatrix)
             const scene = new Set<Obj3>(),
                 geoMap = { } as Record<number, Geometry>
-            for (const [idx, { worldMatrix, geoId }] of Object.values(meshes).entries()) {
+            for (const { worldMatrix, geoId, id } of Object.values(meshes)) {
                 const item = geometries[geoId]
                 if (!item) {
                     throw Error(`geometry ${geoId} is not found`)
                 }
-                const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry({ ...item })),
-                    mesh = new Mesh(geo, new BasicMaterial({ color: [idx, 0, 0] }))
-                mat4.getRotation(mesh.rotation.data, worldMatrix)
-                mat4.getScaling(mesh.scaling.data, worldMatrix)
-                mat4.getTranslation(mesh.position.data, worldMatrix)
-                mat4.copy(mesh.worldMatrix, worldMatrix)
+                const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(item)),
+                    color = new Uint8Array([id & 0xff, (id >> 8) & 0xff, (id >> 16) & 0xff]),
+                    mesh = new Mesh(geo, new BasicMaterial({ color }))
+                mesh.setWorldMatrix(worldMatrix)
                 scene.add(mesh)
             }
             renderer.render(scene, camera)

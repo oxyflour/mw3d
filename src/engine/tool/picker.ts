@@ -9,39 +9,47 @@ export default class Picker {
         size?: { width: number, height: number }
     }) {
         const offscreen = document.createElement('canvas') as any,
-            { size = { width: 100, height: 100 } } = opts || { }
-        await worker.init(offscreen.transferControlToOffscreen(), { devicePixelRatio, size })
+            canvas = document.createElement('canvas'),
+            ctx = canvas.getContext('2d'),
+            image = document.createElement('img')
+        /*
+         * debug
+         *
+        canvas.style.position = 'absolute'
+        canvas.style.top = canvas.style.left = '0'
+        document.body.appendChild(canvas)
+         */
+        await worker.init(offscreen.transferControlToOffscreen(), { devicePixelRatio })
         return {
             async pick(scene: Set<Obj3>, camera: PerspectiveCamera,
-                    pos: { x: number, y: number }, size?: { width: number, height: number }) {
-                size && await worker.resize(size.width, size.height)
+                    pos: { x: number, y: number }, size: { width: number, height: number }) {
+                await worker.resize(size.width, size.height)
                 const meshes = { } as Record<number, PickMesh>,
                     geometries = { } as Record<number, PickGeo>
                 for (const obj of scene) {
                     obj.walk(obj => {
                         if (obj instanceof Mesh) {
-                            const { worldMatrix, geo } = obj
-                            meshes[obj.id] = { worldMatrix, geoId: geo.id }
+                            const { worldMatrix, geo, id } = obj
+                            meshes[obj.id] = { worldMatrix, id, geoId: geo.id }
                             const { type, positions, normals, indices } = geo
                             geometries[geo.id] = { type, positions, normals, indices }
                         }
                     })
                 }
-                const
-                    //buffer = await worker.render(meshes, geometries, camera),
-                    buffer = await worker.renderGlTf(gltf.save([scene]), camera),
-                    image = document.createElement('img')
-                console.log(buffer)
-                image.src = URL.createObjectURL(new Blob([buffer]))
-                image.style.position = 'absolute'
-                image.style.zIndex = '1000'
-                image.style.top = '0'
-                image.style.left = '0'
-                if (size) {
-                    image.style.width = size.width + 'px'
-                    image.style.height = size.height + 'px'
-                }
-                document.body.append(image)
+                const buffer = await worker.render(meshes, geometries, camera)
+                await new Promise((resolve, reject) => {
+                    image.onload = resolve
+                    image.onerror = reject
+                    image.src = URL.createObjectURL(new Blob([buffer]))
+                })
+                canvas.width = size.width
+                canvas.height = size.height
+                ctx.drawImage(image,
+                    0, 0, image.width, image.height,
+                    0, 0, size.width, size.height)
+                const { data: [r, g, b] } = ctx.getImageData(pos.x, pos.y, 1, 1),
+                    idx = r + (g << 8) + (b << 16)
+                return idx === 0xffffff ? -1 : idx
             }
         }
     }

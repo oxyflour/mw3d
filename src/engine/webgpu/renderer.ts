@@ -47,8 +47,8 @@ export default class Renderer {
             depthFormat: 'depth24plus',
         })
 
-        this.width = this.opts.size?.width || (this.canvas as HTMLCanvasElement).clientWidth
-        this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight
+        this.width = this.opts.size?.width || (this.canvas as HTMLCanvasElement).clientWidth || 100
+        this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight || 100
         this.resize()
         return this
     }

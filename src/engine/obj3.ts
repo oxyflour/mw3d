@@ -41,6 +41,18 @@ export default class Obj3 {
     }
     readonly worldMatrix = mat4.create()
     readonly worldPosition = vec4.create()
+    setWorldMatrix(mat: mat4) {
+        mat4.copy(this.worldMatrix, mat)
+        if (this.parent) {
+            this.parent.updateIfNecessary()
+            const inv = mat4.create()
+            mat4.invert(inv, this.parent.worldMatrix)
+            mat4.multiply(mat, inv, mat)
+        }
+        mat4.getRotation(this.rotation.data, mat)
+        mat4.getTranslation(this.position.data, mat)
+        mat4.getScaling(this.scaling.data, mat)
+    }
     protected needsUpdate() {
         const cache = this.cachedStatus
         return cache.parent !== this.parent ||
@@ -67,7 +79,7 @@ export default class Obj3 {
             child.update()
         }
     }
-    updateIfNecessary(updated: (obj: Obj3) => void) {
+    updateIfNecessary(updated?: (obj: Obj3) => void) {
         if (this.needsUpdate()) {
             this.update()
             updated && this.walk(updated)

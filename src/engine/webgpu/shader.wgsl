@@ -102,7 +102,10 @@ fn fragMainPBR(input: FragInput) -> @location(0) vec4<f32> {
   var L = normalize(light.worldPosition.xyz - input.worldPosition.xyz);
   L0 = L0 + BRDF(L, V, N, material.metallic, material.roughness);
   // endfor
-  var C = material.color.rgb * (0.2 + dot(N, normalize(light.direction.xyz)) * 0.4) + L0 * 0.4;
+  var C = material.color.rgb;
+  if (length(light.direction.xyz) > 0.0) {
+    C = material.color.rgb * (0.2 + dot(N, normalize(light.direction.xyz)) * 0.4) + L0 * 0.4;
+  }
   return vec4<f32>(C, material.color.a);
 }
 

@@ -7,7 +7,6 @@ import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
 import { DirectionalLight } from './engine/light'
 import Picker from './engine/tool/picker'
-import gltf from './utils/gltf'
 
 (async function() {
 
@@ -42,7 +41,7 @@ light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
 handle.add(light)
 scene.add(handle)
 
-for (let i = 0; i < 2; i ++) {
+for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
@@ -70,9 +69,11 @@ requestAnimationFrame(function render() {
 
 const picker = await Picker.create()
 canvas.addEventListener('click', async evt => {
+    console.time('pick')
     console.log(await picker.pick(scene, camera,
         { x: evt.clientX, y: evt.clientY },
         { width: canvas.clientWidth, height: canvas.clientHeight }))
+    console.timeEnd('pick')
 })
 
 })()
