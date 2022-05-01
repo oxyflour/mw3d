@@ -1,12 +1,10 @@
-import { mat4 } from "gl-matrix"
-import { GlTf } from "gltf-loader-ts/lib/gltf"
+import { mat4, vec3 } from "gl-matrix"
 
 import wrap from "../../utils/worker"
 import Renderer from "../webgpu/renderer"
 import Obj3 from "../obj3"
 import Geometry from "../geometry"
 import Mesh from "../mesh"
-import gltf from "../../utils/gltf"
 import Material, { BasicMaterial } from "../material"
 import { PerspectiveCamera } from "../camera"
 import { DirectionalLight } from "../light"
@@ -16,9 +14,8 @@ async function init(canvas: OffscreenCanvas, pixels: OffscreenCanvas, opts?: Ren
     const renderer = await Renderer.create(canvas, opts),
         camera = new PerspectiveCamera(45, 1, 1, 100),
         light = new DirectionalLight({ direction: [0, 0, 1], intensity: 1 }),
-        transfer = pixels as HTMLCanvasElement,
-        ctx = transfer.getContext('2d')
-    return { renderer, camera, light, canvas, ctx, transfer }
+        transfer = pixels as HTMLCanvasElement
+    return { renderer, camera, light, canvas, transfer }
 }
 
 export interface PickMesh {
@@ -62,7 +59,7 @@ export default wrap({
                      { fov, aspect, near, far, worldMatrix }: PerspectiveCamera,
                      { x, y }: { x: number, y: number }) {
             scene.clear()
-            const { renderer, camera, canvas, ctx, transfer } = await cache
+            const { renderer, camera, canvas, transfer } = await cache
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
             for (const { worldMatrix, geoId, id } of Object.values(meshes)) {
@@ -72,7 +69,7 @@ export default wrap({
                 }
                 const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(item)),
                     mat = matMap[id] || (matMap[id] = new BasicMaterial({
-                        color: new Uint8Array([id & 0xff, (id >> 8) & 0xff, (id >> 16) & 0xff]),
+                        color: new Uint8Array([id, id >> 8, id >> 16]),
                     })),
                     key = geoId + ':' + id,
                     mesh = meshMap[key] || (meshMap[key] = new Mesh(geo, mat))
@@ -80,7 +77,8 @@ export default wrap({
                 scene.add(mesh)
             }
             renderer.render(scene, camera)
-            const image = (canvas as any).transferToImageBitmap() as ImageBitmap
+            const ctx = transfer.getContext('2d'),
+                image = (canvas as any).transferToImageBitmap() as ImageBitmap
             transfer.width = image.width
             transfer.height = image.height
             ctx.drawImage(image,

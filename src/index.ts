@@ -41,7 +41,7 @@ light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
 handle.add(light)
 scene.add(handle)
 
-for (let i = 0; i < 1; i ++) {
+for (let i = 0; i < 5; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)

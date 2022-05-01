@@ -1,11 +1,11 @@
 import { vec3, quat, vec4 } from 'gl-matrix'
 
 export class Mutable {
-    protected isDirty = false
-    needsUpdate() {
+    protected isDirty = true
+    protected needsUpdate() {
         return this.isDirty
     }
-    update() {
+    protected update() {
         this.isDirty = false
     }
 }

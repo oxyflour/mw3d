@@ -1,12 +1,12 @@
 /// <reference path="../typing.d.ts" />
 import loader from '@assemblyscript/loader'
-import { mat4, quat, vec3, vec4 } from 'gl-matrix'
-import { Vec3, Quat } from '../utils/math'
+import { mat4, vec3, vec4 } from 'gl-matrix'
+import { Vec3, Quat, Mutable } from '../utils/math'
 
 import wasmUrl from './wasm/obj3.as.ts'
 type Obj3WasmExp = typeof import('./wasm/obj3.as')
 
-export default class Obj3 {
+export default class Obj3 extends Mutable {
     readonly position = new Vec3()
     readonly rotation = new Quat()
     readonly scaling = new Vec3(vec3.fromValues(1, 1, 1))
@@ -52,15 +52,22 @@ export default class Obj3 {
         mat4.getRotation(this.rotation.data, mat)
         mat4.getTranslation(this.position.data, mat)
         mat4.getScaling(this.scaling.data, mat)
+        this.isDirty = true
     }
     protected needsUpdate() {
         const cache = this.cachedStatus
-        return cache.parent !== this.parent ||
+        return this.isDirty ||
+            cache.parent !== this.parent ||
+            // @ts-ignore
             this.position.needsUpdate() ||
+            // @ts-ignore
             this.rotation.needsUpdate() ||
+            // @ts-ignore
             this.scaling.needsUpdate()
     }
     protected update() {
+        super.update()
+
         const cache = this.cachedStatus
         mat4.fromRotationTranslationScale(
             this.worldMatrix, this.rotation.data, this.position.data, this.scaling.data)
@@ -68,8 +75,11 @@ export default class Obj3 {
             mat4.multiply(this.worldMatrix, cache.parent.worldMatrix, this.worldMatrix)
         }
 
+        // @ts-ignore
         this.position.update()
+        // @ts-ignore
         this.rotation.update()
+        // @ts-ignore
         this.scaling.update()
 
         vec4.set(this.worldPosition, 0, 0, 0, 1)
@@ -94,6 +104,7 @@ export default class Obj3 {
     readonly id: number
     ptr: number
     constructor() {
+        super()
         this.id = Obj3.counter ++
         Obj3.initWasm.then(wasm => this.ptr = wasm.create())
     }

@@ -151,7 +151,9 @@ export default class Renderer {
     private cachedRenderList = {
         list: [] as Obj3[],
         updated: [] as (Mesh | Light | Material)[],
-        addToUpdated: (obj: Obj3) => (obj instanceof Mesh || obj instanceof Light) && this.cachedRenderList.updated.push(obj),
+        addToUpdated: (obj: Obj3 | Material) =>
+            (obj instanceof Mesh || obj instanceof Light || obj instanceof Material) &&
+            this.cachedRenderList.updated.push(obj),
         opaque: [] as Mesh[],
         translucent: [] as Mesh[],
         lights: [] as Light[],
@@ -180,10 +182,7 @@ export default class Renderer {
         opaque.length = translucent.length = lights.length = 0
         for (const obj of list) {
             if (obj instanceof Mesh && obj.isVisible) {
-                if (obj.mat.needsUpdate()) {
-                    updated.push(obj.mat)
-                    obj.mat.update()
-                }
+                obj.mat.updateIfNecessary(addToUpdated)
                 if (obj.mat.prop.a < 1) {
                     translucent.push(obj)
                 } else {

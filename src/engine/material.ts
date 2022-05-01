@@ -1,9 +1,9 @@
 /// <reference path="../typing.d.ts" />
 
-import { defineArrayProp } from '../utils/math'
+import { defineArrayProp, Mutable } from '../utils/math'
 import code from './webgpu/shader.wgsl?raw'
 
-export default class Material {
+export default class Material extends Mutable {
     readonly prop = defineArrayProp({
         r: 1.0,
         g: 0.765557,
@@ -23,13 +23,24 @@ export default class Material {
     constructor(
         readonly shaders: { code: string }
     ) {
+        super()
         this.id = Material.counter ++
     }
 
-    needsUpdate() {
-        return this.prop.needsUpdate()
+    updateIfNecessary(updated?: (obj: Material) => void) {
+        if (this.needsUpdate()) {
+            this.update()
+            updated?.(this)
+        }
     }
-    update() {
+    protected needsUpdate() {
+        return this.isDirty ||
+            // @ts-ignore
+            this.prop.needsUpdate()
+    }
+    protected update() {
+        super.update()
+        // @ts-ignore
         this.prop.update()
     }
 }
