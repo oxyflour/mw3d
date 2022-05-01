@@ -2,7 +2,7 @@ import { mat4, vec3 } from "gl-matrix"
 
 import wrap from "../../utils/worker"
 import Renderer from "../webgpu/renderer"
-import Obj3 from "../obj3"
+import Obj3, { Scene } from "../obj3"
 import Geometry from "../geometry"
 import Mesh from "../mesh"
 import Material, { BasicMaterial } from "../material"
@@ -29,7 +29,7 @@ export interface PickGeo {
     indices?: Uint16Array | Uint32Array
 }
 
-const scene = new Set<Obj3>(),
+const scene = new Scene(),
     // TODO: LRU
     geoMap = { } as Record<number, Geometry>,
     matMap = { } as Record<number, Material>,

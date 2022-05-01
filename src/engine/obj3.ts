@@ -6,6 +6,14 @@ import { Vec3, Quat, Mutable } from '../utils/math'
 import wasmUrl from './wasm/obj3.as.ts'
 type Obj3WasmExp = typeof import('./wasm/obj3.as')
 
+export class Scene extends Set<Obj3> {
+    walk(func: (obj: Obj3, parent?: Obj3) => void) {
+        for (const obj of this) {
+            obj.walk(func)
+        }
+    }
+}
+
 export default class Obj3 extends Mutable {
     readonly position = new Vec3()
     readonly rotation = new Quat()

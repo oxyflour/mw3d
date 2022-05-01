@@ -14,9 +14,13 @@ export default class Picker {
             offscreen.transferControlToOffscreen(),
             transfer.transferControlToOffscreen())
         return {
-            async pick(scene: Set<Obj3>, camera: PerspectiveCamera,
-                    pos: { x: number, y: number }, size: { width: number, height: number }) {
-                await worker.resize(size.width, size.height)
+            async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
+                width: number
+                height: number
+                x: number
+                y: number
+            }) {
+                await worker.resize(opts.width, opts.height)
                 const meshes = { } as Record<number, PickMesh>,
                     geometries = { } as Record<number, PickGeo>
                 for (const obj of scene) {
@@ -29,7 +33,7 @@ export default class Picker {
                         }
                     })
                 }
-                return await worker.render(meshes, geometries, camera, pos)
+                return await worker.render(meshes, geometries, camera, opts)
             }
         }
     }

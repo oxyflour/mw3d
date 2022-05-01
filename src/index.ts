@@ -1,9 +1,9 @@
 import WebGPURenderer from './engine/webgpu/renderer'
-import Obj3 from './engine/obj3'
+import Obj3, { Scene } from './engine/obj3'
 import Mesh from './engine/mesh'
 import Light from './engine/light'
 import { rand } from './utils/math'
-import { BasicMaterial } from './engine/material'
+import Material, { BasicMaterial } from './engine/material'
 import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
 import Picker from './engine/tool/picker'
@@ -16,7 +16,7 @@ document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
 const renderer = await WebGPURenderer.create(canvas),
-    scene = new Set<Obj3>()
+    scene = new Scene()
 
 const camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
     holder = new Obj3()
@@ -67,15 +67,10 @@ requestAnimationFrame(function render() {
     renderer.render(scene, camera)
 })
 
-const picker = await Picker.create()
-canvas.addEventListener('click', async evt => {
-    console.time('pick')
-    const { buffer, id } = await picker.pick(scene, camera,
-        { x: evt.clientX, y: evt.clientY },
-        { width: canvas.clientWidth, height: canvas.clientHeight })
-    console.timeEnd('pick')
-    console.log('got', id)
-
+const picker = await Picker.create(),
+    seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1 }),
+    oldMats = { } as Record<number, Material>
+async function showBuffer(buffer: ArrayBuffer) {
     const image = document.createElement('img')
     await new Promise((resolve, reject) => {
         image.onload = resolve
@@ -86,6 +81,25 @@ canvas.addEventListener('click', async evt => {
     image.style.top = image.style.left = '0'
     image.addEventListener('click', () => document.body.removeChild(image))
     document.body.appendChild(image)
+}
+canvas.addEventListener('click', async evt => {
+    const { id } = await picker.pick(scene, camera, {
+        width: canvas.clientWidth,
+        height: canvas.clientHeight,
+        x: evt.clientX,
+        y: evt.clientY,
+    })
+    scene.walk(obj => {
+        if (obj instanceof Mesh && obj.id === id) {
+            if (oldMats[id]) {
+                obj.mat = oldMats[id]
+                delete oldMats[id]
+            } else {
+                oldMats[id] = obj.mat
+                obj.mat = seleted
+            }
+        }
+    })
 })
 
 })()

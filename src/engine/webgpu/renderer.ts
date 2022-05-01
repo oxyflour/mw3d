@@ -2,7 +2,7 @@
 
 import Camera from "../camera"
 import Material from "../material"
-import Obj3 from "../obj3"
+import Obj3, { Scene } from "../obj3"
 import Mesh from '../mesh'
 import Light from '../light'
 
@@ -182,7 +182,7 @@ export default class Renderer {
         lights: [] as Light[],
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
-    render(objs: Set<Obj3>, camera: Camera) {
+    render(scene: Scene, camera: Camera) {
         const start = performance.now()
         if (this.width * this.devicePixelRatio !== this.renderSize.width ||
             this.height * this.devicePixelRatio !== this.renderSize.height) {
@@ -194,7 +194,7 @@ export default class Renderer {
         camera.updateIfNecessary(addToUpdated)
         // TODO: enable this
         // Obj3.update(objs)
-        for (const obj of objs) {
+        for (const obj of scene) {
             obj.updateIfNecessary(addToUpdated)
             obj.walk(obj => list.push(obj))
         }
