@@ -18,10 +18,7 @@ export default class Renderer {
     private constructor(
         public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
         private readonly opts = { } as {
-            size?: {
-                width: number
-                height: number
-            }
+            size?: { width: number, height: number }
             devicePixelRatio?: number
             adaptorOptions?: GPURequestAdapterOptions
             deviceDescriptor?: GPUDeviceDescriptor
@@ -40,42 +37,47 @@ export default class Renderer {
         }
 
         const device = this.device = this.opts.canvasConfig?.device ||
-                await adaptor.requestDevice(this.opts.deviceDescriptor),
-            format = this.format = this.opts.canvasConfig?.format || this.context.getPreferredFormat(adaptor)
-        this.cache = new Cache(device, {
-            fragmentFormat: format,
-            depthFormat: 'depth24plus',
-        })
-
+                await adaptor.requestDevice(this.opts.deviceDescriptor)
+        this.format = this.opts.canvasConfig?.format || this.context.getPreferredFormat(adaptor)
         this.width = this.opts.size?.width || (this.canvas as HTMLCanvasElement).clientWidth || 100
         this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight || 100
-        this.resize()
+
+        this.renderSize = {
+            width: this.width * this.devicePixelRatio,
+            height: this.height * this.devicePixelRatio,
+        }
+        this.cache = new Cache(device, {
+            size: this.renderSize,
+            fragmentFormat: this.format,
+            depthFormat: 'depth24plus',
+        })
+        this.context.configure({
+            size: this.renderSize,
+            format: this.format,
+            device: this.device,
+            compositingAlphaMode: 'premultiplied',
+        })
+
         return this
     }
     static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts?: Renderer['opts']) {
         return await new Renderer(canvas, opts).init()
     }
 
+    private renderSize: { width: number, height: number }
+    get devicePixelRatio() {
+        return this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1
+    }
     width: number
     height: number
     private resize() {
-        const { cache } = this
-        cache.size.width = this.width
-        cache.size.height = this.height
-        if (cache.depthTexture) {
-            cache.depthTexture.destroy()
+        this.renderSize = {
+            width: this.width * this.devicePixelRatio,
+            height: this.height * this.devicePixelRatio,
         }
-        const size = {
-            width: this.width * (this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1),
-            height: this.height * (this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1)
-        }
-        cache.depthTexture = this.device.createTexture({
-            size,
-            format: cache.opts.depthFormat,
-            usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        })
+        this.cache.resize(this.renderSize)
         this.context.configure({
-            size,
+            size: this.renderSize,
             format: this.format,
             device: this.device,
             compositingAlphaMode: 'premultiplied',
@@ -161,10 +163,8 @@ export default class Renderer {
     private statics = { ticks: [] as number[], frameTime: 0 }
     render(objs: Set<Obj3>, camera: Camera) {
         const start = performance.now()
-
-        if (this.width !== this.cache.size.width ||
-            this.height !== this.cache.size.height ||
-            !this.cache.depthTexture) {
+        if (this.width * this.devicePixelRatio !== this.renderSize.width ||
+            this.height * this.devicePixelRatio !== this.renderSize.height) {
             this.resize()
         }
 

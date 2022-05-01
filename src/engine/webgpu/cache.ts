@@ -28,13 +28,30 @@ export interface CachedBind {
 }
 
 export default class Cache {
-    size = { width: 0, height: 0 }
-    depthTexture: GPUTexture
+    private cachedDepthTexture: GPUTexture
+    get depthTexture() {
+        return this.cachedDepthTexture
+    }
     constructor(readonly device: GPUDevice, readonly opts: {
+        size: { width: number, height: number }
         fragmentFormat: GPUTextureFormat
         depthFormat: GPUTextureFormat
         uniformBufferBatchSize?: number
-    }) { }
+    }) {
+        this.cachedDepthTexture = this.device.createTexture({
+            size: opts.size,
+            format: this.opts.depthFormat,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        })
+    }
+    resize(size: { width: number, height: number }) {
+        this.cachedDepthTexture.destroy()
+        this.cachedDepthTexture = this.device.createTexture({
+            size,
+            format: this.opts.depthFormat,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        })
+    }
     idx = cache((val: Uint32Array | Uint16Array) => {
         const buffer = this.device.createBuffer({
             size: val.length * (val instanceof Uint32Array ? 4 : 2),
