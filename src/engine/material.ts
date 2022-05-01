@@ -3,6 +3,7 @@
 import { defineArrayProp, Mutable } from '../utils/math'
 import code from './webgpu/shader.wgsl?raw'
 
+export type ProgramEntry = { [k in GPUPrimitiveTopology]: string }
 export default class Material extends Mutable {
     readonly prop = defineArrayProp({
         r: 1.0,
@@ -20,7 +21,10 @@ export default class Material extends Mutable {
 
     private static counter = 1
     readonly id: number
-    constructor(readonly shaders: { code: string, entry: { vert: string, frag: string } }) {
+    constructor(readonly shaders: {
+        code: string
+        entry: { vert: string | ProgramEntry, frag: string | ProgramEntry }
+    }) {
         super()
         this.id = Material.counter ++
     }
@@ -44,13 +48,24 @@ export default class Material extends Mutable {
 }
 
 export class BasicMaterial extends Material {
+    static defaultEntry = {
+        vert: 'vertMain',
+        frag: {
+            'point-list': 'fragMainColor',
+            'line-list': 'fragMainColor',
+            'line-strip': 'fragMainColor',
+            'triangle-list': 'fragMain',
+            'triangle-strip': 'fragMain',
+        } as ProgramEntry
+    }
     constructor(opts = { } as {
-        entry?: { vert?: string, frag?: string },
+        entry?: { vert?: string | ProgramEntry, frag?: string | ProgramEntry },
         color?: Float32Array | Uint8Array | number[]
         roughness?: number
         metallic?: number
     }) {
-        const { vert = 'vertMain', frag = 'fragMain' } = opts.entry || { }
+        const entry = BasicMaterial.defaultEntry,
+            { vert = entry.vert, frag = entry.frag } = opts.entry || { }
         super({ code, entry: { vert, frag } })
         if (opts.color) {
             let [r, g, b, a = 1] = opts.color

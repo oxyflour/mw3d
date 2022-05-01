@@ -153,13 +153,13 @@ export default class Cache {
     }
 
     buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology }, mat: Material) => {
-        const { code } = mat.shaders,
+        const { code, entry: { vert, frag } } = mat.shaders,
             pipelineId = Object.keys(this.cachedPipelines).length,
             module = this.device.createShaderModule({ code })
         return Object.assign(this.device.createRenderPipeline({
             vertex: {
                 module,
-                entryPoint: mat.shaders.entry.vert,
+                entryPoint: typeof vert === 'string' ? vert : vert[geo.primitive],
                 // TODO
                 buffers: [{
                     arrayStride: 4 * 3,
@@ -179,9 +179,7 @@ export default class Cache {
             },
             fragment: {
                 module,
-                entryPoint: geo.primitive.startsWith('line-') ?
-                    'fragMainColor' :
-                    mat.shaders.entry.frag,
+                entryPoint: typeof frag === 'string' ? frag : frag[geo.primitive],
                 targets: [{
                     blend: mat.prop.a < 1 ? {
                         color: {
