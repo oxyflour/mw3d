@@ -1,6 +1,6 @@
 /// <reference path="../typing.d.ts" />
 import loader from '@assemblyscript/loader'
-import { mat4, vec3, vec4 } from 'gl-matrix'
+import { mat4, quat, vec3, vec4 } from 'gl-matrix'
 import { Vec3, Quat, Mutable } from '../utils/math'
 
 import wasmUrl from './wasm/obj3.as.ts'
@@ -49,9 +49,12 @@ export default class Obj3 extends Mutable {
             mat4.invert(inv, this.parent.worldMatrix)
             mat4.multiply(mat, inv, mat)
         }
+        // https://github.com/toji/gl-matrix/issues/245#issuecomment-471719314
+        mat4.getScaling(this.scaling.data, mat)
+        const [x, y, z] = this.scaling.data
+        mat4.scale(mat, mat, [1/x, 1/y, 1/z])
         mat4.getRotation(this.rotation.data, mat)
         mat4.getTranslation(this.position.data, mat)
-        mat4.getScaling(this.scaling.data, mat)
         this.isDirty = true
     }
     protected needsUpdate() {
