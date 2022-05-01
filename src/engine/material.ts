@@ -20,9 +20,7 @@ export default class Material extends Mutable {
 
     private static counter = 1
     readonly id: number
-    constructor(
-        readonly shaders: { code: string }
-    ) {
+    constructor(readonly shaders: { code: string, entry: { vert: string, frag: string } }) {
         super()
         this.id = Material.counter ++
     }
@@ -47,11 +45,13 @@ export default class Material extends Mutable {
 
 export class BasicMaterial extends Material {
     constructor(opts = { } as {
+        entry?: { vert?: string, frag?: string },
         color?: Float32Array | Uint8Array | number[]
         roughness?: number
         metallic?: number
     }) {
-        super({ code })
+        const { vert = 'vertMain', frag = 'fragMain' } = opts.entry || { }
+        super({ code, entry: { vert, frag } })
         if (opts.color) {
             let [r, g, b, a = 1] = opts.color
             if (opts.color instanceof Uint8Array) {

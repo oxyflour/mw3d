@@ -69,12 +69,16 @@ export default wrap({
                 }
                 const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(item)),
                     mat = matMap[id] || (matMap[id] = new BasicMaterial({
-                        color: new Uint8Array([id, id >> 8, id >> 16]),
+                        entry: { frag: 'fragMainColor' },
+                        color: new Uint8Array([id, id >> 8]),
                     })),
                     key = geoId + ':' + id,
                     mesh = meshMap[key] || (meshMap[key] = new Mesh(geo, mat))
                 mesh.setWorldMatrix(worldMatrix)
                 scene.add(mesh)
+            }
+            if (scene.size >= 0xffff) {
+                throw Error(`picker support ${0xffff} meshes at max`)
             }
             renderer.render(scene, camera)
             const ctx = transfer.getContext('2d'),
@@ -84,11 +88,13 @@ export default wrap({
             ctx.drawImage(image,
                 0, 0, image.width, image.height,
                 0, 0, renderer.width, renderer.height)
-            const { data: [r, g, b] } = ctx.getImageData(x, y, 1, 1),
-                id = r + (g << 8) + (b << 16),
+            const { data: [r, g, b, a] } = ctx.getImageData(x, y, 1, 1),
+                val = r + (g << 8),
+                id = val === 0xffff ? -1 : val,
+                distance = (b + (a << 8)) / 0x100 * (camera.far - camera.near) + camera.near,
                 blob = await (transfer as any).convertToBlob() as Blob,
                 buffer = await blob.arrayBuffer()
-            return { buffer, id }
+            return { id, buffer, distance }
         }
     }
 })

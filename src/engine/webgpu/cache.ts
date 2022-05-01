@@ -103,9 +103,9 @@ export default class Cache {
         this.cachedUniformBuffer.offset = Math.ceil((offset + size) / 256) * 256
         return { buffer, offset, size }
     }
-    bindings = cache((obj: Camera | Mesh | Material | Light) => {
+    bindings = cache((obj: { uniforms: Uniform[] }) => {
         const buffers = [] as { size: 0, uniforms: { value: UniformValue, offset: number }[] }[],
-            sorted = (obj.uniforms as Uniform[])
+            sorted = obj.uniforms
                 .map(item => (item as UniformDefine).value ? item as UniformDefine : { value: item as UniformValue })
                 .map((item, order) => ({ order, binding: 0, ...item }))
                 .sort((a, b) => (a.binding - b.binding) || (a.order - b.order))
@@ -124,7 +124,7 @@ export default class Cache {
         return bindings
     })
 
-    bind = cache((pipeline: GPURenderPipeline, obj: Camera | Mesh | Material | Light) => {
+    bind = cache((pipeline: GPURenderPipeline, obj: { uniforms: Uniform[], bindingGroup: number }) => {
         const bindings = this.bindings(obj),
             index = obj.bindingGroup,
             group = this.device.createBindGroup({
@@ -144,7 +144,7 @@ export default class Cache {
         if (cache[mat.id]) {
             return cache[mat.id]
         }
-        const code = mat.shaders.code + '###' + (mat.prop.a < 1)
+        const code = [mat.shaders.code, mat.prop.a < 1, mat.shaders.entry.frag, mat.shaders.entry.vert].join('###')
         if (cache[code]) {
             return cache[mat.id] = cache[code]
         }
@@ -159,7 +159,7 @@ export default class Cache {
         return Object.assign(this.device.createRenderPipeline({
             vertex: {
                 module,
-                entryPoint: 'vertMain',
+                entryPoint: mat.shaders.entry.vert,
                 // TODO
                 buffers: [{
                     arrayStride: 4 * 3,
@@ -179,8 +179,9 @@ export default class Cache {
             },
             fragment: {
                 module,
-                // TODO
-                entryPoint: geo.primitive.startsWith('triangle-') ? 'fragMainPBR' : 'fragMain',
+                entryPoint: geo.primitive.startsWith('line-') ?
+                    'fragMainColor' :
+                    mat.shaders.entry.frag,
                 targets: [{
                     blend: mat.prop.a < 1 ? {
                         color: {

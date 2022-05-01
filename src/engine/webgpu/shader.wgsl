@@ -23,6 +23,9 @@ struct MaterialUniforms {
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
 
+@group(10) @binding(0) var depthSampler: sampler;
+@group(10) @binding(1) var depthTexture: texture_2d<f32>;
+
 // vert
 
 struct VertexInput {
@@ -48,6 +51,7 @@ fn vertMain(input: VertexInput) -> VertexOutput {
 // frag
 
 struct FragInput {
+  @builtin(position) position: vec4<f32>,
   @location(0) normal: vec3<f32>,
   @location(1) worldPosition: vec4<f32>,
 };
@@ -94,7 +98,7 @@ fn BRDF(L: vec3<f32>, V: vec3<f32>, N: vec3<f32>, metallic: f32, roughness: f32)
 }
 
 @stage(fragment)
-fn fragMainPBR(input: FragInput) -> @location(0) vec4<f32> {
+fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
   var N = normalize(input.normal);
   var V = normalize(camera.worldPosition.xyz - input.worldPosition.xyz);
   var L0 = vec3<f32>(0.0, 0.0, 0.0);
@@ -107,18 +111,13 @@ fn fragMainPBR(input: FragInput) -> @location(0) vec4<f32> {
     C = material.color.rgb * (0.2 + dot(N, normalize(light.direction.xyz)) * 0.4) + L0 * 0.4;
   }
   return vec4<f32>(C, material.color.a);
+  //return vec4<f32>(input.position.x / 2.0, 0.0, 0.0, 1.0);
 }
 
 @stage(fragment)
-fn fragMainNormal(input: FragInput) -> @location(0) vec4<f32> {
-  var n = normalize(input.normal);
-  var f = dot(n, normalize(light.direction.xyz) * -1.0 * light.direction.w);
-  return vec4<f32>(material.color.rgb * f, material.color.a);
-}
-
-@stage(fragment)
-fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
+fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
   // FIXME: we need this line or the layout will change
   var d = light.direction;
+  //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0));
   return material.color;
 }
