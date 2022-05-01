@@ -9,6 +9,7 @@ import Light from '../light'
 import Cache, { CachedUniform } from './cache'
 import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
+import { Uniform } from "../uniform"
 
 export default class Renderer {
     private cache: Cache
@@ -88,16 +89,15 @@ export default class Renderer {
         for (const { buffer, offset, uniforms } of bindings) {
             const start = offset
             for (const { value, offset } of uniforms) {
-                const array =
-                    typeof value === 'number' ? new Float32Array([value]) :
-                    value instanceof Float32Array ? value :
-                    new Float32Array(value)
+                if (Array.isArray(value)) {
+                    throw Error(`array is not supported`)
+                }
                 this.device.queue.writeBuffer(
                     buffer,
                     start + offset,
-                    array.buffer,
-                    array.byteOffset,
-                    array.byteLength,
+                    value.buffer,
+                    value.byteOffset,
+                    value.byteLength,
                 )
             }
         }
@@ -106,7 +106,6 @@ export default class Renderer {
     private cachedRenderPass = {
         objs: [] as { mesh: Mesh, mat: Material, geo: Geometry }[],
         bundles: [] as GPURenderBundle[],
-        dumbLight: new Light()
     }
     private runRenderPass(
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
@@ -122,10 +121,7 @@ export default class Renderer {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
-                // FIXME: light is required
-                for (const light of lights.length ? lights : [this.cachedRenderPass.dumbLight]) {
-                    pass.setBindGroup(...this.cache.bind(pipeline, light))
-                }
+                pass.setBindGroup(...this.cache.bind(pipeline, this.lightBindings))
             }
             if (mat !== mesh.mat && (mat = mesh.mat)) {
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
@@ -148,6 +144,31 @@ export default class Renderer {
                 pass.draw(count, 1, mesh.offset, 0)
             }
         }
+    }
+
+    private lightBindings = {
+        bindingGroup: 1,
+        uniforms: [] as Uniform[]
+    }
+    private dumbLight = new Light()
+    private bindForLights(lights: Light[]) {
+        const obj = this.lightBindings
+        obj.uniforms.length = 0
+        obj.uniforms.push({
+            binding: 1,
+            value: new Int32Array([lights.length])
+        })
+        const cloned = lights.slice(),
+            [first = this.dumbLight] = cloned
+        while (cloned.length < 4) {
+            cloned.push(first)
+        }
+        for (const light of cloned.slice(0, 4)) {
+            for (const uniform of light.uniforms) {
+                obj.uniforms.push(uniform)
+            }
+        }
+        return this.cache.bindings(obj)
     }
 
     private cachedRenderList = {
@@ -204,6 +225,7 @@ export default class Renderer {
                 .sort((a, b) => b.cameraDist - a.cameraDist),
             sorted = opaqueSorted.concat(transSorted)
 
+        this.updateUniforms(this.bindForLights(lights))
         this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {
             this.updateUniforms(this.cache.bindings(obj))

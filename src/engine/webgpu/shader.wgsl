@@ -4,11 +4,12 @@ struct CameraUniforms {
 }
 @group(0) @binding(0) var<uniform> camera: CameraUniforms;
 
-struct LightUniforms {
-  direction: vec4<f32>,
+let MAX_LIGHTS = 4;
+struct Light {
   worldPosition: vec4<f32>,
 }
-@group(1) @binding(0) var<uniform> light: LightUniforms;
+@group(1) @binding(0) var<uniform> lights: array<Light, 4>;
+@group(1) @binding(1) var<uniform> lightNum: i32;
 
 struct MeshUniforms {
   modelMatrix: mat4x4<f32>,
@@ -81,40 +82,40 @@ fn F_Schlick(cosTheta: f32, metallic: f32) -> vec3<f32> {
 
 fn BRDF(L: vec3<f32>, V: vec3<f32>, N: vec3<f32>, metallic: f32, roughness: f32) -> vec3<f32> {
   var H = normalize(V + L);
+  var C = material.color.rgb;
   var dotNV = clamp(dot(N, V), 0.0, 1.0);
   var dotNL = clamp(dot(N, L), 0.0, 1.0);
-  var dotLH = clamp(dot(L, H), 0.0, 1.0);
   var dotNH = clamp(dot(N, H), 0.0, 1.0);
 
-  var color = vec3<f32>(0.0);
+  var color = C * 0.2;
   if (dotNL > 0.0) {
     var D = D_GGX(dotNH, roughness);
     var G = G_SchlicksmithGGX(dotNL, dotNV, roughness);
     var F = F_Schlick(dotNV, metallic);
     var spec = D * F * G / (4.0 * dotNL * dotNV);
-    color = color + spec * dotNL * light.direction.w;
+    color = color + (spec + C * 0.5) * dotNL;
   }
   return color;
 }
 
 @stage(fragment)
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
+  var C = material.color.rgb;
   var N = normalize(input.normal);
   var V = normalize(camera.worldPosition.xyz - input.worldPosition.xyz);
-  var L0 = vec3<f32>(0.0, 0.0, 0.0);
-  // for each light
-  var L = normalize(light.worldPosition.xyz - input.worldPosition.xyz);
-  L0 = L0 + BRDF(L, V, N, material.metallic, material.roughness);
-  // endfor
-  var C = material.color.rgb * (0.2 + dot(N, normalize(light.direction.xyz)) * 0.4) + L0 * 0.4;
-  return vec4<f32>(C, material.color.a);
-  //return vec4<f32>(input.position.x / 2.0, 0.0, 0.0, 1.0);
+  var S = vec3<f32>(0.0, 0.0, 0.0);
+  for (var i = 0; i < lightNum && i < MAX_LIGHTS; i = i + 1) {
+    var L = normalize(lights[i].worldPosition.xyz - input.worldPosition.xyz);
+    S = S + BRDF(L, V, N, material.metallic, material.roughness);
+  }
+  return vec4<f32>(S, material.color.a);
 }
 
 @stage(fragment)
 fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
   // FIXME: we need this line or the layout will change
-  var d = light.direction;
+  var a = lights;
+  var d = lightNum;
   //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0));
   return material.color;
 }

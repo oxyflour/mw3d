@@ -7,15 +7,13 @@ import Geometry from "../geometry"
 import Mesh from "../mesh"
 import Material, { BasicMaterial } from "../material"
 import { PerspectiveCamera } from "../camera"
-import { DirectionalLight } from "../light"
 
 let cache: ReturnType<typeof init>
 async function init(canvas: OffscreenCanvas, pixels: OffscreenCanvas, opts?: Renderer['opts']) {
     const renderer = await Renderer.create(canvas, opts),
         camera = new PerspectiveCamera(45, 1, 1, 100),
-        light = new DirectionalLight({ direction: [0, 0, 1], intensity: 1 }),
         transfer = pixels as HTMLCanvasElement
-    return { renderer, camera, light, canvas, transfer }
+    return { renderer, camera, canvas, transfer }
 }
 
 export interface PickMesh {

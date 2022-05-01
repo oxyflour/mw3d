@@ -1,11 +1,11 @@
 import WebGPURenderer from './engine/webgpu/renderer'
 import Obj3 from './engine/obj3'
 import Mesh from './engine/mesh'
+import Light from './engine/light'
 import { rand } from './utils/math'
 import { BasicMaterial } from './engine/material'
 import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
 import { PerspectiveCamera } from './engine/camera'
-import { DirectionalLight } from './engine/light'
 import Picker from './engine/tool/picker'
 
 (async function() {
@@ -34,7 +34,7 @@ const line = new Mesh(
     cube.mat)
 scene.add(line)
 
-const light = new DirectionalLight({ direction: [0, 0, -1], intensity: 5 }),
+const light = new Light(),
     handle = new Obj3()
 light.position.set(0, 0, 300)
 light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))

@@ -113,7 +113,10 @@ export default class Cache {
             const { binding, value } = uniform,
                 item = buffers[binding] || (buffers[binding] = { size: 0, uniforms: [] }),
                 offset = item.size
-            item.size += typeof value === 'number' ? 4 : value.length * 4
+            if (Array.isArray(value)) {
+                throw Error(`array type is not supported`)
+            }
+            item.size += value.byteLength
             item.uniforms.push({ value, offset })
         }
         const bindings = [] as CachedUniform[]
