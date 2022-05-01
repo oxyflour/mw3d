@@ -41,7 +41,7 @@ light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
 handle.add(light)
 scene.add(handle)
 
-for (let i = 0; i < 10000; i ++) {
+for (let i = 0; i < 1; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
@@ -70,10 +70,22 @@ requestAnimationFrame(function render() {
 const picker = await Picker.create()
 canvas.addEventListener('click', async evt => {
     console.time('pick')
-    console.log(await picker.pick(scene, camera,
+    const { buffer, id } = await picker.pick(scene, camera,
         { x: evt.clientX, y: evt.clientY },
-        { width: canvas.clientWidth, height: canvas.clientHeight }))
+        { width: canvas.clientWidth, height: canvas.clientHeight })
     console.timeEnd('pick')
+    console.log('got', id)
+
+    const image = document.createElement('img')
+    await new Promise((resolve, reject) => {
+        image.onload = resolve
+        image.onerror = reject
+        image.src = URL.createObjectURL(new Blob([buffer]))
+    })
+    image.style.position = 'absolute'
+    image.style.top = image.style.left = '0'
+    image.addEventListener('click', () => document.body.removeChild(image))
+    document.body.appendChild(image)
 })
 
 })()

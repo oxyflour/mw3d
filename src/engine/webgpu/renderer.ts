@@ -66,8 +66,8 @@ export default class Renderer {
             cache.depthTexture.destroy()
         }
         const size = {
-            width: this.width * (this.opts.devicePixelRatio || globalThis.devicePixelRatio),
-            height: this.height * (this.opts.devicePixelRatio || globalThis.devicePixelRatio)
+            width: this.width * (this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1),
+            height: this.height * (this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1)
         }
         cache.depthTexture = this.device.createTexture({
             size,

@@ -30,18 +30,19 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
     const workers = [] as Worker[],
         calls = { } as Record<string, { resolve: Function, reject: Function }>
     if (globalThis.WorkerGlobalScope) {
-        onmessage = msg => {
+        onmessage = async msg => {
             const { id, entry, args } = msg.data as { id: string, entry: string[], args: any[] },
                 [func, obj] = entry.reduce(([api], key) => [api?.[key], api], [api as any, null])
             if (func) {
-                const promise = recv ?
-                    recv(args, () => func.apply(obj, args)) :
-                    func.apply(obj, args)
-                promise
-                    .then((ret: any) => postMessage({ id, ret }, {
-                        transfer: ret instanceof ArrayBuffer ? [ret] : []
-                    }))
-                    .catch((err: any) => postMessage({ id, err }))
+                try {
+                    const ret = recv ?
+                            await recv(args, () => func.apply(obj, args)) :
+                            await func.apply(obj, args),
+                        transfer = ret instanceof ArrayBuffer ? [ret] : []
+                    postMessage({ id, ret }, { transfer })
+                } catch (err) {
+                    postMessage({ id, err })
+                }
             } else {
                 const err = new Error(`no function at ${entry.join('.')}`)
                 postMessage({ id, err })

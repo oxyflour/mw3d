@@ -1,4 +1,3 @@
-import gltf from "../../utils/gltf"
 import { PerspectiveCamera } from "../camera"
 import Mesh from "../mesh"
 import Obj3 from "../obj3"
@@ -9,17 +8,10 @@ export default class Picker {
         size?: { width: number, height: number }
     }) {
         const offscreen = document.createElement('canvas') as any,
-            canvas = document.createElement('canvas'),
-            ctx = canvas.getContext('2d'),
-            image = document.createElement('img')
-        /*
-         * debug
-         *
-        canvas.style.position = 'absolute'
-        canvas.style.top = canvas.style.left = '0'
-        document.body.appendChild(canvas)
-         */
-        await worker.init(offscreen.transferControlToOffscreen(), { devicePixelRatio })
+            transfer = document.createElement('canvas') as any
+        await worker.init(
+            offscreen.transferControlToOffscreen(),
+            transfer.transferControlToOffscreen())
         return {
             async pick(scene: Set<Obj3>, camera: PerspectiveCamera,
                     pos: { x: number, y: number }, size: { width: number, height: number }) {
@@ -36,20 +28,7 @@ export default class Picker {
                         }
                     })
                 }
-                const buffer = await worker.render(meshes, geometries, camera)
-                await new Promise((resolve, reject) => {
-                    image.onload = resolve
-                    image.onerror = reject
-                    image.src = URL.createObjectURL(new Blob([buffer]))
-                })
-                canvas.width = size.width
-                canvas.height = size.height
-                ctx.drawImage(image,
-                    0, 0, image.width, image.height,
-                    0, 0, size.width, size.height)
-                const { data: [r, g, b] } = ctx.getImageData(pos.x, pos.y, 1, 1),
-                    idx = r + (g << 8) + (b << 16)
-                return idx === 0xffffff ? -1 : idx
+                return await worker.render(meshes, geometries, camera, pos)
             }
         }
     }
