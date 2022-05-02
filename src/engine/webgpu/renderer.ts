@@ -128,7 +128,7 @@ export default class Renderer {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
-                pass.setBindGroup(...this.cache.bind(pipeline, this.renderUniforms))
+                pass.setBindGroup(...this.cache.bind(pipeline, this))
             }
             if (mat !== mesh.mat && (mat = mesh.mat)) {
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
@@ -152,34 +152,27 @@ export default class Renderer {
         }
     }
 
-    private lightDummy = new Light()
-    private renderUniforms = {
-        bindingGroup: 0,
-        uniforms: [
-            [new Int32Array([0])],
-            [],
-            [new Float32Array([0, 0])],
-        ] as UniformValue[][],
-    }
+    private readonly lightDummy = new Light()
+    readonly bindingGroup = 0
+    readonly uniforms = [
+        [new Int32Array([0])],
+        [],
+        [new Float32Array([0, 0])],
+    ] as UniformValue[][]
     private buildRenderUnifroms(lights: Light[]) {
-        const [[lightNum], lightList, [canvasSize]] = this.renderUniforms.uniforms
+        const [[lightNum], lightList, [canvasSize]] = this.uniforms
         lightNum[0] = lights.length
         canvasSize[0] = this.width
         canvasSize[1] = this.height
 
-        const obj = this.renderUniforms
-        const cloned = lights.slice(),
-            [first = this.lightDummy] = cloned
-        while (cloned.length < 4) {
-            cloned.push(first)
-        }
-        for (const light of cloned.slice(0, 4)) {
-            for (const uniform of light.uniforms) {
-                lightList.push(...uniform)
+        lightList.length = 0
+        for (let i = 0; i < 4; i ++) {
+            const light = lights[i] || this.lightDummy
+            for (const uniforms of light.uniforms) {
+                lightList.push(...uniforms)
             }
         }
-
-        return this.cache.bindings(obj)
+        return this.cache.bindings(this)
     }
 
     private cachedRenderList = {
