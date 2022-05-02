@@ -6,7 +6,7 @@ export default class Camera extends Obj3 {
     private viewProjection = mat4.create()
     private viewMatrix = mat4.create()
 
-    readonly bindingGroup = 0
+    readonly bindingGroup = 1
     readonly uniforms = [
         this.viewProjection,
         this.worldPosition,
@@ -17,7 +17,7 @@ export default class Camera extends Obj3 {
         mat4.invert(this.viewMatrix, this.worldMatrix)
         mat4.multiply(this.viewProjection, this.projection, this.viewMatrix)
     }
-    constructor(readonly projection: mat4) {
+    constructor(readonly projection = mat4.create()) {
         super()
     }
 }

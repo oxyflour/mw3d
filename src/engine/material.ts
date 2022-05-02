@@ -1,6 +1,7 @@
 /// <reference path="../typing.d.ts" />
 
 import { defineArrayProp, Mutable } from '../utils/math'
+import { Texture } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
 export type ProgramEntry = { [k in GPUPrimitiveTopology]: string }
@@ -11,7 +12,7 @@ export default class Material extends Mutable {
         b: 0.336057,
         a: 1,
         roughness: 0.1,
-        metallic: 1.0
+        metallic: 1.0,
     })
 
     readonly bindingGroup = 3
@@ -21,7 +22,7 @@ export default class Material extends Mutable {
 
     private static counter = 1
     readonly id: number
-    constructor(readonly shaders: {
+    constructor(readonly opts: {
         code: string
         entry: { vert: string | ProgramEntry, frag: string | ProgramEntry }
     }) {

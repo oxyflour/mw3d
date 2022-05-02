@@ -1,12 +1,13 @@
-import { mat4, vec3 } from "gl-matrix"
+import { mat4 } from "gl-matrix"
 
 import wrap from "../../utils/worker"
 import Renderer from "../webgpu/renderer"
-import Obj3, { Scene } from "../obj3"
 import Geometry from "../geometry"
 import Mesh from "../mesh"
 import Material, { BasicMaterial } from "../material"
-import { PerspectiveCamera } from "../camera"
+import { Scene } from "../obj3"
+import Camera, { PerspectiveCamera } from "../camera"
+import { Texture } from "../uniform"
 
 let cache: ReturnType<typeof init>
 async function init(canvas: OffscreenCanvas, pixels: OffscreenCanvas, opts?: Renderer['opts']) {
@@ -78,7 +79,14 @@ export default wrap({
             if (scene.size >= 0xffff) {
                 throw Error(`picker support ${0xffff} meshes at max`)
             }
-            renderer.render(scene, camera)
+
+            const depthTexture = new Texture({
+                size: { width: renderer.width, height: renderer.height, depthOrArrayLayers: 1 },
+                format: 'depth24plus',
+                usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+            })
+            renderer.render(scene, camera, { depthTexture })
+
             const ctx = transfer.getContext('2d'),
                 image = (canvas as any).transferToImageBitmap() as ImageBitmap
             transfer.width = image.width
@@ -92,6 +100,26 @@ export default wrap({
                 distance = (b + (a << 8)) / 0x100 * (camera.far - camera.near) + camera.near,
                 blob = await (transfer as any).convertToBlob() as Blob,
                 buffer = await blob.arrayBuffer()
+            
+            const readDepth = new Scene([new Mesh(
+                new Geometry({
+                    positions: new Float32Array([
+                        0, 0, 0,
+                        0, 1, 0,
+                        0, 1, 1,
+                        0, 0, 1,
+                    ]),
+                    normals: new Float32Array(12),
+                    indices: new Uint32Array([
+                        0, 1, 2,
+                        0, 2, 3,
+                    ]),
+                }),
+                new BasicMaterial({
+                    entry: { vert: 'sample' }
+                }))])
+            renderer.render(readDepth, new Camera())
+
             return { id, buffer, distance }
         }
     }

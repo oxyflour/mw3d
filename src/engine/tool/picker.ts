@@ -1,4 +1,3 @@
-import { mat4, vec3 } from "gl-matrix"
 import { PerspectiveCamera } from "../camera"
 import Mesh from "../mesh"
 import Obj3 from "../obj3"

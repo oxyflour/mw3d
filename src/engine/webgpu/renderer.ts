@@ -6,10 +6,10 @@ import Obj3, { Scene } from "../obj3"
 import Mesh from '../mesh'
 import Light from '../light'
 
-import Cache, { CachedUniform } from './cache'
+import Cache, { BindingResource } from './cache'
 import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
-import { Uniform } from "../uniform"
+import { Sampler, Texture, Uniform } from "../uniform"
 
 export default class Renderer {
     private cache: Cache
@@ -85,20 +85,27 @@ export default class Renderer {
         })
     }
 
-    private updateUniforms(bindings: CachedUniform[]) {
-        for (const { buffer, offset, uniforms } of bindings) {
-            const start = offset
-            for (const { value, offset } of uniforms) {
-                if (Array.isArray(value)) {
-                    throw Error(`array is not supported`)
+    private updateUniforms(bindings: BindingResource[]) {
+        for (const binding of bindings) {
+            const { uniforms } = binding,
+                { buffer, offset } = binding as GPUBufferBinding
+            if (buffer && offset >= 0) {
+                const start = offset
+                for (const { value, offset } of uniforms || []) {
+                    if (Array.isArray(value)) {
+                        throw Error(`array is not supported`)
+                    } else if (value instanceof Sampler || value instanceof Texture) {
+                        // pass
+                    } else {
+                        this.device.queue.writeBuffer(
+                            buffer,
+                            start + offset,
+                            value.buffer,
+                            value.byteOffset,
+                            value.byteLength,
+                        )
+                    }
                 }
-                this.device.queue.writeBuffer(
-                    buffer,
-                    start + offset,
-                    value.buffer,
-                    value.byteOffset,
-                    value.byteLength,
-                )
             }
         }
     }
@@ -121,7 +128,7 @@ export default class Renderer {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
-                pass.setBindGroup(...this.cache.bind(pipeline, this.lightBindings))
+                pass.setBindGroup(...this.cache.bind(pipeline, this.renderUniforms))
             }
             if (mat !== mesh.mat && (mat = mesh.mat)) {
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
@@ -132,8 +139,7 @@ export default class Renderer {
                     pass.setVertexBuffer(slot, buffer)
                 }
                 if (geo.indices) {
-                    const type = geo.indices instanceof Uint32Array ? 'uint32' : 'uint16'
-                    pass.setIndexBuffer(this.cache.idx(mesh.geo.indices), type)
+                    pass.setIndexBuffer(...this.cache.idx(mesh.geo.indices))
                 }
             }
             pass.setBindGroup(...this.cache.bind(pipeline, mesh))
@@ -146,28 +152,43 @@ export default class Renderer {
         }
     }
 
-    private lightBindings = {
-        bindingGroup: 1,
-        uniforms: [] as Uniform[]
+    private lightDummy = new Light()
+    private uniformMap = {
+        lightNum: {
+            binding: 0,
+            value: new Int32Array(1)
+        },
+        canvasSize: {
+            binding: 2,
+            value: new Float32Array(2)
+        }
     }
-    private dumbLight = new Light()
-    private bindForLights(lights: Light[]) {
-        const obj = this.lightBindings
-        obj.uniforms.length = 0
-        obj.uniforms.push({
-            binding: 1,
-            value: new Int32Array([lights.length])
-        })
+    private renderUniforms = {
+        bindingGroup: 0,
+        uniforms: [] as Uniform[],
+    }
+    private buildRenderUnifroms(lights: Light[]) {
+        const { lightNum, canvasSize } = this.uniformMap
+        lightNum.value[0] = lights.length
+        canvasSize.value[0] = this.width
+        canvasSize.value[1] = this.height
+
+        const obj = this.renderUniforms
+        obj.uniforms = Object.values(this.uniformMap)
         const cloned = lights.slice(),
-            [first = this.dumbLight] = cloned
+            [first = this.lightDummy] = cloned
         while (cloned.length < 4) {
             cloned.push(first)
         }
         for (const light of cloned.slice(0, 4)) {
             for (const uniform of light.uniforms) {
-                obj.uniforms.push(uniform)
+                obj.uniforms.push({
+                    binding: 1,
+                    value: uniform
+                })
             }
         }
+
         return this.cache.bindings(obj)
     }
 
@@ -182,7 +203,7 @@ export default class Renderer {
         lights: [] as Light[],
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
-    render(scene: Scene, camera: Camera) {
+    render(scene: Scene, camera: Camera, opts = { } as { depthTexture?: Texture }) {
         const start = performance.now()
         if (this.width * this.devicePixelRatio !== this.renderSize.width ||
             this.height * this.devicePixelRatio !== this.renderSize.height) {
@@ -225,7 +246,7 @@ export default class Renderer {
                 .sort((a, b) => b.cameraDist - a.cameraDist),
             sorted = opaqueSorted.concat(transSorted)
 
-        this.updateUniforms(this.bindForLights(lights))
+        this.updateUniforms(this.buildRenderUnifroms(lights))
         this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {
             this.updateUniforms(this.cache.bindings(obj))
@@ -241,7 +262,9 @@ export default class Renderer {
                     clearValue: { r: 1, g: 1, b: 1, a: 1.0 },
                 }],
                 depthStencilAttachment: {
-                    view: this.cache.depthTexture.createView(),
+                    view: opts.depthTexture ?
+                        this.cache.texture(opts.depthTexture).createView() :
+                        this.cache.depthTexture.createView(),
                     depthLoadOp: 'clear',
                     depthClearValue: 1.0,
                     depthStoreOp: 'store',

@@ -1,23 +1,16 @@
 /// <reference path="../../../node_modules/@webgpu/types/dist/index.d.ts" />
-import { mat4, vec4 } from 'gl-matrix'
 
 import cache from "../../utils/cache"
 import Geometry from "../geometry"
-import { Uniform, UniformDefine, UniformValue } from '../uniform'
-import Camera from "../camera"
-import Mesh from "../mesh"
 import Material from "../material"
-import Light from "../light"
+import { Sampler, Texture, Uniform, UniformDefine, UniformValue } from '../uniform'
 
 export interface CachedAttr {
     buffer: GPUBuffer
 }
 
-export interface CachedUniform {
-    uniforms: { value: UniformValue, offset: number }[]
-    buffer: GPUBuffer
-    offset: number
-    size: number
+export type BindingResource = GPUBindingResource & {
+    uniforms?: { value: UniformValue, offset: number }[]
 }
 
 export interface CachedBind {
@@ -41,7 +34,7 @@ export default class Cache {
         this.cachedDepthTexture = this.device.createTexture({
             size: opts.size,
             format: this.opts.depthFormat,
-            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         })
     }
     resize(size: { width: number, height: number }) {
@@ -49,9 +42,15 @@ export default class Cache {
         this.cachedDepthTexture = this.device.createTexture({
             size,
             format: this.opts.depthFormat,
-            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         })
     }
+    texture = cache((tex: Texture) => {
+        return this.device.createTexture(tex.opts)
+    })
+    sampler = cache((sampler: Sampler) => {
+        return this.device.createSampler(sampler.opts)
+    })
     idx = cache((val: Uint32Array | Uint16Array) => {
         const buffer = this.device.createBuffer({
             size: val.length * (val instanceof Uint32Array ? 4 : 2),
@@ -59,10 +58,11 @@ export default class Cache {
             mappedAtCreation: true
         })
         const map = buffer.getMappedRange(),
-            arr = val instanceof Uint32Array ? new Uint32Array(map) : new Uint16Array(map)
+            arr = val instanceof Uint32Array ? new Uint32Array(map) : new Uint16Array(map),
+            type = val instanceof Uint32Array ? 'uint32' : 'uint16'
         arr.set(val)
         buffer.unmap()
-        return buffer
+        return [buffer, type] as [GPUBuffer, 'uint32' | 'uint16']
     })
     private makeAttrBuffer(val: Float32Array) {
         const buffer = this.device.createBuffer({
@@ -104,39 +104,52 @@ export default class Cache {
         return { buffer, offset, size }
     }
     bindings = cache((obj: { uniforms: Uniform[] }) => {
-        const buffers = [] as { size: 0, uniforms: { value: UniformValue, offset: number }[] }[],
+        interface UniformWithOffset {
+            resource?: GPUSampler | GPUTexture
+            value: UniformValue
+            offset: number
+        }
+        const list = [] as { size: 0, uniforms: UniformWithOffset[], sampler?: GPUSampler, texture?: GPUTextureView }[],
             sorted = obj.uniforms
                 .map(item => (item as UniformDefine).value ? item as UniformDefine : { value: item as UniformValue })
                 .map((item, order) => ({ order, binding: 0, ...item }))
                 .sort((a, b) => (a.binding - b.binding) || (a.order - b.order))
         for (const uniform of sorted) {
             const { binding, value } = uniform,
-                item = buffers[binding] || (buffers[binding] = { size: 0, uniforms: [] }),
+                item = list[binding] || (list[binding] = { size: 0, uniforms: [] }),
                 offset = item.size
             if (Array.isArray(value)) {
                 throw Error(`array type is not supported`)
+            } else if (value instanceof Sampler) {
+                item.sampler = this.sampler(value)
+            } else if (value instanceof Texture) {
+                item.texture = this.texture(value).createView()
+            } else {
+                item.size += value.byteLength
             }
-            item.size += value.byteLength
             item.uniforms.push({ value, offset })
         }
-        const bindings = [] as CachedUniform[]
-        for (const [binding, { uniforms, size }] of buffers.entries()) {
-            const { buffer, offset } = this.makeUniformBuffer(size)
-            bindings[binding] = { uniforms, buffer, offset, size }
+        const bindings = [] as BindingResource[]
+        for (const [binding, item] of list.entries()) {
+            const { uniforms, size } = item
+            if (size) {
+                const { buffer, offset } = this.makeUniformBuffer(size)
+                bindings[binding] = { uniforms, buffer, offset, size }
+            } else {
+                bindings[binding] = item.sampler || item.texture
+            }
         }
         return bindings
     })
 
-    bind = cache((pipeline: GPURenderPipeline, obj: { uniforms: Uniform[], bindingGroup: number }) => {
+    bind = cache((pipeline: GPURenderPipeline, obj: { uniforms: Uniform[], bindingGroup: number, layout?: GPUBindGroupLayoutDescriptor }) => {
         const bindings = this.bindings(obj),
             index = obj.bindingGroup,
-            group = this.device.createBindGroup({
-                layout: pipeline.getBindGroupLayout(index),
-                entries: bindings.map(({ buffer, offset, size }, binding) => ({
-                    binding,
-                    resource: { buffer, offset, size }
-                })),
-            })
+            layout = obj.layout ?
+                this.device.createBindGroupLayout(obj.layout) :
+                pipeline.getBindGroupLayout(index),
+            entries = bindings.map((resource, binding) => ({ binding, resource })),
+            group = this.device.createBindGroup({ layout, entries })
         return [index, group] as [number, GPUBindGroup]
     })
 
@@ -147,7 +160,7 @@ export default class Cache {
         if (cache[mat.id]) {
             return cache[mat.id]
         }
-        const code = [mat.shaders.code, mat.prop.a < 1, mat.shaders.entry.frag, mat.shaders.entry.vert].join('###')
+        const code = [mat.opts.code, mat.prop.a < 1, mat.opts.entry.frag, mat.opts.entry.vert].join('###')
         if (cache[code]) {
             return cache[mat.id] = cache[code]
         }
@@ -156,7 +169,7 @@ export default class Cache {
     }
 
     buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology }, mat: Material) => {
-        const { code, entry: { vert, frag } } = mat.shaders,
+        const { code, entry: { vert, frag } } = mat.opts,
             pipelineId = Object.keys(this.cachedPipelines).length,
             module = this.device.createShaderModule({ code })
         return Object.assign(this.device.createRenderPipeline({

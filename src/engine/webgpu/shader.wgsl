@@ -1,15 +1,17 @@
-struct CameraUniforms {
-  viewProjection: mat4x4<f32>,
-  worldPosition: vec4<f32>,
-}
-@group(0) @binding(0) var<uniform> camera: CameraUniforms;
-
 let MAX_LIGHTS = 4;
 struct Light {
   worldPosition: vec4<f32>,
 }
-@group(1) @binding(0) var<uniform> lights: array<Light, 4>;
-@group(1) @binding(1) var<uniform> lightNum: i32;
+@group(0) @binding(0) var<uniform> lightNum: i32;
+@group(0) @binding(1) var<uniform> lights: array<Light, 4>;
+@group(0) @binding(2) var<uniform> canvasSize: vec2<f32>;
+//@group(0) @binding(3) var depthSampler: sampler;
+
+struct CameraUniforms {
+  viewProjection: mat4x4<f32>,
+  worldPosition: vec4<f32>,
+}
+@group(1) @binding(0) var<uniform> camera: CameraUniforms;
 
 struct MeshUniforms {
   modelMatrix: mat4x4<f32>,
@@ -23,9 +25,6 @@ struct MaterialUniforms {
   metallic: f32,
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
-
-@group(10) @binding(0) var depthSampler: sampler;
-@group(10) @binding(1) var depthTexture: texture_2d<f32>;
 
 // vert
 
@@ -100,22 +99,37 @@ fn BRDF(L: vec3<f32>, V: vec3<f32>, N: vec3<f32>, metallic: f32, roughness: f32)
 
 @stage(fragment)
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
-  var C = material.color.rgb;
   var N = normalize(input.normal);
   var V = normalize(camera.worldPosition.xyz - input.worldPosition.xyz);
-  var S = vec3<f32>(0.0, 0.0, 0.0);
+  var C = vec3<f32>(0.0, 0.0, 0.0);
   for (var i = 0; i < lightNum && i < MAX_LIGHTS; i = i + 1) {
     var L = normalize(lights[i].worldPosition.xyz - input.worldPosition.xyz);
-    S = S + BRDF(L, V, N, material.metallic, material.roughness);
+    C = C + BRDF(L, V, N, material.metallic, material.roughness);
   }
-  return vec4<f32>(S, material.color.a);
+  var n = canvasSize;
+  //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0.0));
+  return vec4<f32>(C, material.color.a);
 }
 
 @stage(fragment)
 fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
   // FIXME: we need this line or the layout will change
-  var a = lights;
-  var d = lightNum;
-  //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0));
+  var tmp = lightNum;
+  var tmp2 = lights;
+  var n = canvasSize;
+  //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0.0));
   return material.color;
+}
+
+@stage(fragment)
+fn fragMainCoord(input: FragInput) -> @location(0) vec4<f32> {
+  var tmp = lightNum;
+  var tmp2 = lights;
+  var c = material.color;
+  return vec4<f32>(
+    input.position.x / canvasSize.x,
+    input.position.y / canvasSize.y,
+    0.0,
+    1.0
+  );
 }

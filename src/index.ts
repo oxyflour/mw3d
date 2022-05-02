@@ -4,8 +4,8 @@ import Mesh from './engine/mesh'
 import Light from './engine/light'
 import { rand } from './utils/math'
 import Material, { BasicMaterial } from './engine/material'
-import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
-import { PerspectiveCamera } from './engine/camera'
+import Geometry, { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
+import Camera, { PerspectiveCamera } from './engine/camera'
 import Picker from './engine/tool/picker'
 
 (async function() {
@@ -59,12 +59,32 @@ window.addEventListener('resize', () => {
     renderer.height = canvas.clientHeight
 })
 
+const readDepth = new Scene([new Mesh(
+    new Geometry({
+        positions: new Float32Array([
+            -1, -1, 0,
+            -1,  1, 0,
+             1,  1, 0,
+             1, -1, 0,
+        ]),
+        normals: new Float32Array(12),
+        indices: new Uint32Array([
+            0, 2, 1,
+            0, 3, 2,
+        ]),
+    }),
+    new BasicMaterial({
+        color: [0, 0, 1],
+        entry: { frag: 'fragMainCoord' }
+    }))]),
+    readCamera = new Camera()
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.01)
     holder.rotation.rotY(0.001)
     handle.rotation.rotX(0.005)
-    renderer.render(scene, camera)
+    renderer.render(readDepth, readCamera)
+    //renderer.render(scene, camera)
 })
 
 const picker = await Picker.create(),
