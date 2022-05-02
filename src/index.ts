@@ -7,6 +7,7 @@ import Material, { BasicMaterial } from './engine/material'
 import Geometry, { BoxGeometry, BoxLines, PlaneXY, SphereGeometry } from './engine/geometry'
 import Camera, { PerspectiveCamera } from './engine/camera'
 import Picker from './engine/tool/picker'
+import { Texture } from './engine/uniform'
 
 (async function() {
 
@@ -59,20 +60,11 @@ window.addEventListener('resize', () => {
     renderer.height = canvas.clientHeight
 })
 
-const readDepth = new Scene([
-        new Mesh(
-            new PlaneXY({ size: 1 }),
-            new BasicMaterial({
-                entry: { frag: 'fragMainCoord' }
-            }))
-    ]),
-    readCamera = new Camera()
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.01)
     holder.rotation.rotY(0.001)
     handle.rotation.rotX(0.005)
-    //renderer.render(readDepth, readCamera)
     renderer.render(scene, camera)
 })
 
@@ -81,23 +73,23 @@ const picker = await Picker.create(),
     oldMats = { } as Record<number, Material>
 async function showBuffer(buffer: ArrayBuffer) {
     const image = document.createElement('img')
-    await new Promise((resolve, reject) => {
-        image.onload = resolve
-        image.onerror = reject
-        image.src = URL.createObjectURL(new Blob([buffer]))
-    })
+    image.src = URL.createObjectURL(new Blob([buffer]))
+    await image.decode()
     image.style.position = 'absolute'
     image.style.top = image.style.left = '0'
     image.addEventListener('click', () => document.body.removeChild(image))
     document.body.appendChild(image)
 }
 canvas.addEventListener('click', async evt => {
-    const { id } = await picker.pick(scene, camera, {
+    console.time('pick')
+    const { id, distance } = await picker.pick(scene, camera, {
         width: canvas.clientWidth,
         height: canvas.clientHeight,
         x: evt.clientX,
         y: evt.clientY,
     })
+    console.timeEnd('pick')
+    console.log('mesh id', id, 'distance', distance)
     scene.walk(obj => {
         if (obj instanceof Mesh && obj.id === id) {
             if (oldMats[id]) {

@@ -155,16 +155,15 @@ export default class Renderer {
     private readonly lightDummy = new Light()
     readonly bindingGroup = 0
     readonly uniforms = [
+        [new Float32Array([0, 0])],
         [new Int32Array([0])],
         [],
-        [new Float32Array([0, 0])],
     ] as UniformValue[][]
     private buildRenderUnifroms(lights: Light[]) {
-        const [[lightNum], lightList, [canvasSize]] = this.uniforms
+        const [[canvasSize], [lightNum], lightList] = this.uniforms
         lightNum[0] = lights.length
-        canvasSize[0] = this.width
-        canvasSize[1] = this.height
-
+        canvasSize[0] = this.renderSize.width
+        canvasSize[1] = this.renderSize.height
         lightList.length = 0
         for (let i = 0; i < 4; i ++) {
             const light = lights[i] || this.lightDummy
@@ -186,7 +185,10 @@ export default class Renderer {
         lights: [] as Light[],
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
-    render(scene: Scene, camera: Camera, opts = { } as { depthTexture?: Texture }) {
+    render(scene: Scene, camera: Camera, opts = { } as {
+        depthTexture?: Texture
+        colorTexture?: Texture
+    }) {
         const start = performance.now()
         if (this.width * this.devicePixelRatio !== this.renderSize.width ||
             this.height * this.devicePixelRatio !== this.renderSize.height) {
@@ -238,7 +240,9 @@ export default class Renderer {
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginRenderPass({
                 colorAttachments: [{
-                    view: this.context.getCurrentTexture().createView(),
+                    view: opts.colorTexture ?
+                        this.cache.texture(opts.colorTexture).createView() :
+                        this.context.getCurrentTexture().createView(),
                     loadOp: 'clear',
                     loadValue: { r: 1, g: 1, b: 1, a: 1.0 },
                     storeOp: 'store',

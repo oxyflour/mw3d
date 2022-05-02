@@ -1,7 +1,7 @@
 /// <reference path="../typing.d.ts" />
 
 import { defineArrayProp, Mutable } from '../utils/math'
-import { Texture } from './uniform'
+import { Sampler, Texture } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
 export type ProgramEntry = { [k in GPUPrimitiveTopology]: string }
@@ -16,10 +16,16 @@ export default class Material extends Mutable {
     })
 
     readonly bindingGroup = 3
+    private static DEFAULT_SAMPLER = new Sampler({
+        magFilter: 'linear',
+        minFilter: 'linear',
+    })
     readonly uniforms = [
-        [
-            this.prop.data
-        ]
+        [this.prop.data],
+        ...(this.opts.texture ? [
+            this.opts.texture,
+            this.opts.sampler || Material.DEFAULT_SAMPLER
+        ] : [])
     ]
 
     private static counter = 1
@@ -27,6 +33,8 @@ export default class Material extends Mutable {
     constructor(readonly opts: {
         code: string
         entry: { vert: string | ProgramEntry, frag: string | ProgramEntry }
+        texture?: Texture
+        sampler?: Sampler
     }) {
         super()
         this.id = Material.counter ++
@@ -66,10 +74,11 @@ export class BasicMaterial extends Material {
         color?: Float32Array | Uint8Array | number[]
         roughness?: number
         metallic?: number
+        texture?: Texture
     }) {
         const entry = BasicMaterial.defaultEntry,
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }
-        super({ code, entry: { vert, frag } })
+        super({ ...opts, code, entry: { vert, frag } })
         if (opts.color) {
             let [r, g, b, a = 1] = opts.color
             if (opts.color instanceof Uint8Array) {

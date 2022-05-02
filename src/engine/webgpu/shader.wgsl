@@ -1,11 +1,12 @@
+let WGSL_IGNORE_UNUSED = false;
+
 let MAX_LIGHTS = 4;
 struct Light {
   worldPosition: vec4<f32>,
 }
-@group(0) @binding(0) var<uniform> lightNum: i32;
-@group(0) @binding(1) var<uniform> lights: array<Light, 4>;
-@group(0) @binding(2) var<uniform> canvasSize: vec2<f32>;
-//@group(0) @binding(3) var depthSampler: sampler;
+@group(0) @binding(0) var<uniform> canvasSize: vec2<f32>;
+@group(0) @binding(1) var<uniform> lightNum: i32;
+@group(0) @binding(2) var<uniform> lights: array<Light, 4>;
 
 struct CameraUniforms {
   viewProjection: mat4x4<f32>,
@@ -25,6 +26,8 @@ struct MaterialUniforms {
   metallic: f32,
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
+@group(3) @binding(1) var depthTexture: texture_depth_2d;
+@group(3) @binding(2) var materialSampler: sampler;
 
 // vert
 
@@ -106,30 +109,35 @@ fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
     var L = normalize(lights[i].worldPosition.xyz - input.worldPosition.xyz);
     C = C + BRDF(L, V, N, material.metallic, material.roughness);
   }
-  var n = canvasSize;
-  //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0.0));
+  if (WGSL_IGNORE_UNUSED) {
+    var c = canvasSize;
+  }
   return vec4<f32>(C, material.color.a);
 }
 
 @stage(fragment)
 fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
-  // FIXME: we need this line or the layout will change
-  var tmp = lightNum;
-  var tmp2 = lights;
-  var n = canvasSize;
-  //var g = textureSample(depthTexture, depthSampler, vec2<f32>(0.0));
+  if (WGSL_IGNORE_UNUSED) {
+    var a = lightNum;
+    var b = lights;
+    var c = canvasSize;
+  }
   return material.color;
 }
 
 @stage(fragment)
-fn fragMainCoord(input: FragInput) -> @location(0) vec4<f32> {
-  var tmp = lightNum;
-  var tmp2 = lights;
-  var c = material.color;
-  return vec4<f32>(
-    input.position.x / canvasSize.x,
-    input.position.y / canvasSize.y,
-    0.0,
-    1.0
-  );
+fn fragMainDepth(input: FragInput) -> @location(0) vec4<f32> {
+  if (WGSL_IGNORE_UNUSED) {
+    var a = lightNum;
+    var b = lights;
+    var c = material.color;
+  }
+  var p = input.position.xy / canvasSize.xy;
+  var d = textureSample(depthTexture, materialSampler, p);
+  // https://github.com/gpuweb/gpuweb/discussions/2277
+  var i = u32(f32(0x1000000) * (d + 1.0) / 2.0);
+  var r = (i & 0x0000ffu);
+  var g = (i & 0x00ff00u) >> 8u;
+  var b = (i & 0xff0000u) >> 16u;
+  return vec4<f32>(f32(r) / 255.0, f32(g) / 255.0, f32(b) / 255.0, 1.0);
 }

@@ -13,8 +13,20 @@ let cache: ReturnType<typeof init>
 async function init(canvas: OffscreenCanvas, pixels: OffscreenCanvas, opts?: Renderer['opts']) {
     const renderer = await Renderer.create(canvas, opts),
         camera = new PerspectiveCamera(45, 1, 1, 100),
-        transfer = pixels as HTMLCanvasElement
-    return { renderer, camera, canvas, transfer }
+        transfer = pixels as HTMLCanvasElement,
+        ctx = transfer.getContext('2d')
+    return { renderer, camera, canvas, transfer, ctx }
+}
+async function read(canvas: OffscreenCanvas, { x, y }: { x: number, y: number }) {
+    const { ctx, transfer, renderer } = await cache,
+        image = (canvas as any).transferToImageBitmap() as ImageBitmap
+    transfer.width = image.width
+    transfer.height = image.height
+    ctx.drawImage(image,
+        0, 0, image.width, image.height,
+        0, 0, renderer.width, renderer.height)
+    const { data: [r, g, b, a] } = ctx.getImageData(x, y, 1, 1)
+    return { r, g, b, a }
 }
 
 export interface PickMesh {
@@ -82,25 +94,27 @@ export default wrap({
 
             const depthTexture = new Texture({
                 size: { width: renderer.width, height: renderer.height, depthOrArrayLayers: 1 },
+                usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
                 format: 'depth24plus',
-                usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             })
             renderer.render(scene, camera, { depthTexture })
+            const pixel = await read(canvas, { x, y }),
+                id = pixel.r === 0xff && pixel.g === 0xff ? -1 : pixel.r + (pixel.g << 8)
 
-            const ctx = transfer.getContext('2d'),
-                image = (canvas as any).transferToImageBitmap() as ImageBitmap
-            transfer.width = image.width
-            transfer.height = image.height
-            ctx.drawImage(image,
-                0, 0, image.width, image.height,
-                0, 0, renderer.width, renderer.height)
-            const { data: [r, g, b, a] } = ctx.getImageData(x, y, 1, 1),
-                val = r + (g << 8),
-                id = val === 0xffff ? -1 : val,
-                distance = (b + (a << 8)) / 0x100 * (camera.far - camera.near) + camera.near,
-                blob = await (transfer as any).convertToBlob() as Blob,
+            const plane = new Mesh(
+                new PlaneXY({ size: 1 }),
+                new BasicMaterial({
+                    entry: { frag: 'fragMainDepth' },
+                    texture: depthTexture,
+                }))
+            renderer.render(new Scene([plane]), new Camera())
+            const dp = await read(canvas, { x, y }),
+                depth = (dp.r + (dp.g << 8) + (dp.b << 16)) / 0xffffff,
+                // https://stackoverflow.com/a/66928245
+                distance = 1 / (depth * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
+
+            const blob = await (transfer as any).convertToBlob() as Blob,
                 buffer = await blob.arrayBuffer()
-
             return { id, buffer, distance }
         }
     }
