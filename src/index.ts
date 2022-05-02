@@ -4,7 +4,7 @@ import Mesh from './engine/mesh'
 import Light from './engine/light'
 import { rand } from './utils/math'
 import Material, { BasicMaterial } from './engine/material'
-import Geometry, { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
+import Geometry, { BoxGeometry, BoxLines, PlaneXY, SphereGeometry } from './engine/geometry'
 import Camera, { PerspectiveCamera } from './engine/camera'
 import Picker from './engine/tool/picker'
 
@@ -59,24 +59,13 @@ window.addEventListener('resize', () => {
     renderer.height = canvas.clientHeight
 })
 
-const readDepth = new Scene([new Mesh(
-    new Geometry({
-        positions: new Float32Array([
-            -1, -1, 0,
-            -1,  1, 0,
-             1,  1, 0,
-             1, -1, 0,
-        ]),
-        normals: new Float32Array(12),
-        indices: new Uint32Array([
-            0, 2, 1,
-            0, 3, 2,
-        ]),
-    }),
-    new BasicMaterial({
-        color: [0, 0, 1],
-        entry: { frag: 'fragMainCoord' }
-    }))]),
+const readDepth = new Scene([
+        new Mesh(
+            new PlaneXY({ size: 1 }),
+            new BasicMaterial({
+                entry: { frag: 'fragMainCoord' }
+            }))
+    ]),
     readCamera = new Camera()
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)

@@ -101,6 +101,31 @@ export class BoxLines extends LineList {
     }
 }
 
+export class PlaneXY extends Geometry {
+    constructor({
+        size = 1,
+    }: { size?: number }) {
+        super({
+            positions: new Float32Array([
+                -1, -1, 0,
+                -1,  1, 0,
+                1,  1, 0,
+                1, -1, 0,
+            ]),
+            normals: new Float32Array([
+                0, 0, 1,
+                0, 0, 1,
+                0, 0, 1,
+                0, 0, 1,
+            ]),
+            indices: new Uint32Array([
+                0, 2, 1,
+                0, 3, 2,
+            ])
+        })
+    }
+}
+
 export class SphereGeometry extends Geometry {
     constructor({
         radius = 1,
