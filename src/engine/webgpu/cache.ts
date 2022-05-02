@@ -3,7 +3,7 @@
 import cache from "../../utils/cache"
 import Geometry from "../geometry"
 import Material from "../material"
-import { Sampler, Texture, Uniform, UniformDefine, UniformValue } from '../uniform'
+import { Sampler, Texture, Uniform, UniformValue } from '../uniform'
 
 export interface CachedAttr {
     buffer: GPUBuffer
@@ -104,42 +104,29 @@ export default class Cache {
         return { buffer, offset, size }
     }
     bindings = cache((obj: { uniforms: Uniform[] }) => {
-        interface UniformWithOffset {
-            resource?: GPUSampler | GPUTexture
-            value: UniformValue
-            offset: number
-        }
-        const list = [] as { size: 0, uniforms: UniformWithOffset[], sampler?: GPUSampler, texture?: GPUTextureView }[],
-            sorted = obj.uniforms
-                .map(item => (item as UniformDefine).value ? item as UniformDefine : { value: item as UniformValue })
-                .map((item, order) => ({ order, binding: 0, ...item }))
-                .sort((a, b) => (a.binding - b.binding) || (a.order - b.order))
-        for (const uniform of sorted) {
-            const { binding, value } = uniform,
-                item = list[binding] || (list[binding] = { size: 0, uniforms: [] }),
-                offset = item.size
-            if (Array.isArray(value)) {
-                throw Error(`array type is not supported`)
-            } else if (value instanceof Sampler) {
-                item.sampler = this.sampler(value)
-            } else if (value instanceof Texture) {
-                item.texture = this.texture(value).createView()
+        return obj.uniforms.map(item => {
+            if (Array.isArray(item)) {
+                const list = { size: 0, uniforms: [] as { value: UniformValue, offset: number }[] }
+                for (const value of item) {
+                    const offset = list.size
+                    if (Array.isArray(value)) {
+                        throw Error(`only typed array supported`)
+                    } else {
+                        list.size += value.byteLength
+                        list.uniforms.push({ value, offset })
+                    }
+                }
+                const { uniforms, size } = list,
+                    { buffer, offset } = this.makeUniformBuffer(size)
+                return { uniforms, buffer, offset, size }
+            } else if (item instanceof Sampler) {
+                return this.sampler(item)
+            } else if (item instanceof Texture) {
+                return this.texture(item).createView()
             } else {
-                item.size += value.byteLength
+                throw Error(`unknown uniform type`)
             }
-            item.uniforms.push({ value, offset })
-        }
-        const bindings = [] as BindingResource[]
-        for (const [binding, item] of list.entries()) {
-            const { uniforms, size } = item
-            if (size) {
-                const { buffer, offset } = this.makeUniformBuffer(size)
-                bindings[binding] = { uniforms, buffer, offset, size }
-            } else {
-                bindings[binding] = item.sampler || item.texture
-            }
-        }
-        return bindings
+        })
     })
 
     bind = cache((pipeline: GPURenderPipeline, obj: { uniforms: Uniform[], bindingGroup: number, layout?: GPUBindGroupLayoutDescriptor }) => {

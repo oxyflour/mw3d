@@ -9,8 +9,10 @@ export default class Mesh extends Obj3 {
 
     readonly bindingGroup = 2
     readonly uniforms = [
-        this.modelMatrix,
-        this.worldPosition,
+        [
+            this.modelMatrix,
+            this.worldPosition,
+        ]
     ]
 
     renderOrder = 0

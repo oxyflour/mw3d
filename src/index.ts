@@ -72,8 +72,8 @@ requestAnimationFrame(function render() {
     cube.rotation.rotX(0.02).rotY(0.01)
     holder.rotation.rotY(0.001)
     handle.rotation.rotX(0.005)
-    renderer.render(readDepth, readCamera)
-    //renderer.render(scene, camera)
+    //renderer.render(readDepth, readCamera)
+    renderer.render(scene, camera)
 })
 
 const picker = await Picker.create(),

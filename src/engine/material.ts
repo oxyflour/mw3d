@@ -17,7 +17,9 @@ export default class Material extends Mutable {
 
     readonly bindingGroup = 3
     readonly uniforms = [
-        this.prop.data
+        [
+            this.prop.data
+        ]
     ]
 
     private static counter = 1

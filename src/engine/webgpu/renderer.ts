@@ -9,7 +9,7 @@ import Light from '../light'
 import Cache, { BindingResource } from './cache'
 import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
-import { Sampler, Texture, Uniform } from "../uniform"
+import { Sampler, Texture, Uniform, UniformValue } from "../uniform"
 
 export default class Renderer {
     private cache: Cache
@@ -153,28 +153,21 @@ export default class Renderer {
     }
 
     private lightDummy = new Light()
-    private uniformMap = {
-        lightNum: {
-            binding: 0,
-            value: new Int32Array(1)
-        },
-        canvasSize: {
-            binding: 2,
-            value: new Float32Array(2)
-        }
-    }
     private renderUniforms = {
         bindingGroup: 0,
-        uniforms: [] as Uniform[],
+        uniforms: [
+            [new Int32Array([0])],
+            [],
+            [new Float32Array([0, 0])],
+        ] as UniformValue[][],
     }
     private buildRenderUnifroms(lights: Light[]) {
-        const { lightNum, canvasSize } = this.uniformMap
-        lightNum.value[0] = lights.length
-        canvasSize.value[0] = this.width
-        canvasSize.value[1] = this.height
+        const [[lightNum], lightList, [canvasSize]] = this.renderUniforms.uniforms
+        lightNum[0] = lights.length
+        canvasSize[0] = this.width
+        canvasSize[1] = this.height
 
         const obj = this.renderUniforms
-        obj.uniforms = Object.values(this.uniformMap)
         const cloned = lights.slice(),
             [first = this.lightDummy] = cloned
         while (cloned.length < 4) {
@@ -182,10 +175,7 @@ export default class Renderer {
         }
         for (const light of cloned.slice(0, 4)) {
             for (const uniform of light.uniforms) {
-                obj.uniforms.push({
-                    binding: 1,
-                    value: uniform
-                })
+                lightList.push(...uniform)
             }
         }
 

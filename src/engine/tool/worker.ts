@@ -2,7 +2,7 @@ import { mat4 } from "gl-matrix"
 
 import wrap from "../../utils/worker"
 import Renderer from "../webgpu/renderer"
-import Geometry from "../geometry"
+import Geometry, { PlaneXY } from "../geometry"
 import Mesh from "../mesh"
 import Material, { BasicMaterial } from "../material"
 import { Scene } from "../obj3"
@@ -100,25 +100,6 @@ export default wrap({
                 distance = (b + (a << 8)) / 0x100 * (camera.far - camera.near) + camera.near,
                 blob = await (transfer as any).convertToBlob() as Blob,
                 buffer = await blob.arrayBuffer()
-            
-            const readDepth = new Scene([new Mesh(
-                new Geometry({
-                    positions: new Float32Array([
-                        0, 0, 0,
-                        0, 1, 0,
-                        0, 1, 1,
-                        0, 0, 1,
-                    ]),
-                    normals: new Float32Array(12),
-                    indices: new Uint32Array([
-                        0, 1, 2,
-                        0, 2, 3,
-                    ]),
-                }),
-                new BasicMaterial({
-                    entry: { vert: 'sample' }
-                }))])
-            renderer.render(readDepth, new Camera())
 
             return { id, buffer, distance }
         }

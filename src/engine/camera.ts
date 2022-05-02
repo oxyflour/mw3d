@@ -8,8 +8,10 @@ export default class Camera extends Obj3 {
 
     readonly bindingGroup = 1
     readonly uniforms = [
-        this.viewProjection,
-        this.worldPosition,
+        [
+            this.viewProjection,
+            this.worldPosition,
+        ]
     ]
 
     protected update() {
