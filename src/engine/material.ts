@@ -4,7 +4,7 @@ import { MutableArray, Mutable } from '../utils/math'
 import { Sampler, Texture } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
-export type ProgramEntry = { [k in GPUPrimitiveTopology]: string }
+export type ProgramEntry = { [k in GPUPrimitiveTopology]: string } | string
 
 export class MaterialProp extends MutableArray({
     r: 1.0,
@@ -39,7 +39,7 @@ export default class Material extends Mutable {
     readonly id: number
     constructor(readonly opts: {
         code: string
-        entry: { vert: string | ProgramEntry, frag: string | ProgramEntry }
+        entry: { vert: ProgramEntry, frag: ProgramEntry }
         texture?: Texture
         sampler?: Sampler
     }) {
@@ -77,7 +77,7 @@ export class BasicMaterial extends Material {
         } as ProgramEntry
     }
     constructor(opts = { } as {
-        entry?: { vert?: string | ProgramEntry, frag?: string | ProgramEntry },
+        entry?: { vert?: ProgramEntry, frag?: ProgramEntry },
         color?: Float32Array | Uint8Array | number[]
         roughness?: number
         metallic?: number
