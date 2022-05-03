@@ -1,19 +1,26 @@
 /// <reference path="../typing.d.ts" />
 
-import { defineArrayProp, Mutable } from '../utils/math'
+import { MutableArray, Mutable } from '../utils/math'
 import { Sampler, Texture } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
 export type ProgramEntry = { [k in GPUPrimitiveTopology]: string }
+
+export class MaterialProp extends MutableArray({
+    r: 1.0,
+    g: 0.765557,
+    b: 0.336057,
+    a: 1,
+    roughness: 0.1,
+    metallic: 1.0,
+}) {
+    constructor(readonly data = new Float32Array(6)) {
+        super(data)
+    }
+}
+
 export default class Material extends Mutable {
-    readonly prop = defineArrayProp({
-        r: 1.0,
-        g: 0.765557,
-        b: 0.336057,
-        a: 1,
-        roughness: 0.1,
-        metallic: 1.0,
-    })
+    prop = new MaterialProp()
 
     readonly bindingGroup = 3
     private static DEFAULT_SAMPLER = new Sampler({

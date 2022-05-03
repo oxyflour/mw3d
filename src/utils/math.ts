@@ -18,51 +18,55 @@ export function range(from: number, to = 0, delta = Math.sign(to - from)) {
     return ret
 }
 
-export function defineArrayProp<T extends Record<string, number>>(
-        dict: T,
-        data = new Float32Array(Object.values(dict))) {
-    const obj = new Mutable() as any as T & Mutable & { data: Float32Array }
-    obj.data = data
-    for (const [idx, key] of Object.keys(dict).entries()) {
-        Object.defineProperty(obj, key, {
-            get() {
-                return data[idx]
-            },
-            set(val) {
-                (obj as any).isDirty = true
-                data[idx] = val
+interface Array<T> {
+    readonly length: number;
+    [n: number]: T;
+}
+export function MutableArray<T extends { [n: string]: number }>(dict: T) {
+    class MutableArray extends Mutable {
+        constructor(readonly data: Array<number>) {
+            super()
+            for (const [idx, key] of Object.keys(dict).entries()) {
+                Object.defineProperty(this, key, {
+                    get() {
+                        return this.data[idx]
+                    },
+                    set(val) {
+                        this.isDirty = true
+                        this.data[idx] = val
+                    }
+                })
             }
-        })
+        }
     }
-    return obj
+    // @ts-ignore
+    return MutableArray as new (data: Array<number>) => Mutable & T
 }
 
-export class Color4 extends Mutable {
+export class Color4 extends MutableArray({
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 1,
+}) {
     constructor(readonly data = vec4.create()) {
-        super()
-    }
-    get a() {
-        return this.data[3]
-    }
-    set(r: number, g: number, b: number, a: number, out = this) {
-        vec4.set(this.data, r, g, b, a)
-        return (this.isDirty = true), out
+        super(data)
     }
 }
 
-export class Vec3 extends Mutable {
+export class Vec3 extends MutableArray({ x: 0, y: 0, z: 0 }) {
     constructor(readonly data = vec3.create()) {
-        super()
+        super(data)
     }
     set(x: number, y: number, z: number, out = this) {
-        vec3.set(out.data, x, y, z)
-        return (this.isDirty = true), out
+        Object.assign(this, { x, y, z })
+        return out
     }
 }
 
-export class Quat extends Mutable {
+export class Quat extends MutableArray({ x: 0, y: 0, z: 0, w: 1 }) {
     constructor(readonly data = quat.create()) {
-        super()
+        super(data)
     }
     rotX(rad: number, out = this) {
         quat.rotateX(out.data, this.data, rad)
