@@ -14,6 +14,13 @@ export class Control {
         readonly camera: PerspectiveCamera,
         readonly pivot = new Obj3(),
         readonly opts?: {
+            zoom?: {
+                factor?: number
+                distance?: {
+                    min?: number
+                    max?: number
+                }
+            },
             hooks?: {
                 mouse?: (evt: MouseEvent, next: (evt: MouseEvent) => Promise<any>) => Promise<any>
                 wheel?: (evt: WheelEvent, next: (evt: WheelEvent) => Promise<any>) => Promise<any>
@@ -122,7 +129,7 @@ export class Control {
         hook ? hook(evt, evt => this.onMouseWheel(evt)) : this.onMouseWheel(evt)
     }
     async onMouseWheel(evt: WheelEvent) {
-        const { camera, pivot } = this,
+        const { camera, pivot, opts } = this,
             origin = vec3.create(),
             target = vec3.create(),
             delta = vec3.create(),
@@ -130,7 +137,14 @@ export class Control {
         vec3FromObj(origin, camera)
         vec3FromObj(target, pivot)
         vec3.sub(delta, origin, target)
-        const distance = vec3.length(delta) * (evt.deltaY > 0 ? 1.1 : 0.9)
+        const factor = opts?.zoom?.factor || 0.1
+        let distance = vec3.length(delta) * (evt.deltaY > 0 ? (1 + factor) : (1 - factor))
+        if (opts?.zoom?.distance?.min) {
+            distance = Math.max(distance, opts?.zoom?.distance?.min)
+        }
+        if (opts?.zoom?.distance?.max) {
+            distance = Math.min(distance, opts?.zoom?.distance?.max)
+        }
         vec3.normalize(delta, delta)
         vec3.scale(delta, delta, distance)
         vec3.add(target, target, delta)

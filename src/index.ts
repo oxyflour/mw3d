@@ -67,6 +67,12 @@ async function clickScene(evt: MouseEvent) {
 
 const camera = new PerspectiveCamera(5 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1000, 20000),
     control = new Control(canvas, camera, pivot, {
+        zoom: {
+            distance: {
+                min: camera.near + 2000,
+                max: camera.far - 2000,
+            }
+        },
         hooks: {
             mouse: async (evt, next) => {
                 updatePivot({ x: evt.clientX, y: evt.clientY })
