@@ -63,6 +63,7 @@ export default class Obj3 extends Mutable {
         mat4.scale(mat, mat, [1/x, 1/y, 1/z])
         mat4.getRotation(this.rotation.data, mat)
         mat4.getTranslation(this.position.data, mat)
+        this.update()
         this.isDirty = true
     }
     protected needsUpdate() {

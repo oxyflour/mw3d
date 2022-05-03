@@ -1,4 +1,4 @@
-import { mat4 } from "gl-matrix"
+import { mat4, vec3 } from "gl-matrix"
 
 import wrap from "../../utils/worker"
 import Renderer from "../webgpu/renderer"
@@ -19,7 +19,7 @@ interface WebGPUOffscreenCanvas extends
 }
 
 const cache = {
-    inited: undefined as ReturnType<typeof initCache>,
+    created: undefined as ReturnType<typeof initCache>,
     scene: new Scene(),
     // TODO: LRU
     geoMap: { } as Record<number, Geometry>,
@@ -33,7 +33,7 @@ async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenC
     return { renderer, camera, canvas, pixels, ctx }
 }
 async function readPixel({ x, y }: { x: number, y: number }) {
-    const { ctx, pixels, renderer, canvas } = await cache.inited,
+    const { ctx, pixels, renderer, canvas } = await cache.created,
         image = canvas.transferToImageBitmap()
     pixels.width = image.width
     pixels.height = image.height
@@ -67,10 +67,10 @@ const worker = wrap({
     },
     api: {
         async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
-            await cache.inited || (cache.inited = initCache(canvas, pixels, opts))
+            await cache.created || (cache.created = initCache(canvas, pixels, opts))
         },
         async resize(width: number, height: number) {
-            const { renderer } = await cache.inited
+            const { renderer } = await cache.created
             renderer.width = width
             renderer.height = height
         },
@@ -78,7 +78,7 @@ const worker = wrap({
                      geometries: Record<number, PickGeo>,
                      { fov, aspect, near, far, worldMatrix }: PerspectiveCamera,
                      { x, y }: { x: number, y: number }) {
-            const { renderer, camera, pixels } = await cache.inited,
+            const { renderer, camera, pixels } = await cache.created,
                 { scene, geoMap, matMap, meshMap } = cache
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
@@ -119,13 +119,23 @@ const worker = wrap({
                 }))
             renderer.render(new Scene([plane]), new Camera())
             const dp = await readPixel({ x, y }),
-                depth = (dp.r + (dp.g << 8) + (dp.b << 16)) / 0xffffff,
+                depthVal = (dp.r + (dp.g << 8) + (dp.b << 16)) / 0xffffff,
                 // https://stackoverflow.com/a/66928245
-                distance = 1 / (depth * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
+                depth = 1 / (depthVal * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
+            
+            const [hw, hh, hf] = [renderer.width / 2, renderer.height / 2, camera.fov / 2],
+                position = vec3.fromValues(
+                    Math.tan(hf * aspect) * (x - hw) / hw,
+                    Math.tan(hf) * (y - hh) / -hh,
+                    -1),
+                distance = depth * vec3.len(position)
+            vec3.normalize(position, position)
+            vec3.scale(position, position, distance)
+            vec3.transformMat4(position, position, camera.worldMatrix)
 
-            const blob = await pixels.convertToBlob() as Blob,
+            const blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
-            return { id, buffer, distance }
+            return { id, buffer, distance, position }
         }
     }
 })
@@ -155,18 +165,16 @@ export default class Picker {
         return await worker.render(meshes, geometries, camera, opts)
     }
 
-    private static inited: Promise<void>
-    private static async init() {
+    private static created: Promise<Picker>
+    private static async create() {
         const offscreen = document.createElement('canvas') as any,
             pixels = document.createElement('canvas') as any
         await worker.init(
             offscreen.transferControlToOffscreen() as WebGPUOffscreenCanvas,
             pixels.transferControlToOffscreen() as WebGPUOffscreenCanvas)
-    }
-    static async create(opts?: {
-        size?: { width: number, height: number }
-    }) {
-        await (this.inited || (this.inited = this.init()))
         return new Picker()
+    }
+    static async init() {
+        return await (this.created || (this.created = this.create()))
     }
 }

@@ -2,12 +2,13 @@ import WebGPURenderer from './engine/webgpu/renderer'
 import Obj3, { Scene } from './engine/obj3'
 import Mesh from './engine/mesh'
 import Light from './engine/light'
-import { rand } from './utils/math'
 import Material, { BasicMaterial } from './engine/material'
-import Geometry, { BoxGeometry, BoxLines, PlaneXY, SphereGeometry } from './engine/geometry'
-import Camera, { PerspectiveCamera } from './engine/camera'
 import Picker from './engine/tool/picker'
-import { Texture } from './engine/uniform'
+import { rand } from './utils/math'
+import { BoxGeometry, BoxLines, SphereGeometry } from './engine/geometry'
+import { PerspectiveCamera } from './engine/camera'
+import { Control } from './engine/tool/control'
+import { mat4, quat } from 'gl-matrix'
 
 (async function() {
 
@@ -17,13 +18,36 @@ document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
 const renderer = await WebGPURenderer.create(canvas),
-    scene = new Scene()
+    scene = new Scene(),
+    pivot = new Obj3()
+async function updatePivot({ x, y }: { x: number, y: number }) {
+    const { id, position } = await picker.pick(scene, camera, {
+        width: renderer.width,
+        height: renderer.height,
+        x, y,
+    })
+    if (id >= 0) {
+        const rot = quat.create()
+        mat4.fromRotationTranslation(pivot.worldMatrix, rot, position)
+        pivot.setWorldMatrix(pivot.worldMatrix)
+    }
+}
 
 const camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
-    holder = new Obj3()
+    control = new Control(canvas, camera, pivot, {
+        hooks: {
+            mouse: async (evt, next) => {
+                await updatePivot({ x: evt.clientX, y: evt.clientY })
+                await next(evt)
+            },
+            wheel: async (evt, next) => {
+                await updatePivot({ x: evt.clientX, y: evt.clientY })
+                await next(evt)
+            },
+        }
+    })
 camera.position.set(0, 0, 600)
-holder.add(camera)
-scene.add(holder)
+scene.add(pivot)
 
 const cube = new Mesh(
     new BoxGeometry({ size: 200 }),
@@ -62,13 +86,12 @@ window.addEventListener('resize', () => {
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
-    cube.rotation.rotX(0.02).rotY(0.01)
-    holder.rotation.rotY(0.001)
+    //cube.rotation.rotX(0.02).rotY(0.01)
     handle.rotation.rotX(0.005)
     renderer.render(scene, camera)
 })
 
-const picker = await Picker.create(),
+const picker = await Picker.init(),
     seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1 }),
     oldMats = { } as Record<number, Material>
 async function showBuffer(buffer: ArrayBuffer) {
