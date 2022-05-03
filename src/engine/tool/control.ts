@@ -17,6 +17,7 @@ export class Control {
             hooks?: {
                 mouse?: (evt: MouseEvent, next: (evt: MouseEvent) => Promise<any>) => Promise<any>
                 wheel?: (evt: WheelEvent, next: (evt: WheelEvent) => Promise<any>) => Promise<any>
+                click?: (evt: MouseEvent) => any
             },
         }) {
         canvas.addEventListener('mousedown', this.bindMouseDown = this.bindMouseDown.bind(this))
@@ -27,10 +28,14 @@ export class Control {
         hook ? hook(evt, evt => this.onMouseDown(evt)) : this.onMouseDown(evt)
     }
     async onMouseDown(evt: MouseEvent) {
-        const { canvas, camera, pivot } = this,
-            start = { clientX: evt.clientX, clientY: evt.clientY }
+        const { canvas, camera, pivot, opts } = this,
+            start = { clientX: evt.clientX, clientY: evt.clientY, hasMoved: false }
         function onMouseUp(evt: MouseEvent) {
-            // TODO
+            if (!start.hasMoved &&
+                Math.abs(start.clientX - evt.clientX) < 2 &&
+                Math.abs(start.clientY - evt.clientY) < 2) {
+                opts?.hooks?.click?.(evt)
+            }
         }
         const axis = vec3.create(),
             origin = vec3.create(),
@@ -41,6 +46,7 @@ export class Control {
             rotation = mat4.create(),
             rot = quat.create()
         function onRotateAroundPivot(evt: MouseEvent) {
+            start.hasMoved = true
             vec3FromObj(origin, camera)
             vec3FromObj(target, pivot)
             vec3.set(axis, start.clientY - evt.clientY, start.clientX - evt.clientX, 0)
@@ -74,11 +80,15 @@ export class Control {
             vec3.normalize(out, out)
         }
         function onDragWithPivot(evt: MouseEvent) {
+            start.hasMoved = true
             vec3FromObj(origin, camera)
             getWorldDirFromScreen(from, start.clientX, start.clientY)
             getWorldDirFromScreen(target, evt.clientX, evt.clientY)
-            quat.rotationTo(rot, target, from)
-            mat4.fromQuat(rotation, rot)
+            vec3.cross(axis, from, target)
+            vec3.normalize(axis, axis)
+            const rad = vec3.angle(from, target)
+            mat4.identity(rotation)
+            mat4.rotate(rotation, rotation, -rad, axis)
 
             mat4.getRotation(rot, camera.worldMatrix)
             mat4.fromQuat(tran, rot)

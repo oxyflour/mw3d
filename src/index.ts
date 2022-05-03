@@ -33,20 +33,53 @@ async function updatePivot({ x, y }: { x: number, y: number }) {
     }
 }
 
-const camera = new PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
+const picker = await Picker.init(),
+    seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1 }),
+    oldMats = { } as Record<number, Material>
+async function showBuffer(buffer: ArrayBuffer) {
+    const image = document.createElement('img')
+    image.src = URL.createObjectURL(new Blob([buffer]))
+    await image.decode()
+    image.style.position = 'absolute'
+    image.style.top = image.style.left = '0'
+    image.addEventListener('click', () => document.body.removeChild(image))
+    document.body.appendChild(image)
+}
+async function clickScene(evt: MouseEvent) {
+    const { id, distance } = await picker.pick(scene, camera, {
+        width: canvas.clientWidth,
+        height: canvas.clientHeight,
+        x: evt.clientX,
+        y: evt.clientY,
+    })
+    scene.walk(obj => {
+        if (obj instanceof Mesh && obj.id === id) {
+            if (oldMats[id]) {
+                obj.mat = oldMats[id]
+                delete oldMats[id]
+            } else {
+                oldMats[id] = obj.mat
+                obj.mat = seleted
+            }
+        }
+    })
+}
+
+const camera = new PerspectiveCamera(5 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1000, 20000),
     control = new Control(canvas, camera, pivot, {
         hooks: {
             mouse: async (evt, next) => {
-                await updatePivot({ x: evt.clientX, y: evt.clientY })
+                updatePivot({ x: evt.clientX, y: evt.clientY })
                 await next(evt)
             },
             wheel: async (evt, next) => {
-                await updatePivot({ x: evt.clientX, y: evt.clientY })
+                updatePivot({ x: evt.clientX, y: evt.clientY })
                 await next(evt)
             },
+            click: clickScene
         }
     })
-camera.position.set(0, 0, 600)
+camera.position.set(0, 0, 5000)
 scene.add(pivot)
 
 const cube = new Mesh(
@@ -86,44 +119,8 @@ window.addEventListener('resize', () => {
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
-    //cube.rotation.rotX(0.02).rotY(0.01)
     handle.rotation.rotX(0.005)
     renderer.render(scene, camera)
-})
-
-const picker = await Picker.init(),
-    seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1 }),
-    oldMats = { } as Record<number, Material>
-async function showBuffer(buffer: ArrayBuffer) {
-    const image = document.createElement('img')
-    image.src = URL.createObjectURL(new Blob([buffer]))
-    await image.decode()
-    image.style.position = 'absolute'
-    image.style.top = image.style.left = '0'
-    image.addEventListener('click', () => document.body.removeChild(image))
-    document.body.appendChild(image)
-}
-canvas.addEventListener('click', async evt => {
-    console.time('pick')
-    const { id, distance } = await picker.pick(scene, camera, {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
-        x: evt.clientX,
-        y: evt.clientY,
-    })
-    console.timeEnd('pick')
-    console.log('mesh id', id, 'distance', distance)
-    scene.walk(obj => {
-        if (obj instanceof Mesh && obj.id === id) {
-            if (oldMats[id]) {
-                obj.mat = oldMats[id]
-                delete oldMats[id]
-            } else {
-                oldMats[id] = obj.mat
-                obj.mat = seleted
-            }
-        }
-    })
 })
 
 })()
