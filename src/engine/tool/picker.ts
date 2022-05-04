@@ -19,7 +19,7 @@ interface WebGPUOffscreenCanvas extends
 }
 
 const cache = {
-    created: undefined as ReturnType<typeof initCache>,
+    created: undefined as undefined | ReturnType<typeof initCache>,
     scene: new Scene(),
     // TODO: LRU
     geoMap: { } as Record<number, Geometry>,
@@ -32,15 +32,22 @@ async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenC
         ctx = pixels.getContext('2d')
     return { renderer, camera, canvas, pixels, ctx }
 }
+async function getCache() {
+    const ret = await cache.created
+    if (!ret) {
+        throw Error(`not started`)
+    }
+    return ret
+}
 async function readPixel({ x, y }: { x: number, y: number }) {
-    const { ctx, pixels, renderer, canvas } = await cache.created,
+    const { ctx, pixels, renderer, canvas } = await getCache(),
         image = canvas.transferToImageBitmap()
     pixels.width = image.width
     pixels.height = image.height
     ctx.drawImage(image,
         0, 0, image.width, image.height,
         0, 0, renderer.width, renderer.height)
-    const { data: [r, g, b, a] } = ctx.getImageData(x, y, 1, 1)
+    const { data: [r = 0, g = 0, b = 0, a = 0] } = ctx.getImageData(x, y, 1, 1)
     return { r, g, b, a }
 }
 
@@ -70,7 +77,7 @@ const worker = wrap({
             await cache.created || (cache.created = initCache(canvas, pixels, opts))
         },
         async resize(width: number, height: number) {
-            const { renderer } = await cache.created
+            const { renderer } = await getCache()
             renderer.width = width
             renderer.height = height
         },
@@ -78,7 +85,7 @@ const worker = wrap({
                      geometries: Record<number, PickGeo>,
                      { fov, aspect, near, far, worldMatrix }: PerspectiveCamera,
                      { x, y }: { x: number, y: number }) {
-            const { renderer, camera, pixels } = await cache.created,
+            const { renderer, camera, pixels } = await getCache(),
                 { scene, geoMap, matMap, meshMap } = cache
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })

@@ -4,7 +4,7 @@ import Obj3 from "../obj3"
 import { PerspectiveCamera } from "../camera"
 
 function vec3FromObj(out: vec3, obj: Obj3) {
-    const { worldPosition: [x, y, z] } = obj
+    const { worldPosition: [x = 0, y = 0, z = 0] } = obj
     return vec3.set(out, x, y, z)
 }
 

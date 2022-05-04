@@ -29,7 +29,7 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
 }) {
     const workers = [] as Worker[],
         calls = { } as Record<string, { resolve: Function, reject: Function }>
-    if (globalThis.WorkerGlobalScope) {
+    if ((globalThis as any).WorkerGlobalScope) {
         onmessage = async msg => {
             const { id, entry, args } = msg.data as { id: string, entry: string[], args: any[] },
                 [func, obj] = entry.reduce(([api], key) => [api?.[key], api], [api as any, null])
@@ -67,6 +67,9 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
         return (...args: any[]) => {
             const selected = workers[Math.floor(Math.random() * workers.length)],
                 id = Math.random().toString(16).slice(2, 10)
+            if (!selected) {
+                throw Error(`no worker candicate`)
+            }
             if (send) {
                 return send(args, (args, transfer) => {
                     selected.postMessage({ id, entry, args }, transfer)

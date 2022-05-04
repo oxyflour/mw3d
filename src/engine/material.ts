@@ -1,7 +1,7 @@
 /// <reference path="../typing.d.ts" />
 
 import { MutableArray, Mutable } from '../utils/math'
-import { Sampler, Texture } from './uniform'
+import { Sampler, Texture, Uniform } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
 export type ProgramEntry = { [k in GPUPrimitiveTopology]: string } | string
@@ -29,11 +29,8 @@ export default class Material extends Mutable {
     })
     readonly uniforms = [
         [this.prop.data],
-        ...(this.opts.texture ? [
-            this.opts.texture,
-            this.opts.sampler || Material.DEFAULT_SAMPLER
-        ] : [])
-    ]
+        // texture
+    ] as Uniform[]
 
     private static counter = 1
     readonly id: number
@@ -44,6 +41,12 @@ export default class Material extends Mutable {
         sampler?: Sampler
     }) {
         super()
+        if (opts.texture) {
+            this.uniforms.push(
+                opts.texture,
+                opts.sampler || Material.DEFAULT_SAMPLER
+            )
+        }
         this.id = Material.counter ++
     }
 
@@ -53,12 +56,12 @@ export default class Material extends Mutable {
             updated?.(this)
         }
     }
-    protected needsUpdate() {
+    protected override needsUpdate() {
         return this.isDirty ||
             // @ts-ignore
             this.prop.needsUpdate()
     }
-    protected update() {
+    protected override update() {
         super.update()
         // @ts-ignore
         this.prop.update()
@@ -87,12 +90,12 @@ export class BasicMaterial extends Material {
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }
         super({ ...opts, code, entry: { vert, frag } })
         if (opts.color) {
-            let [r, g, b, a = 1] = opts.color
+            let [r = 0, g = 0, b = 0, a = 1] = opts.color
             if (opts.color instanceof Uint8Array) {
                 r /= 255
                 g /= 255
                 b /= 255
-                a = opts.color.length > 3 ? opts.color[3] / 255 : 1
+                a = opts.color.length > 3 ? a / 255 : 1
             }
             Object.assign(this.prop, { r, g, b, a })
         }

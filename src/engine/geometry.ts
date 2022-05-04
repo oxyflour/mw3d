@@ -40,23 +40,23 @@ export default class Geometry {
         for (let i = 0, n = positions.length; i < n; i += 3) {
             const pos = [positions[i], positions[i + 1], positions[i + 2]]
             for (let j = 0; j < 3; j ++) {
-                min[j] = Math.min(min[j], pos[j])
-                max[j] = Math.max(max[j], pos[j])
-                center[j] += pos[j]
+                min[j] = Math.min(min[j]!, pos[j]!)
+                max[j] = Math.max(max[j]!, pos[j]!)
+                center[j] += pos[j]!
             }
         }
         for (let j = 0; j < 3; j ++) {
             center[j] /= positions.length ? positions.length/3 : 1
         }
         if (indices) {
-            this.count = {
-                'triangle-list': this.indices.length,
-                'line-list': this.indices.length,
-            }[this.type] || 0
+            this.count = indices.length
         } else {
             this.count = {
-                'triangle-list': positions.length / 3,
+                'point-list': positions.length / 3,
                 'line-list': positions.length / 6,
+                'line-strip': positions.length / 6,
+                'triangle-list': positions.length / 3,
+                'triangle-strip': positions.length / 3,
             }[this.type] || 0
         }
     }
@@ -107,10 +107,10 @@ export class PlaneXY extends Geometry {
     }: { size?: number }) {
         super({
             positions: new Float32Array([
-                -1, -1, 0,
-                -1,  1, 0,
-                1,  1, 0,
-                1, -1, 0,
+                -size, -size, 0,
+                -size,  size, 0,
+                 size,  size, 0,
+                 size, -size, 0,
             ]),
             normals: new Float32Array([
                 0, 0, 1,

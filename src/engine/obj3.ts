@@ -1,6 +1,6 @@
 /// <reference path="../typing.d.ts" />
 import loader from '@assemblyscript/loader'
-import { mat4, quat, vec3, vec4 } from 'gl-matrix'
+import { mat4, vec3, vec4 } from 'gl-matrix'
 import { Vec3, Quat, Mutable } from '../utils/math'
 
 import wasmUrl from './wasm/obj3.as.ts'
@@ -45,7 +45,7 @@ export default class Obj3 extends Mutable {
     }
 
     private cachedStatus = {
-        parent: null as Obj3 | null,
+        parent: undefined as Obj3 | undefined,
     }
     readonly worldMatrix = mat4.create()
     readonly worldPosition = vec4.create()
@@ -59,14 +59,14 @@ export default class Obj3 extends Mutable {
         }
         // https://github.com/toji/gl-matrix/issues/245#issuecomment-471719314
         mat4.getScaling(this.scaling.data, mat)
-        const [x, y, z] = this.scaling.data
-        mat4.scale(mat, mat, [1/x, 1/y, 1/z])
+        const [x = 1, y = 1, z = 1] = this.scaling.data
+        mat4.scale(mat, mat, [1 / x, 1 / y, 1 / z])
         mat4.getRotation(this.rotation.data, mat)
         mat4.getTranslation(this.position.data, mat)
         this.update()
         this.isDirty = true
     }
-    protected needsUpdate() {
+    protected override needsUpdate() {
         const cache = this.cachedStatus
         return this.isDirty ||
             cache.parent !== this.parent ||
@@ -77,7 +77,7 @@ export default class Obj3 extends Mutable {
             // @ts-ignore
             this.scaling.needsUpdate()
     }
-    protected update() {
+    protected override update() {
         super.update()
 
         const cache = this.cachedStatus
@@ -114,7 +114,7 @@ export default class Obj3 extends Mutable {
 
     private static counter = 0
     readonly id: number
-    ptr: number
+    ptr!: number
     constructor() {
         super()
         this.id = Obj3.counter ++

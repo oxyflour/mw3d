@@ -9,13 +9,13 @@ import Light from '../light'
 import Cache, { BindingResource } from './cache'
 import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
-import { Sampler, Texture, Uniform, UniformValue } from "../uniform"
+import { Sampler, Texture, UniformValue } from "../uniform"
 
 export default class Renderer {
-    private cache: Cache
-    private device: GPUDevice
-    private format: GPUTextureFormat
-    private context: GPUCanvasContext
+    private cache!: Cache
+    private device!: GPUDevice
+    private format!: GPUTextureFormat
+    private context!: GPUCanvasContext
     private constructor(
         public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
         private readonly opts = { } as {
@@ -65,12 +65,12 @@ export default class Renderer {
         return await new Renderer(canvas, opts).init()
     }
 
-    private renderSize: { width: number, height: number }
+    width = 100
+    height = 100
+    private renderSize = { width: 100, height: 100 }
     get devicePixelRatio() {
         return this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1
     }
-    width: number
-    height: number
     private resize() {
         this.renderSize = {
             width: this.width * this.devicePixelRatio,
@@ -88,7 +88,7 @@ export default class Renderer {
     private updateUniforms(bindings: BindingResource[]) {
         for (const binding of bindings) {
             const { uniforms } = binding,
-                { buffer, offset } = binding as GPUBufferBinding
+                { buffer, offset = -1 } = binding as GPUBufferBinding
             if (buffer && offset >= 0) {
                 const start = offset
                 for (const { value, offset } of uniforms || []) {
@@ -117,11 +117,10 @@ export default class Renderer {
     private runRenderPass(
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
             sorted: Mesh[],
-            lights: Light[],
             camera: Camera) {
-        let pipeline: GPURenderPipeline,
-            mat: Material,
-            geo: Geometry
+        let pipeline!: GPURenderPipeline,
+            mat!: Material,
+            geo!: Geometry
         for (const mesh of sorted) {
             const cached = this.cache.pipeline(mesh.geo.type, mesh.mat)
             if (pipeline !== cached && (pipeline = cached)) {
@@ -139,7 +138,7 @@ export default class Renderer {
                     pass.setVertexBuffer(slot, buffer)
                 }
                 if (geo.indices) {
-                    pass.setIndexBuffer(...this.cache.idx(mesh.geo.indices))
+                    pass.setIndexBuffer(...this.cache.idx(geo.indices))
                 }
             }
             pass.setBindGroup(...this.cache.bind(pipeline, mesh))
@@ -158,12 +157,12 @@ export default class Renderer {
         [new Float32Array([0, 0])],
         [new Int32Array([0])],
         [],
-    ] as UniformValue[][]
+    ] as [UniformValue[], UniformValue[], UniformValue[]]
     private buildRenderUnifroms(lights: Light[]) {
         const [[canvasSize], [lightNum], lightList] = this.uniforms
-        lightNum[0] = lights.length
-        canvasSize[0] = this.renderSize.width
-        canvasSize[1] = this.renderSize.height
+        lightNum![0] = lights.length
+        canvasSize![0] = this.renderSize.width
+        canvasSize![1] = this.renderSize.height
         lightList.length = 0
         for (let i = 0; i < 4; i ++) {
             const light = lights[i] || this.lightDummy
@@ -268,7 +267,7 @@ export default class Renderer {
                 colorFormats: [this.cache.opts.fragmentFormat],
                 depthStencilFormat: this.cache.opts.depthFormat
             })
-            this.runRenderPass(encoder, sorted, lights, camera)
+            this.runRenderPass(encoder, sorted, camera)
             this.cachedRenderPass.bundles = [encoder.finish()]
         }
         pass.executeBundles(this.cachedRenderPass.bundles)

@@ -26,7 +26,7 @@ export default class Mesh extends Obj3 {
         public count = -1) {
         super()
     }
-    protected update() {
+    protected override update() {
         super.update()
         mat4.copy(this.modelMatrix, this.worldMatrix)
         vec4.transformMat4(this.center, this.geo.center, this.modelMatrix)

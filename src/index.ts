@@ -46,16 +46,19 @@ async function showBuffer(buffer: ArrayBuffer) {
     document.body.appendChild(image)
 }
 async function clickScene(evt: MouseEvent) {
-    const { id, distance } = await picker.pick(scene, camera, {
+    const { id } = await picker.pick(scene, camera, {
         width: canvas.clientWidth,
         height: canvas.clientHeight,
         x: evt.clientX,
         y: evt.clientY,
     })
+    // for debug
+    showBuffer
     scene.walk(obj => {
         if (obj instanceof Mesh && obj.id === id) {
-            if (oldMats[id]) {
-                obj.mat = oldMats[id]
+            const mat = oldMats[id]
+            if (mat) {
+                obj.mat = mat
                 delete oldMats[id]
             } else {
                 oldMats[id] = obj.mat
@@ -85,6 +88,7 @@ const camera = new PerspectiveCamera(5 / 180 * Math.PI, canvas.clientWidth / can
             click: clickScene
         }
     })
+control
 camera.position.set(0, 0, 5000)
 scene.add(pivot)
 
@@ -105,7 +109,7 @@ light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
 handle.add(light)
 scene.add(handle)
 
-for (let i = 0; i < 500; i ++) {
+for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
@@ -125,6 +129,7 @@ window.addEventListener('resize', () => {
 
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
+    cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
     renderer.render(scene, camera)
 })

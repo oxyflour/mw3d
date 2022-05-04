@@ -86,7 +86,7 @@ export default class Cache {
         return list
     })
 
-    private cachedUniformBuffer = { buffer: null as GPUBuffer | null, size: 0, offset: 0 }
+    private cachedUniformBuffer = { buffer: { } as GPUBuffer, size: 0, offset: 0 }
     private makeUniformBuffer(size: number) {
         if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
             const size = this.opts.uniformBufferBatchSize || 256 * 16
@@ -145,11 +145,11 @@ export default class Cache {
     pipeline = (primitive: GPUPrimitiveTopology, mat: Material) => {
         const cache = this.cachedPipelines[primitive] || (this.cachedPipelines[primitive] = { })
         if (cache[mat.id]) {
-            return cache[mat.id]
+            return cache[mat.id]!
         }
         const code = [mat.opts.code, mat.prop.a < 1, mat.opts.entry.frag, mat.opts.entry.vert].join('###')
         if (cache[code]) {
-            return cache[mat.id] = cache[code]
+            return cache[mat.id] = cache[code]!
         }
         const geo = this.cachedPrimitive[primitive] || (this.cachedPrimitive[primitive] = { primitive })
         return cache[mat.id] = cache[code] = this.buildPipeline(geo, mat)

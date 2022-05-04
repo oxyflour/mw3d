@@ -14,7 +14,7 @@ export default class Camera extends Obj3 {
         ]
     ]
 
-    protected update() {
+    protected override update() {
         super.update()
         mat4.invert(this.viewMatrix, this.worldMatrix)
         mat4.multiply(this.viewProjection, this.projection, this.viewMatrix)
@@ -26,7 +26,7 @@ export default class Camera extends Obj3 {
 
 export class PerspectiveCamera extends Camera {
     readonly cachedPerspectiveParams: { fov: number, aspect: number, near: number, far: number }
-    protected needsUpdate() {
+    protected override needsUpdate() {
         const cache = this.cachedPerspectiveParams
         return super.needsUpdate()  ||
             cache.fov     !== this.fov    ||
@@ -34,7 +34,7 @@ export class PerspectiveCamera extends Camera {
             cache.near    !== this.near   ||
             cache.far     !== this.far
     }
-    protected update() {
+    protected override update() {
         const { fov, aspect, near, far } = this
         mat4.perspective(this.projection, fov, aspect, near, far)
         Object.assign(this.cachedPerspectiveParams, { fov, aspect, near, far })

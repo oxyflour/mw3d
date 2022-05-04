@@ -12,8 +12,8 @@ async function compile(file: string, url: string, ws?: WebSocketServer) {
     try {
         console.log(`EXEC: ${cmd}`)
         await promisify(cp.exec)(cmd)
-        ws.send({ type: 'full-reload' })
-    } catch (err) {
+        ws?.send({ type: 'full-reload' })
+    } catch (err: any) {
         console.error(err.stderr)
     }
 }
@@ -25,7 +25,7 @@ export default {
     configureServer({ ws, watcher }) {
         watcher.on('change', file => {
             if (file.endsWith(suffix)) {
-                timeout = timeout.then(() => compile(file, cached[file], ws))
+                timeout = timeout.then(() => compile(file, cached[file]!, ws))
             }
         })
     },
