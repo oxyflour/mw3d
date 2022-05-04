@@ -18,7 +18,7 @@ export function range(from: number, to = 0, delta = Math.sign(to - from)) {
     return ret
 }
 
-interface Array<T> {
+export interface Array<T> {
     readonly length: number;
     [n: number]: T;
 }

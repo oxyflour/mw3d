@@ -1,10 +1,10 @@
 /// <reference path="../typing.d.ts" />
-import loader from '@assemblyscript/loader'
+//import loader from '@assemblyscript/loader'
 import { mat4, vec3, vec4 } from 'gl-matrix'
 import { Vec3, Quat, Mutable } from '../utils/math'
 
-import wasmUrl from './wasm/obj3.as.ts'
-type Obj3WasmExp = typeof import('./wasm/obj3.as')
+//import wasmUrl from './wasm/obj3.as.ts'
+//type Obj3WasmExp = typeof import('./wasm/obj3.as')
 
 export class Scene extends Set<Obj3> {
     walk(func: (obj: Obj3, parent?: Obj3) => void) {
@@ -24,12 +24,12 @@ export default class Obj3 extends Mutable {
     add(child: Obj3) {
         child.addTo(this)
     }
-    remove(child: Obj3) {
+    delete(child: Obj3) {
         this.children.delete(child)
         if (child.parent === this) {
             child.parent = undefined
         }
-        Obj3.initWasm.then(wasm => wasm.removeFrom(child.ptr, this.ptr))
+        //Obj3.initWasm.then(wasm => wasm.removeFrom(child.ptr, this.ptr))
     }
     addTo(parent: Obj3) {
         if (this.parent) {
@@ -38,7 +38,7 @@ export default class Obj3 extends Mutable {
         if (this.parent = parent) {
             this.parent.children.add(this)
         }
-        Obj3.initWasm.then(wasm => wasm.addTo(this.ptr, parent.ptr))
+        //Obj3.initWasm.then(wasm => wasm.addTo(this.ptr, parent.ptr))
     }
     getParent() {
         return this.parent
@@ -118,7 +118,7 @@ export default class Obj3 extends Mutable {
     constructor() {
         super()
         this.id = Obj3.counter ++
-        Obj3.initWasm.then(wasm => this.ptr = wasm.create())
+        //Obj3.initWasm.then(wasm => this.ptr = wasm.create())
     }
     walk(func: (obj: Obj3, parent?: Obj3) => void) {
         func(this, this.parent)
@@ -127,6 +127,7 @@ export default class Obj3 extends Mutable {
         }
     }
 
+    /*
     private static initWasm = loader.instantiateStreaming(fetch(wasmUrl), { console: console as any })
         .then(({ exports }) => Obj3.wasmMod = exports as any as loader.ASUtil & Obj3WasmExp)
     private static wasmMod: loader.ASUtil & Obj3WasmExp
@@ -141,4 +142,5 @@ export default class Obj3 extends Mutable {
         }
         Obj3.wasmMod?.update(this.ptrs, objs.size)
     }
+     */
 }

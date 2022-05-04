@@ -89,16 +89,14 @@ export class BasicMaterial extends Material {
         const entry = BasicMaterial.defaultEntry,
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }
         super({ ...opts, code, entry: { vert, frag } })
-        if (opts.color) {
-            let [r = 0, g = 0, b = 0, a = 1] = opts.color
-            if (opts.color instanceof Uint8Array) {
-                r /= 255
-                g /= 255
-                b /= 255
-                a = opts.color.length > 3 ? a / 255 : 1
-            }
-            Object.assign(this.prop, { r, g, b, a })
+        let [r = Math.random(), g = Math.random(), b = Math.random(), a = 1] = opts.color || []
+        if (opts.color instanceof Uint8Array) {
+            r /= 255
+            g /= 255
+            b /= 255
+            a = opts.color.length > 3 ? a / 255 : 1
         }
+        Object.assign(this.prop, { r, g, b, a })
         opts.roughness && (this.prop.roughness = opts.roughness)
         opts.metallic && (this.prop.metallic = opts.metallic)
     }

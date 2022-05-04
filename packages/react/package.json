@@ -1,5 +1,5 @@
 {
-  "name": "ttk",
+  "name": "@ttk/react",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,15 +10,22 @@
     "type": "git",
     "url": "git+https://github.com/oxyflour/mw3d.git"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/oxyflour/mw3d/issues"
   },
   "homepage": "https://github.com/oxyflour/mw3d#readme",
-  "workspaces": [
-    "./packages/core",
-    "./packages/react"
-  ]
+  "dependencies": {
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0",
+    "typescript": "^4.6.4",
+    "vite": "^2.9.7"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.31",
+    "@types/react": "^18.0.8",
+    "@types/react-dom": "^18.0.3",
+    "@types/react-router-dom": "^5.3.3"
+  }
 }

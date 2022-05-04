@@ -1,0 +1,28 @@
+{
+  "name": "@ttk/core",
+  "version": "0.0.1",
+  "description": "minimal WebGL2 only 3D engine",
+  "main": "dist/core.es.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^17.0.21",
+    "@types/webgl2": "0.0.4",
+    "@webgpu/types": "^0.1.13",
+    "typescript": "^4.5.4",
+    "vite": "^2.7.13"
+  },
+  "dependencies": {
+    "@assemblyscript/loader": "^0.19.23",
+    "assemblyscript": "^0.19.22",
+    "gl-matrix": "^3.4.3",
+    "gltf-loader-ts": "^0.3.1",
+    "rollup-plugin-assemblyscript": "^2.0.0"
+  }
+}
