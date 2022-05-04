@@ -109,18 +109,18 @@ export class Control {
             start.clientY = evt.clientY
         }
         if (evt.button === 0) {
-            canvas.addEventListener('mousemove', onRotateAroundPivot)
-            canvas.addEventListener('mouseup', function onceMouseUp(evt) {
+            document.body.addEventListener('mousemove', onRotateAroundPivot)
+            document.body.addEventListener('mouseup', function onceMouseUp(evt) {
                 onMouseUp(evt)
-                canvas.removeEventListener('mousemove', onRotateAroundPivot)
-                canvas.removeEventListener('mouseup', onceMouseUp)
+                document.body.removeEventListener('mousemove', onRotateAroundPivot)
+                document.body.removeEventListener('mouseup', onceMouseUp)
             })
         } else if (evt.button === 1) {
-            canvas.addEventListener('mousemove', onDragWithPivot)
-            canvas.addEventListener('mouseup', function onceMouseUp(evt) {
+            document.body.addEventListener('mousemove', onDragWithPivot)
+            document.body.addEventListener('mouseup', function onceMouseUp(evt) {
                 onMouseUp(evt)
-                canvas.removeEventListener('mousemove', onDragWithPivot)
-                canvas.removeEventListener('mouseup', onceMouseUp)
+                document.body.removeEventListener('mousemove', onDragWithPivot)
+                document.body.removeEventListener('mouseup', onceMouseUp)
             })
         }
     }
