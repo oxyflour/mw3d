@@ -3,6 +3,7 @@ import React, { createContext, CSSProperties, useContext, useEffect, useRef, use
 
 // TODO: publish this package
 import { Engine } from '../../core'
+import { mat4, quat } from 'gl-matrix'
 
 function rand(begin: number, end = 0) {
     return Math.random() * (end - begin) + begin
@@ -79,9 +80,12 @@ function Control() {
 }
 
 const Obj3Context = createContext({ } as { obj?: Engine.Obj3 })
-function Obj3({ children, create, position }: {
+function Obj3({ children, create, matrix, position, rotation, scaling }: {
     children: any
+    matrix?: number[]
     position?: [number, number, number]
+    rotation?: [number, number, number]
+    scaling?: [number, number, number]
     create?: () => Engine.Obj3
 }) {
     const { scene } = useContext(CanvasContext),
@@ -104,7 +108,20 @@ function Obj3({ children, create, position }: {
             const [x, y, z] = position
             obj.position.set(x, y, z)
         }
-    }, [obj, position])
+        if (obj && rotation) {
+            const [x, y, z] = rotation
+            quat.set(obj.rotation.data, 0, 0, 0, 1)
+            obj.rotation.rotX(x).rotY(y).rotZ(z)
+        }
+        if (obj && scaling) {
+            const [x, y, z] = scaling
+            obj.scaling.set(x, y, z)
+        }
+        if (obj && matrix) {
+            mat4.copy(obj.worldMatrix, matrix as any)
+            obj.setWorldMatrix(obj.worldMatrix)
+        }
+    }, [obj, matrix, position, rotation, scaling])
     return <Obj3Context.Provider value={{ obj }}>
         { children }
     </Obj3Context.Provider>
@@ -112,7 +129,7 @@ function Obj3({ children, create, position }: {
 
 type Args<A> = A extends (...args: infer C) => any ? C : A
 
-const MESH_DEFAULT_MAT = new Engine.BasicMaterial({ metallic: 1, roughness: 0.1 }),
+const MESH_DEFAULT_MAT = new Engine.BasicMaterial({ metallic: 1, roughness: 0.5 }),
     MESH_DEFAULT_GEO = new Engine.SphereGeometry({ radius: 100 })
 function MeshSetter({ geo, mat }: {
     geo?: Engine.Geometry
@@ -131,33 +148,72 @@ function Mesh({ geo, mat, children, ...props }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
 } & Args<typeof Obj3>['0']) {
-    return <Obj3 { ...props } create={ () => new Engine.Mesh(MESH_DEFAULT_GEO, MESH_DEFAULT_MAT) }>
+    return <Obj3 { ...props }
+            create={ () => new Engine.Mesh(MESH_DEFAULT_GEO, MESH_DEFAULT_MAT) }>
         <MeshSetter geo={ geo } mat={ mat } />
         { children }
     </Obj3>
 }
 
+const GEOMS = [
+    new Engine.BoxGeometry({ size: 5 }),
+    new Engine.SphereGeometry({ radius: 2.5 }),
+] as Engine.Geometry[]
+
+function makeMesh() {
+    const s = rand(1, 5)
+    return {
+        position: [rand(-200, 200), rand(-200, 200), rand(-200, 200)] as [number, number, number],
+        scaling:  [s, s, s] as [number, number, number],
+        rotation: [rand(3), rand(3), rand(3)] as [number, number, number]
+    }
+}
+
+const MESH_NUM = 1000,
+    INIT_MESHES = Array(MESH_NUM).fill(0).map(makeMesh)
 function App() {
-    const [num, setNum] = useState(100)
+    const [meshes, setMeshes] = useState(INIT_MESHES),
+        { prop } = MESH_DEFAULT_MAT,
+        [geometry, setGeometry] = useState(GEOMS[0]!),
+        [metallic, setMetallic] = useState(prop.metallic),
+        [roughness, setRoughness] = useState(prop.roughness)
     return <Canvas style={{ width: '100%', height: '100%' }}>
         <div style={{
             position: 'absolute',
             left: 0,
             top: 0,
-            margin: 5,
+            margin: 15,
         }}>
-            <button onClick={ () => setNum(Math.floor(Math.random() * 5000 + 5000)) }>update</button>
+            <button onClick={ () => setMeshes(Array(MESH_NUM).fill(0).map(makeMesh)) }>
+                randomize
+            </button>
+            <span> </span>
+            <select value={ geometry.id }
+                onChange={ evt => setGeometry(GEOMS.find(geo => geo.id === parseInt(evt.target.value))!) }>
+                { GEOMS.map((geo, idx) => <option key={ geo.id } value={ geo.id }>{ ['box', 'sphere'][idx] }</option>) }
+            </select>
+            <br />
+            metallic <input type="range"
+                value={ metallic }
+                onChange={ evt => setMetallic(prop.metallic = parseFloat(evt.target.value)) }
+                min={ 0 } max={ 1 } step={ 0.01 } />
+            <br />
+            roughness <input type="range"
+                value={ roughness }
+                onChange={ evt => setRoughness(prop.roughness = parseFloat(evt.target.value)) }
+                min={ 0 } max={ 1 } step={ 0.01 } />
         </div>
         <Control />
         {
-            Array(num).fill(0).map((_, i) =>
-            <Mesh key={ i } geo={ geo }
-                position={ [rand(-200, 200), rand(-200, 200), rand(-200, 200)] }>
+            meshes.map(({ position, scaling, rotation }, i) =>
+            <Mesh key={ i } geo={ geometry }
+                position={ position }
+                scaling={ scaling }
+                rotation={ rotation }>
             </Mesh>)
         }
     </Canvas>
 }
 
-const geo = new Engine.SphereGeometry({ radius: 5 })
 document.body.style.margin = document.body.style.padding = '0'
 createRoot(document.getElementById('root')!).render(<App />)
