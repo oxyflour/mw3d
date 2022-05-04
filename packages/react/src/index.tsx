@@ -173,10 +173,15 @@ const MESH_NUM = 1000,
     INIT_MESHES = Array(MESH_NUM).fill(0).map(makeMesh)
 function App() {
     const [meshes, setMeshes] = useState(INIT_MESHES),
-        { prop } = MESH_DEFAULT_MAT,
+        [material, setMaterial] = useState(MESH_DEFAULT_MAT),
         [geometry, setGeometry] = useState(GEOMS[0]!),
+        { prop } = material,
         [metallic, setMetallic] = useState(prop.metallic),
         [roughness, setRoughness] = useState(prop.roughness)
+    function randomize() {
+        setMaterial(new Engine.BasicMaterial({ metallic, roughness }))
+        setMeshes(Array(MESH_NUM).fill(0).map(makeMesh))
+    }
     return <Canvas style={{ width: '100%', height: '100%' }}>
         <div style={{
             position: 'absolute',
@@ -184,7 +189,7 @@ function App() {
             top: 0,
             margin: 15,
         }}>
-            <button onClick={ () => setMeshes(Array(MESH_NUM).fill(0).map(makeMesh)) }>
+            <button onClick={ randomize }>
                 randomize
             </button>
             <span> </span>
@@ -205,8 +210,10 @@ function App() {
         </div>
         <Control />
         {
-            meshes.map(({ position, scaling, rotation }, i) =>
-            <Mesh key={ i } geo={ geometry }
+            meshes.map(({ position, scaling, rotation }, idx) =>
+            <Mesh key={ idx }
+                geo={ geometry }
+                mat={ material }
                 position={ position }
                 scaling={ scaling }
                 rotation={ rotation }>
