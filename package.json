@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev:core": "npx -w packages/core vite",
+    "dev:react": "npm -w packages/core run build && npx -w packages/react vite",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
