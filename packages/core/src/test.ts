@@ -17,9 +17,7 @@ canvas.style.width = canvas.style.height = '100%'
 document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
-const renderer = await WebGPURenderer.create(canvas),
-    scene = new Scene(),
-    pivot = new Obj3()
+const renderer = await WebGPURenderer.create(canvas)
 async function updatePivot({ x, y }: { x: number, y: number }) {
     const { id, position } = await picker.pick(scene, camera, {
         width: renderer.width,
@@ -27,7 +25,8 @@ async function updatePivot({ x, y }: { x: number, y: number }) {
         x, y,
     })
     if (id >= 0) {
-        const rot = quat.create()
+        const rot = quat.create(),
+            { pivot } = control
         mat4.fromRotationTranslation(pivot.worldMatrix, rot, position)
         pivot.setWorldMatrix(pivot.worldMatrix)
     }
@@ -72,9 +71,30 @@ const camera = new PerspectiveCamera({
         fov: 5 / 180 * Math.PI,
         aspect: canvas.clientWidth / canvas.clientHeight,
         near: 1000,
-        far: 20000
+        far: 20000,
+        position: [0, 0, 5000]
     }),
-    control = new Control(canvas, camera, pivot, {
+    cube = new Mesh(
+        new BoxGeometry({ size: 200 }),
+        new BasicMaterial({ color: [0.9, 0.3, 0.2], roughness: 0.2, metallic: 1 })),
+    handle = new Obj3({
+        children: [
+            new Light({
+                position: [0, 300, 0],
+                children: [
+                    new Mesh(new SphereGeometry({ radius: 20 }), cube.mat)
+                ]
+            })
+        ]
+    }),
+    scene = new Scene([
+        cube,
+        handle,
+        new Mesh(
+            new BoxLines({ size: 400 }),
+            cube.mat),
+    ]),
+    control = new Control(canvas, camera, {
         zoom: {
             distance: {
                 min: camera.near + 2000,
@@ -93,26 +113,6 @@ const camera = new PerspectiveCamera({
             click: clickScene
         }
     })
-control
-camera.position.set(0, 0, 5000)
-scene.add(pivot)
-
-const cube = new Mesh(
-    new BoxGeometry({ size: 200 }),
-    new BasicMaterial({ color: [0.9, 0.3, 0.2], roughness: 0.2, metallic: 1 }))
-scene.add(cube)
-
-const line = new Mesh(
-    new BoxLines({ size: 400 }),
-    cube.mat)
-scene.add(line)
-
-const light = new Light(),
-    handle = new Obj3()
-light.position.set(0, 0, 300)
-light.add(new Mesh(new SphereGeometry({ radius: 20 }), cube.mat))
-handle.add(light)
-scene.add(handle)
 
 for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,

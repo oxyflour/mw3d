@@ -1,7 +1,8 @@
 /// <reference path="../typing.d.ts" />
 //import loader from '@assemblyscript/loader'
 import { mat4, vec3, vec4 } from 'gl-matrix'
-import { Vec3, Quat, Mutable } from '../utils/math'
+import { AutoIndex } from '../utils/common'
+import { Vec3, Quat } from '../utils/math'
 
 //import wasmUrl from './wasm/obj3.as.ts'
 //type Obj3WasmExp = typeof import('./wasm/obj3.as')
@@ -19,7 +20,7 @@ export interface ObjOpts {
     children?: Obj3[]
 }
 
-export default class Obj3 extends Mutable {
+export default class Obj3 extends AutoIndex {
     readonly position = new Vec3()
     readonly rotation = new Quat()
     readonly scaling = new Vec3(vec3.fromValues(1, 1, 1))
@@ -34,6 +35,8 @@ export default class Obj3 extends Mutable {
         if (child.parent === this) {
             child.parent = undefined
         }
+        this.cachedStatus.rev ++
+        child.cachedStatus.rev ++
         //Obj3.initWasm.then(wasm => wasm.removeFrom(child.ptr, this.ptr))
     }
     addTo(parent: Obj3) {
@@ -43,6 +46,8 @@ export default class Obj3 extends Mutable {
         if (this.parent = parent) {
             this.parent.children.add(this)
         }
+        this.cachedStatus.rev ++
+        parent.cachedStatus.rev ++
         //Obj3.initWasm.then(wasm => wasm.addTo(this.ptr, parent.ptr))
     }
     getParent() {
@@ -50,6 +55,7 @@ export default class Obj3 extends Mutable {
     }
 
     private cachedStatus = {
+        rev: 1,
         parent: undefined as Obj3 | undefined,
     }
     readonly worldMatrix = mat4.create()
@@ -57,7 +63,7 @@ export default class Obj3 extends Mutable {
     setWorldMatrix(mat: mat4) {
         mat4.copy(this.worldMatrix, mat)
         if (this.parent) {
-            this.parent.updateIfNecessary()
+            this.parent.update()
             const inv = mat4.create()
             mat4.invert(inv, this.parent.worldMatrix)
             mat4.multiply(mat, inv, mat)
@@ -69,22 +75,15 @@ export default class Obj3 extends Mutable {
         mat4.getRotation(this.rotation.data, mat)
         mat4.getTranslation(this.position.data, mat)
         this.update()
-        this.isDirty = true
+        this.cachedStatus.rev ++
     }
-    protected override needsUpdate() {
-        const cache = this.cachedStatus
-        return this.isDirty ||
-            cache.parent !== this.parent ||
-            // @ts-ignore
-            this.position.needsUpdate() ||
-            // @ts-ignore
-            this.rotation.needsUpdate() ||
-            // @ts-ignore
-            this.scaling.needsUpdate()
+    protected get rev() {
+        return this.cachedStatus.rev +
+            this.position.rev +
+            this.rotation.rev +
+            this.scaling.rev
     }
-    protected override update() {
-        super.update()
-
+    protected update() {
         const cache = this.cachedStatus
         mat4.fromRotationTranslationScale(
             this.worldMatrix, this.rotation.data, this.position.data, this.scaling.data)
@@ -92,38 +91,29 @@ export default class Obj3 extends Mutable {
             mat4.multiply(this.worldMatrix, cache.parent.worldMatrix, this.worldMatrix)
         }
 
-        // @ts-ignore
-        this.position.update()
-        // @ts-ignore
-        this.rotation.update()
-        // @ts-ignore
-        this.scaling.update()
-
         vec4.set(this.worldPosition, 0, 0, 0, 1)
         vec4.transformMat4(this.worldPosition, this.worldPosition, this.worldMatrix)
-
         for (const child of this.children) {
             child.update()
         }
     }
-    updateIfNecessary(updated?: (obj: Obj3) => void) {
-        if (this.needsUpdate()) {
+    updateIfNecessary(revs: Record<number, number>, updated?: (obj: Obj3) => void) {
+        const { id, rev } = this
+        if (revs[id] !== rev && (revs[id] = rev)) {
             this.update()
             updated && this.walk(updated)
         } else {
             for (const child of this.children) {
-                child.updateIfNecessary(updated)
+                child.updateIfNecessary(revs, updated)
             }
         }
     }
 
-    private static counter = 0
-    readonly id: number
-    ptr!: number
     constructor(opts?: ObjOpts) {
         super()
-        this.id = Obj3.counter ++
-        opts?.position && this.position.set(...opts.position)
+        if (opts?.position) {
+            this.position.set(...opts.position)
+        }
         if (opts?.children) {
             for (const item of opts.children) {
                 this.add(item)
@@ -139,6 +129,7 @@ export default class Obj3 extends Mutable {
     }
 
     /*
+    ptr!: number
     private static initWasm = loader.instantiateStreaming(fetch(wasmUrl), { console: console as any })
         .then(({ exports }) => Obj3.wasmMod = exports as any as loader.ASUtil & Obj3WasmExp)
     private static wasmMod: loader.ASUtil & Obj3WasmExp

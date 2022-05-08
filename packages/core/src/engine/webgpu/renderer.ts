@@ -172,6 +172,7 @@ export default class Renderer {
     }
 
     private cachedRenderList = {
+        revs: { } as Record<number, number>,
         list: [] as Obj3[],
         updated: [] as (Mesh | Light | Material)[],
         addToUpdated: (obj: Obj3 | Material) =>
@@ -192,13 +193,13 @@ export default class Renderer {
             this.resize()
         }
 
-        const { list, updated, addToUpdated } = this.cachedRenderList
+        const { revs, list, updated, addToUpdated } = this.cachedRenderList
         list.length = updated.length = 0
-        camera.updateIfNecessary(addToUpdated)
+        camera.updateIfNecessary(revs, addToUpdated)
         // TODO: enable this
         // Obj3.update(objs)
         for (const obj of scene) {
-            obj.updateIfNecessary(addToUpdated)
+            obj.updateIfNecessary(revs, addToUpdated)
             obj.walk(obj => list.push(obj))
         }
 
@@ -206,7 +207,10 @@ export default class Renderer {
         opaque.length = translucent.length = lights.length = 0
         for (const obj of list) {
             if (obj instanceof Mesh && obj.isVisible) {
-                obj.mat.updateIfNecessary(addToUpdated)
+                const { mat } = obj
+                if (revs[mat.id] !== mat.rev && (revs[mat.id] = mat.rev)) {
+                    addToUpdated(mat)
+                }
                 if (obj.mat.prop.a < 1) {
                     translucent.push(obj)
                 } else {

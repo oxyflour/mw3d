@@ -1,14 +1,5 @@
 import { vec3, quat, vec4 } from 'gl-matrix'
-
-export class Mutable {
-    protected isDirty = true
-    protected needsUpdate() {
-        return this.isDirty
-    }
-    protected update() {
-        this.isDirty = false
-    }
-}
+import { Mutable } from './common'
 
 export function range(from: number, to = 0, delta = Math.sign(to - from)) {
     const ret = [] as number[]
@@ -24,7 +15,7 @@ export interface Array<T> {
 }
 export function MutableArray<T extends { [n: string]: number }>(dict: T) {
     class MutableArray extends Mutable {
-        constructor(readonly data: Array<number>) {
+        constructor(readonly data = Object.values(dict)) {
             super()
             for (const [idx, key] of Object.keys(dict).entries()) {
                 Object.defineProperty(this, key, {
@@ -32,7 +23,7 @@ export function MutableArray<T extends { [n: string]: number }>(dict: T) {
                         return this.data[idx]
                     },
                     set(val) {
-                        this.isDirty = true
+                        this.rev ++
                         this.data[idx] = val
                     }
                 })
@@ -40,7 +31,7 @@ export function MutableArray<T extends { [n: string]: number }>(dict: T) {
         }
     }
     // @ts-ignore
-    return MutableArray as new (data: Array<number>) => Mutable & T
+    return MutableArray as new (data?: Array<number>) => Mutable & T
 }
 
 export class Color4 extends MutableArray({
@@ -59,8 +50,8 @@ export class Vec3 extends MutableArray({ x: 0, y: 0, z: 0 }) {
         super(data)
     }
     set(x: number, y: number, z: number, out = this) {
-        Object.assign(this, { x, y, z })
-        return out
+        vec3.set(this.data, x, y, z)
+        return (this.rev ++), out
     }
 }
 
@@ -70,15 +61,15 @@ export class Quat extends MutableArray({ x: 0, y: 0, z: 0, w: 1 }) {
     }
     rotX(rad: number, out = this) {
         quat.rotateX(out.data, this.data, rad)
-        return (this.isDirty = true), out
+        return (this.rev ++), out
     }
     rotY(rad: number, out = this) {
         quat.rotateY(out.data, this.data, rad)
-        return (this.isDirty = true), out
+        return (this.rev ++), out
     }
     rotZ(rad: number, out = this) {
         quat.rotateZ(out.data, this.data, rad)
-        return (this.isDirty = true), out
+        return (this.rev ++), out
     }
 }
 

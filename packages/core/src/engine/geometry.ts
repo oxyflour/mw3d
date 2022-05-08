@@ -1,4 +1,5 @@
 import { vec4 } from "gl-matrix"
+import { AutoIndex } from "../utils/common"
 import { range } from "../utils/math"
 
 export interface Attr {
@@ -10,10 +11,7 @@ export interface Attr {
     offset?: number
 }
 
-export default class Geometry {
-    private static counter = 1
-    readonly id: number
-
+export default class Geometry extends AutoIndex {
     readonly type: GPUPrimitiveTopology
     readonly positions: Float32Array
     readonly count: number
@@ -32,7 +30,7 @@ export default class Geometry {
         indices?: Uint32Array | Uint16Array
         attributes?: Float32Array[]
     }) {
-        this.id = Geometry.counter ++
+        super()
         this.positions = positions
         this.normals = normals
         this.indices = indices

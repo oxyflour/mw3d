@@ -187,44 +187,49 @@ function App() {
         setMaterial(new Engine.BasicMaterial({ metallic, roughness }))
         setMeshes(Array(MESH_NUM).fill(0).map(makeMesh))
     }
-    return <Canvas style={{ width: '100%', height: '100%' }}>
-        <div style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            margin: 15,
-        }}>
-            <button onClick={ randomize }>
-                randomize
-            </button>
-            <span> </span>
-            <select value={ geometry.id }
-                onChange={ evt => setGeometry(GEOMS.find(geo => geo.id === parseInt(evt.target.value))!) }>
-                { GEOMS.map((geo, idx) => <option key={ geo.id } value={ geo.id }>{ ['box', 'sphere'][idx] }</option>) }
-            </select>
-            <br />
-            metallic <input type="range"
-                value={ metallic }
-                onChange={ evt => setMetallic(prop.metallic = parseFloat(evt.target.value)) }
-                min={ 0 } max={ 1 } step={ 0.01 } />
-            <br />
-            roughness <input type="range"
-                value={ roughness }
-                onChange={ evt => setRoughness(prop.roughness = parseFloat(evt.target.value)) }
-                min={ 0 } max={ 1 } step={ 0.01 } />
-        </div>
-        <Control />
-        {
-            meshes.map(({ position, scaling, rotation }, idx) =>
-            <Mesh key={ idx }
-                geo={ geometry }
-                mat={ material }
-                position={ position }
-                scaling={ scaling }
-                rotation={ rotation }>
-            </Mesh>)
-        }
-    </Canvas>
+    const list = meshes.map(({ position, scaling, rotation }, idx) =>
+        <Mesh key={ idx }
+            geo={ geometry }
+            mat={ material }
+            position={ position }
+            scaling={ scaling }
+            rotation={ rotation }>
+        </Mesh>)
+    return <>
+        <Canvas style={{ width: '50%', height: '50%' }}>
+            <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                margin: 15,
+            }}>
+                <button onClick={ randomize }>
+                    randomize
+                </button>
+                <span> </span>
+                <select value={ geometry.id }
+                    onChange={ evt => setGeometry(GEOMS.find(geo => geo.id === parseInt(evt.target.value))!) }>
+                    { GEOMS.map((geo, idx) => <option key={ geo.id } value={ geo.id }>{ ['box', 'sphere'][idx] }</option>) }
+                </select>
+                <br />
+                metallic <input type="range"
+                    value={ metallic }
+                    onChange={ evt => setMetallic(prop.metallic = parseFloat(evt.target.value)) }
+                    min={ 0 } max={ 1 } step={ 0.01 } />
+                <br />
+                roughness <input type="range"
+                    value={ roughness }
+                    onChange={ evt => setRoughness(prop.roughness = parseFloat(evt.target.value)) }
+                    min={ 0 } max={ 1 } step={ 0.01 } />
+            </div>
+            <Control />
+            { list }
+        </Canvas>
+        <Canvas style={{ width: '50%', height: '50%' }}>
+            <Control />
+            { list }
+        </Canvas>
+    </>
 }
 
 document.body.style.margin = document.body.style.padding = '0'

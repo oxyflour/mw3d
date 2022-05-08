@@ -9,11 +9,12 @@ function vec3FromObj(out: vec3, obj: Obj3) {
 }
 
 export class Control {
+    readonly pivot: Obj3
     constructor(
         readonly canvas: HTMLCanvasElement,
         readonly camera: PerspectiveCamera,
-        readonly pivot = new Obj3(),
         readonly opts?: {
+            pivot?: Obj3
             zoom?: {
                 factor?: number
                 distance?: {
@@ -27,6 +28,7 @@ export class Control {
                 click?: (evt: MouseEvent) => any
             },
         }) {
+        this.pivot = opts?.pivot || new Obj3()
         canvas.addEventListener('mousedown', this.bindMouseDown = this.bindMouseDown.bind(this))
         canvas.addEventListener('wheel', this.bindMouseWheel = this.bindMouseWheel.bind(this))
     }
@@ -36,6 +38,7 @@ export class Control {
     }
     async onMouseDown(evt: MouseEvent) {
         const { canvas, camera, pivot, opts } = this,
+            { left, top } = canvas.getBoundingClientRect(),
             start = { clientX: evt.clientX, clientY: evt.clientY, hasMoved: false }
         function onMouseUp(evt: MouseEvent) {
             if (!start.hasMoved &&
@@ -89,8 +92,8 @@ export class Control {
         function onDragWithPivot(evt: MouseEvent) {
             start.hasMoved = true
             vec3FromObj(origin, camera)
-            getWorldDirFromScreen(from, start.clientX, start.clientY)
-            getWorldDirFromScreen(target, evt.clientX, evt.clientY)
+            getWorldDirFromScreen(from, start.clientX - left, start.clientY - top)
+            getWorldDirFromScreen(target, evt.clientX - left, evt.clientY - top)
             vec3.cross(axis, from, target)
             vec3.normalize(axis, axis)
             const rad = vec3.angle(from, target)

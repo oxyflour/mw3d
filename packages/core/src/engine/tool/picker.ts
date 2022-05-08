@@ -64,6 +64,14 @@ export interface PickGeo {
     indices?: Uint16Array | Uint32Array
 }
 
+export interface PickCamera {
+    fov: number
+    aspect: number
+    near: number
+    far: number
+    worldMatrix: mat4
+}
+
 const worker = wrap({
     num: 1,
     // @ts-ignore
@@ -83,7 +91,7 @@ const worker = wrap({
         },
         async render(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
-                     { fov, aspect, near, far, worldMatrix }: PerspectiveCamera,
+                     { fov, aspect, near, far, worldMatrix }: PickCamera,
                      { x, y }: { x: number, y: number }) {
             const { renderer, camera, pixels } = await getCache(),
                 { scene, geoMap, matMap, meshMap } = cache
@@ -169,7 +177,8 @@ export default class Picker {
                 }
             })
         }
-        return await worker.render(meshes, geometries, camera, opts)
+        const { fov, aspect, near, far, worldMatrix } = camera
+        return await worker.render(meshes, geometries, { fov, aspect, near, far, worldMatrix }, opts)
     }
 
     private static created: Promise<Picker>

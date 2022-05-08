@@ -1,4 +1,5 @@
 import { mat4 } from 'gl-matrix'
+import { MutableArray } from '../utils/math'
 
 import Obj3, { ObjOpts } from './obj3'
 
@@ -28,26 +29,49 @@ export default class Camera extends Obj3 {
     }
 }
 
+export class PerspectiveProp extends MutableArray({
+    fov: 30 * Math.PI / 180,
+    aspect: 1,
+    near: 1,
+    far: 100,
+}) {
+}
+
 export class PerspectiveCamera extends Camera {
-    readonly cachedPerspectiveParams: { fov: number, aspect: number, near: number, far: number }
-    protected override needsUpdate() {
-        const cache = this.cachedPerspectiveParams
-        return super.needsUpdate()  ||
-            cache.fov     !== this.fov    ||
-            cache.aspect  !== this.aspect ||
-            cache.near    !== this.near   ||
-            cache.far     !== this.far
+    readonly prop = new PerspectiveProp()
+    protected override get rev() {
+        return super.rev +
+            this.prop.rev
     }
     protected override update() {
-        const { fov, aspect, near, far } = this
+        const { fov, aspect, near, far } = this.prop
         mat4.perspective(this.projection, fov, aspect, near, far)
-        Object.assign(this.cachedPerspectiveParams, { fov, aspect, near, far })
         super.update()
     }
-    public fov: number
-    public aspect: number
-    public near: number
-    public far: number
+    get fov() {
+        return this.prop.fov
+    }
+    set fov(val) {
+        this.prop.fov = val
+    }
+    get aspect() {
+        return this.prop.aspect
+    }
+    set aspect(val) {
+        this.prop.aspect = val
+    }
+    get near() {
+        return this.prop.near
+    }
+    set near(val) {
+        this.prop.near = val
+    }
+    get far() {
+        return this.prop.far
+    }
+    set far(val) {
+        this.prop.far = val
+    }
     constructor(readonly opts?: {
         fov?: number
         aspect?: number
@@ -57,10 +81,6 @@ export class PerspectiveCamera extends Camera {
         const { fov = 60 * Math.PI / 180, aspect = 1, near = 1, far = 1000 } = opts || { },
             projection = mat4.perspective(mat4.create(), fov, aspect, near, far)
         super({ ...opts, projection })
-        this.fov = fov
-        this.aspect = aspect
-        this.near = near
-        this.far = far
-        this.cachedPerspectiveParams = { fov, aspect, near, far }
+        Object.assign(this.prop, { fov, aspect, near, far })
     }
 }

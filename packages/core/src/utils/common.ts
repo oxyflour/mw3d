@@ -4,3 +4,15 @@ export function format(src: string, env: any) {
         func = new Function(...args)
     return func(...Object.values(env))
 }
+
+export class Mutable {
+    rev = 1
+}
+
+export class AutoIndex {
+    private static counter = 1
+    readonly id: number
+    constructor() {
+        this.id = AutoIndex.counter ++
+    }
+}

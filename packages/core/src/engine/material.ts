@@ -1,6 +1,7 @@
 /// <reference path="../typing.d.ts" />
 
-import { MutableArray, Mutable } from '../utils/math'
+import { AutoIndex } from '../utils/common'
+import { MutableArray } from '../utils/math'
 import { Sampler, Texture, Uniform } from './uniform'
 import code from './webgpu/shader.wgsl?raw'
 
@@ -19,21 +20,16 @@ export class MaterialProp extends MutableArray({
     }
 }
 
-export default class Material extends Mutable {
+export default class Material extends AutoIndex {
     prop = new MaterialProp()
 
     readonly bindingGroup = 3
-    private static DEFAULT_SAMPLER = new Sampler({
-        magFilter: 'linear',
-        minFilter: 'linear',
-    })
+    private static DEFAULT_SAMPLER = new Sampler({ })
     readonly uniforms = [
         [this.prop.data],
         // texture
     ] as Uniform[]
 
-    private static counter = 1
-    readonly id: number
     constructor(readonly opts: {
         code: string
         entry: { vert: ProgramEntry, frag: ProgramEntry }
@@ -47,24 +43,10 @@ export default class Material extends Mutable {
                 opts.sampler || Material.DEFAULT_SAMPLER
             )
         }
-        this.id = Material.counter ++
     }
 
-    updateIfNecessary(updated?: (obj: Material) => void) {
-        if (this.needsUpdate()) {
-            this.update()
-            updated?.(this)
-        }
-    }
-    protected override needsUpdate() {
-        return this.isDirty ||
-            // @ts-ignore
-            this.prop.needsUpdate()
-    }
-    protected override update() {
-        super.update()
-        // @ts-ignore
-        this.prop.update()
+    get rev() {
+        return this.prop.rev
     }
 }
 
