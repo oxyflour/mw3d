@@ -28,7 +28,7 @@ const cache = {
 }
 async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
     const renderer = await Renderer.create(canvas, opts),
-        camera = new PerspectiveCamera(45, 1, 1, 100),
+        camera = new PerspectiveCamera(),
         ctx = pixels.getContext('2d')
     return { renderer, camera, canvas, pixels, ctx }
 }

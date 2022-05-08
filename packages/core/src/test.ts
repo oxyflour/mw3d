@@ -68,7 +68,12 @@ async function clickScene(evt: MouseEvent) {
     })
 }
 
-const camera = new PerspectiveCamera(5 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1000, 20000),
+const camera = new PerspectiveCamera({
+        fov: 5 / 180 * Math.PI,
+        aspect: canvas.clientWidth / canvas.clientHeight,
+        near: 1000,
+        far: 20000
+    }),
     control = new Control(canvas, camera, pivot, {
         zoom: {
             distance: {

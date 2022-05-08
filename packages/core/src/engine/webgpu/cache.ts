@@ -1,5 +1,3 @@
-/// <reference path="../../../node_modules/@webgpu/types/dist/index.d.ts" />
-
 import cache from "../../utils/cache"
 import Geometry from "../geometry"
 import Material from "../material"
@@ -64,23 +62,16 @@ export default class Cache {
         buffer.unmap()
         return [buffer, type] as [GPUBuffer, 'uint32' | 'uint16']
     })
-    private makeAttrBuffer(val: Float32Array) {
-        const buffer = this.device.createBuffer({
-            size: val.length * 4,
-            usage: GPUBufferUsage.VERTEX,
-            mappedAtCreation: true
-        })
-        new Float32Array(buffer.getMappedRange()).set(val)
-        buffer.unmap()
-        return buffer
-    }
     attrs = cache((geo: Geometry) => {
         const list = [] as CachedAttr[]
-        for (const array of [geo.positions, geo.normals]) {
-            if (!(array instanceof Float32Array)) {
-                throw Error(`attr.values is not supported`)
-            }
-            const buffer = this.makeAttrBuffer(array)
+        for (const array of geo.attributes) {
+            const buffer = this.device.createBuffer({
+                size: array.byteLength,
+                usage: GPUBufferUsage.VERTEX,
+                mappedAtCreation: true
+            })
+            new Float32Array(buffer.getMappedRange()).set(array)
+            buffer.unmap()
             list.push({ buffer })
         }
         return list
@@ -160,6 +151,8 @@ export default class Cache {
             pipelineId = Object.keys(this.cachedPipelines).length,
             module = this.device.createShaderModule({ code })
         return Object.assign(this.device.createRenderPipeline({
+            // waiting for @webgpu/types
+            layout: 'auto' as any,
             vertex: {
                 module,
                 entryPoint: typeof vert === 'string' ? vert : vert[geo.primitive],

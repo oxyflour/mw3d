@@ -1,5 +1,3 @@
-/// <reference path="../../../node_modules/@webgpu/types/dist/index.d.ts" />
-
 import Camera from "../camera"
 import Material from "../material"
 import Obj3, { Scene } from "../obj3"
@@ -243,7 +241,6 @@ export default class Renderer {
                         this.cache.texture(opts.colorTexture).createView() :
                         this.context.getCurrentTexture().createView(),
                     loadOp: 'clear',
-                    loadValue: { r: 1, g: 1, b: 1, a: 1.0 },
                     storeOp: 'store',
                     clearValue: { r: 1, g: 1, b: 1, a: 1.0 },
                 }],

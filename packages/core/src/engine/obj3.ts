@@ -14,6 +14,11 @@ export class Scene extends Set<Obj3> {
     }
 }
 
+export interface ObjOpts {
+    position?: [number, number, number]
+    children?: Obj3[]
+}
+
 export default class Obj3 extends Mutable {
     readonly position = new Vec3()
     readonly rotation = new Quat()
@@ -115,9 +120,15 @@ export default class Obj3 extends Mutable {
     private static counter = 0
     readonly id: number
     ptr!: number
-    constructor() {
+    constructor(opts?: ObjOpts) {
         super()
         this.id = Obj3.counter ++
+        opts?.position && this.position.set(...opts.position)
+        if (opts?.children) {
+            for (const item of opts.children) {
+                this.add(item)
+            }
+        }
         //Obj3.initWasm.then(wasm => this.ptr = wasm.create())
     }
     walk(func: (obj: Obj3, parent?: Obj3) => void) {

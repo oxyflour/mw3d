@@ -19,22 +19,29 @@ export default class Geometry {
     readonly count: number
     readonly normals?: Float32Array
     readonly indices?: Uint16Array | Uint32Array
+    readonly attributes: Float32Array[]
 
     readonly min = [Infinity, Infinity, Infinity]
     readonly max = [-Infinity, -Infinity, -Infinity]
     readonly center = vec4.fromValues(0, 0, 0, 0)
 
-    constructor({ type, positions, normals, indices }: {
+    constructor({ type, positions, normals, indices, attributes }: {
         type?: GPUPrimitiveTopology
         positions: Float32Array
         normals?: Float32Array
         indices?: Uint32Array | Uint16Array
+        attributes?: Float32Array[]
     }) {
         this.id = Geometry.counter ++
         this.positions = positions
         this.normals = normals
         this.indices = indices
         this.type = type || 'triangle-list'
+        this.attributes = [
+            this.positions,
+            ...(normals ? [normals] : []),
+            ...(attributes || []),
+        ]
 
         const { min, max, center } = this
         for (let i = 0, n = positions.length; i < n; i += 3) {

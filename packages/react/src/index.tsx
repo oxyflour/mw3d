@@ -28,7 +28,12 @@ function Canvas({ children, options, style }: {
             const scene = new Engine.Scene(),
                 opts = options?.(canvas) || { },
                 renderer = await Engine.Renderer.create(canvas, opts),
-                camera = new Engine.PerspectiveCamera(60 / 180 * Math.PI, canvas.clientWidth / canvas.clientHeight, 1, 2000),
+                camera = new Engine.PerspectiveCamera({
+                    fov: 60 / 180 * Math.PI,
+                    aspect: canvas.clientWidth / canvas.clientHeight,
+                    near: 1,
+                    far: 2000,
+                }),
                 light = new Engine.Light()
             camera.position.set(0, 0, 600)
             light.position.set(500, 500, 500)

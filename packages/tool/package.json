@@ -1,28 +1,24 @@
 {
-  "name": "ttk",
+  "name": "tool",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev:core": "npx -w packages/core vite",
-    "dev:react": "npm -w packages/core run build && npx -w packages/react vite",
-    "dev:tool": "npm -w packages/core run build && npx -w packages/tool vite",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/oxyflour/mw3d.git"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/oxyflour/mw3d/issues"
   },
   "homepage": "https://github.com/oxyflour/mw3d#readme",
-  "workspaces": [
-    "./packages/core",
-    "./packages/react",
-    "./packages/tool"
-  ]
+  "dependencies": {
+    "mmd-parser": "^1.0.4",
+    "typescript": "^4.6.4",
+    "vite": "^2.9.8"
+  }
 }
