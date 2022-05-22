@@ -1,21 +1,68 @@
-import { createRoot } from 'react-dom/client'
-import React, { createContext, CSSProperties, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, CSSProperties, MutableRefObject, useContext, useEffect, useRef, useState } from 'react'
 
-// TODO: publish this package
-import { Engine } from '../../core'
+import { Engine } from '@ttk/core'
 import { mat4, quat } from 'gl-matrix'
-
-function rand(begin: number, end = 0) {
-    return Math.random() * (end - begin) + begin
-}
 
 interface CanvasContextValue {
     scene?: Engine.Scene
     camera?: Engine.PerspectiveCamera
     canvas?: HTMLCanvasElement
+    frame?: {
+        before: ((time: number) => void)[],
+        after: ((time: number) => void)[],
+    }
 }
+
 const CanvasContext = createContext({ } as CanvasContextValue)
-function Canvas({ children, options, style }: {
+export function useCanvas() {
+    return useContext(CanvasContext)
+}
+
+export function useFrame(func: (time: number) => void, before = true) {
+    const { frame } = useCanvas(),
+        ref = useRef(func)
+    ref.current = func
+    useEffect(() => {
+        if (frame) {
+            const callback = (time: number) => ref.current(time)
+            if (before) {
+                frame.before.push(callback)
+                return () => { frame.before = frame.before.filter(item => item !== callback) }
+            } else {
+                frame.after.push(callback)
+                return () => { frame.after = frame.after.filter(item => item !== callback) }
+            }
+        } else {
+            return () => { }
+        }
+    }, [frame])
+}
+
+export function useTick(func: (time: number) => void, interval = 100) {
+    const { frame } = useCanvas(),
+        ref = useRef(func)
+    ref.current = func
+    useEffect(() => {
+        if (frame) {
+            let current = -1
+            function callback(time: number) {
+                if (current < 0) {
+                    current = time
+                } else {
+                    while (current < time) {
+                        ref.current(current += interval)
+                    }
+                }
+            }
+            frame.before.push(callback)
+            return () => { frame.before = frame.before.filter(item => item !== callback) }
+        } else {
+            return () => { }
+        }
+    }, [frame])
+}
+
+export function Canvas({ children, options, style }: {
     children: any
     options?: (canvas: HTMLCanvasElement) => Engine.Renderer['opts']
     style?: CSSProperties
@@ -34,17 +81,24 @@ function Canvas({ children, options, style }: {
                     near: 1,
                     far: 2000,
                 }),
-                light = new Engine.Light()
+                light = new Engine.Light(),
+                frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>
             camera.position.set(0, 0, 600)
             light.position.set(500, 500, 500)
             scene.add(light)
-            requestAnimationFrame(function render() {
+            requestAnimationFrame(function render(time: number) {
                 if (handle.running) {
+                    for (const func of frame.before) {
+                        func(time)
+                    }
                     requestAnimationFrame(render)
                     renderer.render(scene, camera)
+                    for (const func of frame.after) {
+                        func(time)
+                    }
                 }
             })
-            setState({ scene, camera, canvas })
+            setState({ scene, camera, canvas, frame })
         } catch (err) {
             console.error(err)
             setError(err)
@@ -54,7 +108,11 @@ function Canvas({ children, options, style }: {
         const canvas = cvRef.current,
             handle = { running: true }
         canvas && init(canvas, handle)
-        return () => { handle.running = false }
+        console.log('init', handle)
+        return () => {
+            handle.running = false
+            console.log('init', handle)
+        }
     }, [cvRef.current])
     return <CanvasContext.Provider value={ state }>
         {
@@ -71,11 +129,12 @@ function Canvas({ children, options, style }: {
     </CanvasContext.Provider>
 }
 
-function Control() {
-    const { canvas, camera } = useContext(CanvasContext)
+export function Control({ ref }: { ref?: MutableRefObject<Engine.Control> }) {
+    const { canvas, camera } = useCanvas()
     useEffect(() => {
         if (canvas && camera) {
             const control = new Engine.Control(canvas, camera)
+            ref && (ref.current = control)
             return () => { control.detach() }
         } else {
             return () => { }
@@ -85,16 +144,20 @@ function Control() {
 }
 
 const Obj3Context = createContext({ } as { obj?: Engine.Obj3 })
-function Obj3({ children, create, matrix, position, rotation, scaling }: {
-    children: any
+export function useObj3() {
+    return useContext(Obj3Context)
+}
+
+export function Obj3({ children, create, matrix, position, rotation, scaling }: {
+    children?: any
     matrix?: number[]
     position?: [number, number, number]
     rotation?: [number, number, number]
     scaling?: [number, number, number]
     create?: () => Engine.Obj3
 }) {
-    const { scene } = useContext(CanvasContext),
-        { obj: node } = useContext(Obj3Context),
+    const { scene } = useCanvas(),
+        { obj: node } = useObj3(),
         [obj, setObj] = useState(undefined as undefined | Engine.Obj3)
     useEffect(() => {
         setObj(create ? create() : new Engine.Obj3())
@@ -134,103 +197,30 @@ function Obj3({ children, create, matrix, position, rotation, scaling }: {
 
 type Args<A> = A extends (...args: infer C) => any ? C : A
 
-const MESH_DEFAULT_MAT = new Engine.BasicMaterial({ metallic: 1, roughness: 0.5 }),
-    MESH_DEFAULT_GEO = new Engine.SphereGeometry({ radius: 100 })
+export const MeshDefault = {
+    mat: new Engine.BasicMaterial({ metallic: 1, roughness: 0.5 }),
+    geo: new Engine.SphereGeometry({ radius: 100 })
+}
 function MeshSetter({ geo, mat }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
 }) {
-    const { obj: mesh } = useContext(Obj3Context) as { obj: Engine.Mesh }
+    const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
     useEffect(() => {
         if (mesh) {
-            mesh.geo = geo || MESH_DEFAULT_GEO
-            mesh.mat = mat || MESH_DEFAULT_MAT
+            mesh.geo = geo || MeshDefault.geo
+            mesh.mat = mat || MeshDefault.mat
         }
     }, [mesh, geo, mat])
     return null
 }
-function Mesh({ geo, mat, children, ...props }: {
+export function Mesh({ geo, mat, children, ...props }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
 } & Args<typeof Obj3>['0']) {
     return <Obj3 { ...props }
-            create={ () => new Engine.Mesh(MESH_DEFAULT_GEO, MESH_DEFAULT_MAT) }>
+            create={ () => new Engine.Mesh(MeshDefault.geo, MeshDefault.mat) }>
         <MeshSetter geo={ geo } mat={ mat } />
         { children }
     </Obj3>
 }
-
-const GEOMS = [
-    new Engine.BoxGeometry({ size: 5 }),
-    new Engine.SphereGeometry({ radius: 2.5 }),
-] as Engine.Geometry[]
-
-function makeMesh() {
-    const s = rand(1, 5)
-    return {
-        position: [rand(-200, 200), rand(-200, 200), rand(-200, 200)] as [number, number, number],
-        scaling:  [s, s, s] as [number, number, number],
-        rotation: [rand(3), rand(3), rand(3)] as [number, number, number]
-    }
-}
-
-const MESH_NUM = 1000,
-    INIT_MESHES = Array(MESH_NUM).fill(0).map(makeMesh)
-function App() {
-    const [meshes, setMeshes] = useState(INIT_MESHES),
-        [material, setMaterial] = useState(MESH_DEFAULT_MAT),
-        [geometry, setGeometry] = useState(GEOMS[0]!),
-        { prop } = material,
-        [metallic, setMetallic] = useState(prop.metallic),
-        [roughness, setRoughness] = useState(prop.roughness)
-    function randomize() {
-        setMaterial(new Engine.BasicMaterial({ metallic, roughness }))
-        setMeshes(Array(MESH_NUM).fill(0).map(makeMesh))
-    }
-    const list = meshes.map(({ position, scaling, rotation }, idx) =>
-        <Mesh key={ idx }
-            geo={ geometry }
-            mat={ material }
-            position={ position }
-            scaling={ scaling }
-            rotation={ rotation }>
-        </Mesh>)
-    return <>
-        <Canvas style={{ width: '50%', height: '50%' }}>
-            <div style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                margin: 15,
-            }}>
-                <button onClick={ randomize }>
-                    randomize
-                </button>
-                <span> </span>
-                <select value={ geometry.id }
-                    onChange={ evt => setGeometry(GEOMS.find(geo => geo.id === parseInt(evt.target.value))!) }>
-                    { GEOMS.map((geo, idx) => <option key={ geo.id } value={ geo.id }>{ ['box', 'sphere'][idx] }</option>) }
-                </select>
-                <br />
-                metallic <input type="range"
-                    value={ metallic }
-                    onChange={ evt => setMetallic(prop.metallic = parseFloat(evt.target.value)) }
-                    min={ 0 } max={ 1 } step={ 0.01 } />
-                <br />
-                roughness <input type="range"
-                    value={ roughness }
-                    onChange={ evt => setRoughness(prop.roughness = parseFloat(evt.target.value)) }
-                    min={ 0 } max={ 1 } step={ 0.01 } />
-            </div>
-            <Control />
-            { list }
-        </Canvas>
-        <Canvas style={{ width: '50%', height: '50%' }}>
-            <Control />
-            { list }
-        </Canvas>
-    </>
-}
-
-document.body.style.margin = document.body.style.padding = '0'
-createRoot(document.getElementById('root')!).render(<App />)

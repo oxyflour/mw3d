@@ -23,6 +23,7 @@
   "workspaces": [
     "./packages/core",
     "./packages/react",
-    "./packages/tool"
+    "./packages/tool",
+    "./packages/test"
   ]
 }
