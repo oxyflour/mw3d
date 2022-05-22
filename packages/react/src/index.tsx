@@ -108,11 +108,7 @@ export function Canvas({ children, options, style }: {
         const canvas = cvRef.current,
             handle = { running: true }
         canvas && init(canvas, handle)
-        console.log('init', handle)
-        return () => {
-            handle.running = false
-            console.log('init', handle)
-        }
+        return () => { handle.running = false }
     }, [cvRef.current])
     return <CanvasContext.Provider value={ state }>
         {
