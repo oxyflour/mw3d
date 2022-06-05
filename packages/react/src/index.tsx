@@ -3,6 +3,8 @@ import React, { createContext, CSSProperties, MutableRefObject, useContext, useE
 import { Engine } from '@ttk/core'
 import { mat4, quat } from 'gl-matrix'
 
+export { Engine } from '@ttk/core'
+
 interface CanvasContextValue {
     scene?: Engine.Scene
     camera?: Engine.PerspectiveCamera
@@ -83,8 +85,8 @@ export function Canvas({ children, options, style }: {
                 }),
                 light = new Engine.Light(),
                 frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>
-            camera.position.set(0, 0, 600)
-            light.position.set(500, 500, 500)
+            camera.position.set(0, 0, 6)
+            light.position.set(5, 5, 5)
             scene.add(light)
             requestAnimationFrame(function render(time: number) {
                 if (handle.running) {
@@ -195,7 +197,7 @@ type Args<A> = A extends (...args: infer C) => any ? C : A
 
 export const MeshDefault = {
     mat: new Engine.BasicMaterial({ metallic: 1, roughness: 0.5 }),
-    geo: new Engine.SphereGeometry({ radius: 100 })
+    geo: new Engine.SphereGeometry({ radius: 1 })
 }
 function MeshSetter({ geo, mat }: {
     geo?: Engine.Geometry

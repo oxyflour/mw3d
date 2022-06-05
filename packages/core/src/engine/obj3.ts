@@ -17,6 +17,8 @@ export class Scene extends Set<Obj3> {
 
 export interface ObjOpts {
     position?: [number, number, number]
+    rotation?: [number, number, number]
+    scaling?: [number, number, number]
     children?: Obj3[]
 }
 
@@ -113,6 +115,13 @@ export default class Obj3 extends AutoIndex {
         super()
         if (opts?.position) {
             this.position.set(...opts.position)
+        }
+        if (opts?.rotation) {
+            const [x, y, z] = opts.rotation
+            this.rotation.rotX(x).rotY(y).rotZ(z)
+        }
+        if (opts?.scaling) {
+            this.scaling.set(...opts.scaling)
         }
         if (opts?.children) {
             for (const item of opts.children) {

@@ -1,6 +1,6 @@
 {
   "name": "@ttk/core",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "minimal WebGL2 only 3D engine",
   "main": "dist/core.es.js",
   "types": "dist/index.d.ts",
