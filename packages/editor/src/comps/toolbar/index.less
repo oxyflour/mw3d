@@ -1,17 +1,53 @@
-.tool-block {
-    margin-top: 4;
-    margin-bottom: 4;
-    .content {
-        margin-left: 8;
-        margin-right: 8;
+.toolbar {
+    @color-forground: #005686;
+    @color-background: #f1f1f1;
+
+    height: 120px;
+    background-color: @color-forground;
+
+    > .titles {
+        font-size: 12px;
+        > .title {
+            padding: 4px 8px;
+            color: @color-background;
+        }
+        > .title.active {
+            color: @color-forground;
+            background-color: @color-background;
+        }
     }
-    .icon-button {
-        .title {
-            font-size: 90%;
+    > .tab {
+        background-color: @color-background;
+    }
+
+    .group {
+        margin-top: 4;
+        margin-bottom: 4;
+        > .title {
+            font-size: 12px;
+            color: #555;
+        }
+        > .content {
+            gap: 8px;
+            margin-left: 8;
+            margin-right: 8;
+        }
+        .button {
+            user-select: none;
+            transition: background-color ease 0.2s;
+        }
+        .button:hover {
+            background-color: #e0e0e0;
+        }
+        .button:active {
+            background-color: #c5c5c5;
+        }
+        .icon-button .title {
+            font-size: 12px;
             line-height: 1em;
         }
     }
-}
-.tool-block:not(:last-child) {
-    border-right: 1px solid #eee;
+    .group:not(:last-child) {
+        border-right: 1px solid #888;
+    }
 }

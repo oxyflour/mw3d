@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client'
 
 import Toolbar from './comps/toolbar'
-import Tree from './comps/tree'
+import Nav from './comps/nav'
 import View from './comps/view'
 import { useSavedInt } from './utils/react/hooks'
 
@@ -10,7 +10,7 @@ import React from 'react'
 import { withMouseDown } from './utils/dom/mouse'
 
 function App() {
-    const [treeWidth, setTreeWidth] = useSavedInt('saved-tree-width', 180)
+    const [treeWidth, setTreeWidth] = useSavedInt('saved-nav-width', 180)
     function onResize(evt: React.MouseEvent) {
         const startX = evt.clientX - treeWidth,
             clamp = (min: number, val: number, max: number) => Math.max(Math.min(max, val), min)
@@ -20,7 +20,7 @@ function App() {
         <Toolbar />
         <div className="grow flex">
             <div className="bg-stone-500" style={{ width: treeWidth }}>
-                <Tree />
+                <Nav />
             </div>
             <div className="bg-black select-none cursor-col-resize" style={{ width: 5 }}
                 onMouseDown={ onResize }>

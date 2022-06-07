@@ -37,7 +37,7 @@ export default class Renderer {
 
         const device = this.device = this.opts.canvasConfig?.device ||
                 await adaptor.requestDevice(this.opts.deviceDescriptor)
-        this.format = this.opts.canvasConfig?.format || this.context.getPreferredFormat(adaptor)
+        this.format = this.opts.canvasConfig?.format || navigator.gpu.getPreferredCanvasFormat()
         this.width = this.opts.size?.width || (this.canvas as HTMLCanvasElement).clientWidth || 100
         this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight || 100
 
@@ -54,7 +54,7 @@ export default class Renderer {
             size: this.renderSize,
             format: this.format,
             device: this.device,
-            compositingAlphaMode: 'premultiplied',
+            alphaMode: 'premultiplied',
         })
 
         return this
@@ -79,7 +79,7 @@ export default class Renderer {
             size: this.renderSize,
             format: this.format,
             device: this.device,
-            compositingAlphaMode: 'premultiplied',
+            alphaMode: 'premultiplied',
         })
     }
 
