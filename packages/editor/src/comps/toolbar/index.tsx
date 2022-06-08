@@ -1,37 +1,54 @@
-import { CSSProperties, ReactElement, useEffect, useState } from 'react'
+import { CSSProperties, DetailedHTMLProps, ReactElement, useEffect, useRef, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
 
-export function IconButton({ icon, title, onClick, dropdown }: {
+export function Dropdown({ menu, children, ...rest }: {
+    menu?: any
+    children?: any
+} & DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>) {
+    const [visible, setVisible] = useState(false),
+        ref = useRef<HTMLDivElement>()
+    useEffect(() => {
+        if (visible) {
+            function onClick(evt: MouseEvent) {
+                if (ref.current !== evt.target) {
+                    setTimeout(() => setVisible(false), 50)
+                }
+            }
+            document.body.addEventListener('click', onClick, true)
+            return () => document.body.removeEventListener('click', onClick)
+        } else {
+            return () => { }
+        }
+    }, [visible])
+    return <div { ...rest }
+        tabIndex={ -1 }
+        ref={ ref }
+        onClick={ () => setVisible(true) }>
+        { children }
+        {
+            visible && <div className="absolute text-left">
+                { menu }
+            </div>
+        }
+    </div>
+}
+
+export function ImageButton({ icon, title, onClick, menu }: {
     icon?: any
     title?: string | JSX.Element
     onClick?: () => void
-    dropdown?: any
+    menu?: any
 }) {
-    const [visible, setVisible] = useState(false)
-    useEffect(() => {
-        const onClick = () => setVisible(false)
-        document.body.addEventListener('click', onClick, true)
-        return () => {
-            document.body.removeEventListener('click', onClick)
-        }
-    }, [])
-    return dropdown ?
+    return menu ?
     <div className="icon-button flex flex-col cursor-pointer">
         <div className="button text-center">
             { icon || <GoAlert size={ 32 } style={{ margin: 4, display: 'inline' }} /> }
         </div>
-        <div className="title button text-center grow"
-            tabIndex={ -1 }
-            onClick={ () => setVisible(true) }>
+        <Dropdown menu={ menu } className="title button text-center grow">
             { title } ▼
-        </div>
-        {
-            visible && <div>
-                <div className="absolute" style={{ marginTop: -8 }}>{ dropdown }</div>
-            </div>
-        }
+        </Dropdown>
     </div> :
     <div className="icon-button button flex flex-col cursor-pointer" onClick={ onClick }>
         <div className="text-center">
@@ -39,6 +56,28 @@ export function IconButton({ icon, title, onClick, dropdown }: {
         </div>
         <div className="title text-center">
             { title }
+        </div>
+    </div>
+}
+
+export function IconButton({ icon, title, onClick, menu }: {
+    icon?: any
+    title?: string | JSX.Element
+    onClick?: () => void
+    menu?: any
+}) {
+    return menu ?
+    <div className="icon-button flex cursor-pointer">
+        <div className="button title px-1 py-1">
+            { icon || <GoAlert style={{ display: 'inline' }} /> } { title } 
+        </div>
+        <Dropdown className="button title py-1" menu={ menu }>
+            ▼
+        </Dropdown>
+    </div> :
+    <div className="icon-button button flex cursor-pointer px-1 py-1" onClick={ onClick }>
+        <div className="button title">
+            { icon || <GoAlert style={{ display: 'inline' }} /> } { title }
         </div>
     </div>
 }
@@ -88,23 +127,42 @@ export default ({ className }: {
     return <Tabs className={ `toolbar ${className || ''}` }>
         <div title="Home">
             <Group title="Home">
-                <IconButton title="ok" dropdown={
+                <ImageButton title="ok" menu={
                     <Menu>
+                        <MenuGroup>
+                            <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
+                            <MenuItem>Cancel</MenuItem>
+                        </MenuGroup>
                         <MenuGroup>
                             <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
                             <MenuItem>Cancel</MenuItem>
                         </MenuGroup>
                     </Menu>
                 } />
-                <IconButton title={ <span>good <br /> xxx</span> } />
+                <ImageButton title={ <span>good <br /> xxx</span> } />
             </Group>
             <Group title="Tool">
-                <IconButton title="xx" />
+                <ImageButton title="xx" />
+                <div>
+                    <IconButton title="button" />
+                    <IconButton title="dropdown" menu={
+                        <Menu>
+                            <MenuGroup>
+                                <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
+                                <MenuItem>Cancel</MenuItem>
+                            </MenuGroup>
+                            <MenuGroup>
+                                <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
+                                <MenuItem>Cancel</MenuItem>
+                            </MenuGroup>
+                        </Menu>
+                    } />
+                </div>
             </Group>
         </div>
         <div title="Modeling">
             <Group title="Tool">
-                <IconButton title="xx" />
+                <ImageButton title="xx" />
             </Group>
         </div>
     </Tabs>
