@@ -1,12 +1,36 @@
 .nav {
     .header {
-        height: 2em;
         margin: 4px;
         .filter {
+            padding-left: 4px;
             border-radius: 3px;
+            border: 1px solid #888;
+        }
+        > button {
+            padding-left: 4px;
+            padding-right: 4px;
         }
     }
     .content {
         overflow: auto;
+        .tree {
+            .carpet {
+                margin-left: 8px;
+                cursor: pointer;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 12px;
+                vertical-align: 2px;
+            }
+            .check {
+                margin-left: 4px;
+            }
+            .title {
+                margin-left: 4px;
+                cursor: pointer;
+            }
+            .title.selected {
+                font-weight: bold;
+            }
+        }
     }
 }

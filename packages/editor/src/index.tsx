@@ -1,13 +1,21 @@
 import { createRoot } from 'react-dom/client'
 
 import Toolbar from './comps/toolbar'
-import Nav from './comps/nav'
+import Nav, { TreeData } from './comps/nav'
 import View from './comps/view'
 import { useSavedInt } from './utils/react/hooks'
 
 import './index.less'
-import React from 'react'
+import React, { useState } from 'react'
 import { withMouseDown } from './utils/dom/mouse'
+
+const tree = {
+    '': { title: 'Roo', children: ['a', 'b'] },
+    'a': { title: 'a', children: ['a/1', 'a/2'] },
+    'a/1': { title: '1' },
+    'a/2': { title: '2' },
+    'b': { title: 'b' },
+} as TreeData
 
 function App() {
     const [treeWidth, setTreeWidth] = useSavedInt('saved-nav-width', 180)
@@ -19,10 +27,11 @@ function App() {
     return <div className="app flex flex-col h-full">
         <Toolbar />
         <div className="grow flex">
-            <div className="bg-stone-500" style={{ width: treeWidth }}>
-                <Nav />
+            <div style={{ width: treeWidth }}>
+                <Nav tree={ tree } />
             </div>
-            <div className="bg-black select-none cursor-col-resize" style={{ width: 5 }}
+            <div className="bg-gray-200 select-none cursor-col-resize"
+                style={{ width: 3 }}
                 onMouseDown={ onResize }>
             </div>
             <div style={{ width: `calc(100% - ${treeWidth + 5}px)` }}>

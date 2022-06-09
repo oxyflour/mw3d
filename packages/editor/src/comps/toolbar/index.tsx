@@ -1,52 +1,8 @@
 import { CSSProperties, DetailedHTMLProps, ReactElement, useEffect, useRef, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
+import Dropdown from '../utils/dropdown'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
-
-export function Dropdown({ menu, children, ...rest }: {
-    menu?: any
-    children?: any
-} & DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>) {
-    const [position, setPosition] = useState(null as null | { left?: number, top?: number, right?: number, bottom?: number }),
-        ref = useRef<HTMLDivElement>()
-    useEffect(() => {
-        if (position) {
-            function onClick(evt: MouseEvent) {
-                if (ref.current !== evt.target) {
-                    setTimeout(() => setPosition(null), 50)
-                }
-            }
-            document.body.addEventListener('click', onClick, true)
-            return () => document.body.removeEventListener('click', onClick)
-        } else {
-            return () => { }
-        }
-    }, [position])
-    function toggle() {
-        const div = ref.current
-        if (div) {
-            const { left, right } = div.getBoundingClientRect(),
-                pos = { } as NonNullable<typeof position>
-            if (innerWidth - right > 100 || left < innerWidth - right) {
-                pos.left = 0
-            } else {
-                pos.right = 0
-            }
-            setPosition(pos)
-        }
-    }
-    return <div { ...rest } style={{ ...rest.style, position: 'relative' }}
-        tabIndex={ -1 }
-        ref={ ref }
-        onClick={ toggle }>
-        { children }
-        {
-            position && <div className="absolute text-left" style={ position }>
-                { menu }
-            </div>
-        }
-    </div>
-}
 
 export function ImageButton({ icon, title, onClick, menu }: {
     icon?: any
@@ -107,13 +63,14 @@ export function Group({ title, children }: {
     </div>
 }
 
-function Tabs({ style, className, children }: {
+function Tabs({ initActive, style, className, children }: {
+    initActive?: string
     className?: string
     style?: CSSProperties
     children?: ReactElement[]
 }) {
     const keys = children.map(item => (item.props.key || item.props.title).toString()),
-        [active, setActive] = useState(keys[0] || '')
+        [active, setActive] = useState(initActive || keys[0] || '')
     return <div className={ `${className || ''} tabs flex flex-col` } style={ style }>
         <div className="titles flex flex-nowrap">
         {
@@ -137,7 +94,9 @@ function Tabs({ style, className, children }: {
 export default ({ className }: {
     className?: string
 }) => {
-    return <Tabs className={ `toolbar ${className || ''}` }>
+    return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
+        <div title="File">
+        </div>
         <div title="Home">
             <Group title="Home">
                 <ImageButton title="ok" menu={
