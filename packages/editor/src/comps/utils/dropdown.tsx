@@ -5,7 +5,7 @@ export default function Dropdown({ menu, children, ...rest }: {
     children?: any
 } & DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>) {
     const [position, setPosition] = useState(null as null | { left?: number, top?: number, right?: number, bottom?: number }),
-        ref = useRef<HTMLDivElement>()
+        ref = useRef<HTMLDivElement>(null)
     useEffect(() => {
         if (position) {
             function onClick(evt: MouseEvent) {

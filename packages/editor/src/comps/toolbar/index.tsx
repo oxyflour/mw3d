@@ -1,4 +1,4 @@
-import { CSSProperties, DetailedHTMLProps, ReactElement, useEffect, useRef, useState } from 'react'
+import { CSSProperties, ReactElement, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
 import Dropdown from '../utils/dropdown'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
@@ -63,7 +63,7 @@ export function Group({ title, children }: {
     </div>
 }
 
-function Tabs({ initActive, style, className, children }: {
+function Tabs({ initActive, style, className, children = [] }: {
     initActive?: string
     className?: string
     style?: CSSProperties

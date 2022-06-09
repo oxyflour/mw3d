@@ -6,7 +6,7 @@ import View from './comps/view'
 import { useSavedInt } from './utils/react/hooks'
 
 import './index.less'
-import React, { useState } from 'react'
+import React from 'react'
 import { withMouseDown } from './utils/dom/mouse'
 
 const tree = {
@@ -14,7 +14,8 @@ const tree = {
     'a': { title: 'a', children: ['a/1', 'a/2'] },
     'a/1': { title: '1' },
     'a/2': { title: '2' },
-    'b': { title: 'b' },
+    'b': { title: 'b', children: Array(10000).fill(0).map((_, i) => 'b/' + i) },
+    ...Object.fromEntries(Array(10000).fill(0).map((_, i) => ['b/' + i, { title: '' + i }])),
 } as TreeData
 
 function App() {

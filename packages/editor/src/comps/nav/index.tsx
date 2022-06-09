@@ -7,7 +7,6 @@ export interface TreeNode {
     checked?: boolean
     title?: string
     children?: string[]
-    entities?: { }[]
 }
 
 export type TreeData = Record<string, TreeNode>
@@ -25,26 +24,33 @@ export function walk(tree: TreeData, id: string, cb: (id: string, node: TreeNode
 export function Tree({ id = '', data, onChange }: {
     id?: string
     data: TreeData
-    onChange?: (data: TreeData) => void
+    onChange: (data: TreeData) => void | undefined
 }): JSX.Element {
-    const node = data[id] || { },
-        update = (update: Partial<TreeNode>) => onChange?.({ ...data, [id]: { ...node, ...update } })
+    const node = data[id] || { }
+    function updateSelf(update: Partial<TreeNode>) {
+        onChange?.({ ...data, [id]: { ...node, ...update } })
+    }
+    function updateRecursive(update: Partial<TreeNode>) {
+        const value = { } as TreeData
+        walk(data, id, id => value[id] = { ...data[id], ...update })
+        onChange?.({ ...data, ...value })
+    }
     return <div className="tree">
         <button className="carpet"
-            onClick={ () => update({ open: !node.open }) }>
-                { node.children?.length > 0 ? (node.open ? '▼' : '▶') : '-' }
+            onClick={ () => updateSelf({ open: !node.open }) }>
+                { (node.children?.length || 0) > 0 ? (node.open ? '▼' : '▶') : '-' }
             </button>
         <input className="check" type="checkbox" checked={ !!node.checked }
-            onChange={ evt => update({ checked: evt.target.checked }) } />
+            onChange={ evt => updateRecursive({ checked: evt.target.checked }) } />
         <label className={ `${node.selected ? 'selected' : ''} title` }
-            onClick={ () => update({ selected: !node.selected }) }>
+            onClick={ () => updateRecursive({ selected: !node.selected }) }>
             { node.title || 'Root' }
         </label>
         {
-            node.open && node.children?.length > 0 && <div style={{ marginLeft: 16 }}>
+            node.open && (node.children?.length || 0) > 0 && <div style={{ marginLeft: 16 }}>
             {
                 node.children
-                    .filter(id => data[id])
+                    ?.filter(id => data[id])
                     .map(id => <Tree
                         key={ id }
                         id={ id }
@@ -65,11 +71,11 @@ function filterTree(tree: TreeData, filter: string) {
         }
     }
     for (const [id, { title }] of Object.entries(tree)) {
-        if (title.includes(filter)) {
+        if (title?.includes(filter)) {
             let item = id
             do {
                 included[item] = true
-            } while (item = parents[item])
+            } while (item = parents[item] || '')
         }
     }
     return Object.fromEntries(Object.entries(tree).filter(([id]) => included[id]))
@@ -92,7 +98,7 @@ export default ({ tree }: {
         </div>
         <div className="content grow">
         {
-            data['']?.children.map(id =>
+            data['']?.children?.map(id =>
                 <Tree key={ id } id={ id } data={ data } onChange={ setData } />)
         }
         </div>
