@@ -7,13 +7,13 @@ export function Dropdown({ menu, children, ...rest }: {
     menu?: any
     children?: any
 } & DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>) {
-    const [visible, setVisible] = useState(false),
+    const [position, setPosition] = useState(null as null | { left?: number, top?: number, right?: number, bottom?: number }),
         ref = useRef<HTMLDivElement>()
     useEffect(() => {
-        if (visible) {
+        if (position) {
             function onClick(evt: MouseEvent) {
                 if (ref.current !== evt.target) {
-                    setTimeout(() => setVisible(false), 50)
+                    setTimeout(() => setPosition(null), 50)
                 }
             }
             document.body.addEventListener('click', onClick, true)
@@ -21,14 +21,27 @@ export function Dropdown({ menu, children, ...rest }: {
         } else {
             return () => { }
         }
-    }, [visible])
-    return <div { ...rest }
+    }, [position])
+    function toggle() {
+        const div = ref.current
+        if (div) {
+            const { left, right } = div.getBoundingClientRect(),
+                pos = { } as NonNullable<typeof position>
+            if (innerWidth - right > 100 || left < innerWidth - right) {
+                pos.left = 0
+            } else {
+                pos.right = 0
+            }
+            setPosition(pos)
+        }
+    }
+    return <div { ...rest } style={{ ...rest.style, position: 'relative' }}
         tabIndex={ -1 }
         ref={ ref }
-        onClick={ () => setVisible(true) }>
+        onClick={ toggle }>
         { children }
         {
-            visible && <div className="absolute text-left">
+            position && <div className="absolute text-left" style={ position }>
                 { menu }
             </div>
         }

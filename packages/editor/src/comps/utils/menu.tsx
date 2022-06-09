@@ -11,7 +11,7 @@ export function MenuItem({ children, onClick }: { children?: any, onClick?: (eve
 }
 
 export function MenuGroup({ children }: { children?: any }) {
-    return <div className="menu-group py-1" role="none">
+    return <div className="menu-group" role="none">
         { children }
     </div>
 }
