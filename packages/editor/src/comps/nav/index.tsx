@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import './index.less'
 
 export interface TreeNode {
@@ -24,18 +24,28 @@ export function walk(tree: TreeData, id: string, cb: (id: string, node: TreeNode
 export function Tree({ id = '', data, onChange }: {
     id?: string
     data: TreeData
-    onChange: (data: TreeData) => void | undefined
-}): JSX.Element {
-    const node = data[id] || { }
+    onChange: ((data: TreeData) => void) | undefined
+}): JSX.Element | null {
+    const node = data[id]
     function updateSelf(update: Partial<TreeNode>) {
         onChange?.({ ...data, [id]: { ...node, ...update } })
     }
-    function updateRecursive(update: Partial<TreeNode>) {
-        const value = { } as TreeData
+    function updateRecursive(update: Partial<TreeNode>, value = { } as TreeData) {
         walk(data, id, id => value[id] = { ...data[id], ...update })
         onChange?.({ ...data, ...value })
     }
-    return <div className="tree">
+    function updateSelected() {
+        const value = Object.fromEntries(Object.entries(data)
+                .filter(([, node]) => node.selected)
+                .map(([id, node]) => [id, ({ ...node, selected: false })])),
+            selected = [] as string[]
+        walk(data, id, id => {
+            value[id] = { ...data[id], selected: true }
+            selected.push(id)
+        })
+        onChange?.({ ...data, ...value, $selected: { children: selected } })
+    }
+    return !node ? null : <div className="tree">
         <button className="carpet"
             onClick={ () => updateSelf({ open: !node.open }) }>
                 { (node.children?.length || 0) > 0 ? (node.open ? '▼' : '▶') : '-' }
@@ -43,8 +53,8 @@ export function Tree({ id = '', data, onChange }: {
         <input className="check" type="checkbox" checked={ !!node.checked }
             onChange={ evt => updateRecursive({ checked: evt.target.checked }) } />
         <label className={ `${node.selected ? 'selected' : ''} title` }
-            onClick={ () => updateRecursive({ selected: !node.selected }) }>
-            { node.title || 'Root' }
+            onClick={ () => updateSelected() }>
+            { node.title || '<Empty>' }
         </label>
         {
             node.open && (node.children?.length || 0) > 0 && <div style={{ marginLeft: 16 }}>
@@ -63,43 +73,63 @@ export function Tree({ id = '', data, onChange }: {
 }
 
 function filterTree(tree: TreeData, filter: string) {
-    const parents = { } as Record<string, string>,
-        included = { '': true } as Record<string, boolean>
+    const parents = { } as Record<string, string[]>
     for (const [id, { children = [] }] of Object.entries(tree)) {
         for (const child of children) {
-            parents[child] = id
+            const arr = parents[child] || (parents[child] = [])
+            arr.push(id)
+        }
+    }
+    const included = { } as Record<string, boolean>
+    function addIncluded(id: string) {
+        included[id] = true
+        for (const parent of parents[id] || []) {
+            addIncluded(parent)
         }
     }
     for (const [id, { title }] of Object.entries(tree)) {
         if (title?.includes(filter)) {
-            let item = id
-            do {
-                included[item] = true
-            } while (item = parents[item] || '')
+            addIncluded(id)
         }
     }
     return Object.fromEntries(Object.entries(tree).filter(([id]) => included[id]))
 }
 
-export default ({ tree }: {
+export default ({ tree, onChange }: {
     tree: TreeData
+    onChange?: ((tree: TreeData) => void) | undefined
 }) => {
-    const [filter, setFilter] = useState(''),
-        [data, setData] = useState(tree)
-    useEffect(() => setData(filterTree(tree, filter)), [tree, filter])
+    const [filter, setFilter] = useState({ search: '', tree }),
+        { children = [] } = tree.$root || { }
     return <div className="nav flex flex-col h-full">
         <div className="header flex">
-            <input className="filter w-full grow" value={ filter }
+            <input className="filter w-full grow" value={ filter.search }
                 placeholder="search"
-                onChange={ evt => setFilter(evt.target.value) } />
+                onChange={
+                    evt => {
+                        const data = filter.search ? filter.tree : tree
+                        setFilter({
+                            tree: data,
+                            search: evt.target.value
+                        })
+                        onChange?.(evt.target.value ?
+                            filterTree(data, evt.target.value) :
+                            data)
+                    }
+                } />
             {
-                filter && <button onClick={ () => setFilter('') }>clear</button>
+                filter.search && <button onClick={
+                    () => {
+                        setFilter({ tree: { }, search: '' })
+                        onChange?.(filter.tree)
+                    }
+                }>clear</button>
             }
         </div>
         <div className="content grow">
         {
-            data['']?.children?.map(id =>
-                <Tree key={ id } id={ id } data={ data } onChange={ setData } />)
+            children.map(id =>
+                <Tree id={ id } key={ id } data={ tree } onChange={ onChange } />)
         }
         </div>
     </div>
