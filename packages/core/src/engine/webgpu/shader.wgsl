@@ -42,7 +42,7 @@ struct VertexOutput {
   @location(1) worldPosition: vec4<f32>,
 };
 
-@stage(vertex)
+@vertex
 fn vertMain(input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
   output.position = camera.viewProjection * mesh.modelMatrix * input.position;
@@ -100,7 +100,7 @@ fn BRDF(L: vec3<f32>, V: vec3<f32>, N: vec3<f32>, metallic: f32, roughness: f32)
   return color;
 }
 
-@stage(fragment)
+@fragment
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
   var N = normalize(input.normal);
   var V = normalize(camera.worldPosition.xyz - input.worldPosition.xyz);
@@ -115,7 +115,7 @@ fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
   return vec4<f32>(C, material.color.a);
 }
 
-@stage(fragment)
+@fragment
 fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
   if (WGSL_IGNORE_UNUSED) {
     var a = lightNum;
@@ -125,7 +125,7 @@ fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
   return material.color;
 }
 
-@stage(fragment)
+@fragment
 fn fragMainDepth(input: FragInput) -> @location(0) vec4<f32> {
   if (WGSL_IGNORE_UNUSED) {
     var a = lightNum;

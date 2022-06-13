@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { mat4, vec3 } from 'gl-matrix'
 
 import Toolbar from './comps/toolbar'
-import Nav from './comps/nav'
+import Nav, { select } from './comps/nav'
 import View, { Ent, TreeEnts } from './comps/view'
 import { useSavedInt } from './utils/react/hooks'
 
@@ -22,7 +22,7 @@ function load() {
     return [
         { attrs: { $n: 'a/1' } },
         { attrs: { $n: 'a/2' } },
-        ...Array(50).fill(0).map((_, i) => ({ attrs: { $n: `b/${i}` }, trans: randomPosition() }) as Ent)
+        ...Array(5).fill(0).map((_, i) => ({ attrs: { $n: `b/${i}` }, trans: randomPosition() }) as Ent)
     ] as Ent[]
 }
 
@@ -76,7 +76,9 @@ function App() {
                 onMouseDown={ onResize }>
             </div>
             <div style={{ width: `calc(100% - ${treeWidth + 5}px)` }}>
-                <View tree={ tree } />
+                <View tree={ tree } onSelect={
+                    id => setTree(select(tree, id))
+                } />
             </div>
         </div>
     </div>

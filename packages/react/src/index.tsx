@@ -1,11 +1,11 @@
 import React, { createContext, CSSProperties, MutableRefObject, useContext, useEffect, useRef, useState } from 'react'
 
-import { Engine } from '@ttk/core'
+import { Engine, Tool } from '@ttk/core'
 import { mat4, quat } from 'gl-matrix'
 
-export { Engine } from '@ttk/core'
+export { Engine, Tool } from '@ttk/core'
 
-interface CanvasContextValue {
+export interface CanvasContextValue {
     scene?: Engine.Scene
     camera?: Engine.PerspectiveCamera
     canvas?: HTMLCanvasElement
@@ -64,10 +64,11 @@ export function useTick(func: (time: number) => void, interval = 100) {
     }, [frame])
 }
 
-export function Canvas({ children, options, style }: {
+export function Canvas({ children, options, style, className }: {
     children: any
     options?: (canvas: HTMLCanvasElement) => Engine.Renderer['opts']
     style?: CSSProperties
+    className?: string
 }) {
     const [state, setState] = useState({ } as CanvasContextValue),
         [error, setError] = useState(null as any),
@@ -78,14 +79,14 @@ export function Canvas({ children, options, style }: {
                 opts = options?.(canvas) || { },
                 renderer = await Engine.Renderer.create(canvas, opts),
                 camera = new Engine.PerspectiveCamera({
-                    fov: 60 / 180 * Math.PI,
+                    fov: 2 / 180 * Math.PI,
                     aspect: canvas.clientWidth / canvas.clientHeight,
                     near: 1,
                     far: 2000,
                 }),
                 light = new Engine.Light(),
                 frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>
-            camera.position.set(0, 0, 6)
+            camera.position.set(0, 0, 500)
             light.position.set(5, 5, 5)
             scene.add(light)
             requestAnimationFrame(function render(time: number) {
@@ -122,16 +123,20 @@ export function Canvas({ children, options, style }: {
                 height: '100%',
             }}>{ error?.message || `${error}` }</div>
         }
-        <canvas ref={ cvRef } style={ style } />
+        <canvas ref={ cvRef } className={ className } style={ style } />
         { children }
     </CanvasContext.Provider>
 }
 
-export function Control({ ref }: { ref?: MutableRefObject<Engine.Control> }) {
+type ClassArgs<A> = A extends new (...args: infer C) => any ? C : A
+export type CtrlOpts = ClassArgs<typeof Tool.Control>['2']
+export function Control({ ref, ...opts }: {
+    ref?: MutableRefObject<Tool.Control>
+} & CtrlOpts) {
     const { canvas, camera } = useCanvas()
     useEffect(() => {
         if (canvas && camera) {
-            const control = new Engine.Control(canvas, camera)
+            const control = new Tool.Control(canvas, camera, opts)
             ref && (ref.current = control)
             return () => { control.detach() }
         } else {
@@ -146,19 +151,22 @@ export function useObj3() {
     return useContext(Obj3Context)
 }
 
-export function Obj3({ children, create, matrix, position, rotation, scaling }: {
+export function Obj3({ children, create, matrix, position, rotation, scaling, onCreated }: {
     children?: any
     matrix?: number[]
     position?: [number, number, number]
     rotation?: [number, number, number]
     scaling?: [number, number, number]
     create?: () => Engine.Obj3
+    onCreated?: (obj: Engine.Obj3) => any
 }) {
     const { scene } = useCanvas(),
         { obj: node } = useObj3(),
         [obj, setObj] = useState(undefined as undefined | Engine.Obj3)
     useEffect(() => {
-        setObj(create ? create() : new Engine.Obj3())
+        const obj = create ? create() : new Engine.Obj3()
+        setObj(obj)
+        onCreated?.(obj)
     }, [])
     useEffect(() => {
         if (scene && obj) {

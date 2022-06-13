@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Canvas, Control, Mesh, MeshDefault } from './'
+import { Canvas, Control, Mesh, MeshDefault } from '..'
 import { Engine } from '@ttk/core'
 
 function rand(begin: number, end = 0) {

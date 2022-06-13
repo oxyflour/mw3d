@@ -1,7 +1,7 @@
 import { vec3, mat4, quat } from "gl-matrix"
 
-import Obj3 from "../obj3"
-import { PerspectiveCamera } from "../camera"
+import Obj3 from "../engine/obj3"
+import { PerspectiveCamera } from "../engine/camera"
 
 function vec3FromObj(out: vec3, obj: Obj3) {
     const { worldPosition: [x = 0, y = 0, z = 0] } = obj

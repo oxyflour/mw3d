@@ -39,7 +39,7 @@ export class PerspectiveProp extends MutableArray({
 
 export class PerspectiveCamera extends Camera {
     readonly prop = new PerspectiveProp()
-    protected override get rev() {
+    override get rev() {
         return super.rev +
             this.prop.rev
     }

@@ -1,13 +1,15 @@
 import { mat4, vec3 } from "gl-matrix"
 
-import wrap from "../../utils/worker"
-import Renderer from "../webgpu/renderer"
-import Geometry, { PlaneXY } from "../geometry"
-import Mesh from "../mesh"
-import Material, { BasicMaterial } from "../material"
-import Obj3, { Scene } from "../obj3"
-import Camera, { PerspectiveCamera } from "../camera"
-import { Texture } from "../uniform"
+import wrap from "../utils/worker"
+import Renderer from "../engine/webgpu/renderer"
+import Geometry, { PlaneXY } from "../engine/geometry"
+import Material, { BasicMaterial } from "../engine/material"
+import Obj3, { Scene } from "../engine/obj3"
+import Camera, { PerspectiveCamera } from "../engine/camera"
+import { Mesh } from '../engine'
+import { Texture } from "../engine/uniform"
+
+import WorkerSelf from './picker?worker&inline'
 
 interface WebGPUOffscreenCanvas extends
         Omit<OffscreenCanvas, 'getContext'>,
@@ -25,6 +27,7 @@ const cache = {
     geoMap: { } as Record<number, Geometry>,
     matMap: { } as Record<number, Material>,
     meshMap: { } as Record<string, Mesh>,
+    meshRev: { } as Record<string, number>,
 }
 async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
     const renderer = await Renderer.create(canvas, opts),
@@ -53,6 +56,7 @@ async function readPixel({ x, y }: { x: number, y: number }) {
 
 export interface PickMesh {
     id: number
+    rev: number
     geoId: number 
     worldMatrix: mat4
 }
@@ -75,7 +79,7 @@ export interface PickCamera {
 const worker = wrap({
     num: 1,
     // @ts-ignore
-    fork: () => new Worker(new URL('./picker.ts', import.meta.url), { type: 'module' }),
+    fork: () => new (WorkerSelf as any)(),
     send: async (args, next) => {
         const transfer = args.filter(arg => arg?.constructor?.name === 'OffscreenCanvas')
         return await next(args, transfer)
@@ -94,11 +98,11 @@ const worker = wrap({
                      { fov, aspect, near, far, worldMatrix }: PickCamera,
                      { x, y }: { x: number, y: number }) {
             const { renderer, camera, pixels } = await getCache(),
-                { scene, geoMap, matMap, meshMap } = cache
+                { scene, geoMap, matMap, meshMap, meshRev } = cache
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
-            for (const { worldMatrix, geoId, id } of Object.values(meshes)) {
+            for (const { worldMatrix, geoId, id, rev } of Object.values(meshes)) {
                 const item = geometries[geoId]
                 if (!item) {
                     throw Error(`geometry ${geoId} is not found`)
@@ -109,7 +113,8 @@ const worker = wrap({
                         color: new Uint8Array([id, id >> 8]),
                     })),
                     key = geoId + ':' + id,
-                    mesh = meshMap[key] || (meshMap[key] = new Mesh(geo, mat))
+                    mesh = meshMap[key] && meshRev[key] === rev ? meshMap[key]! : (meshMap[key] = new Mesh(geo, mat))
+                meshRev[key] = rev
                 mesh.setWorldMatrix(worldMatrix)
                 scene.add(mesh)
             }
@@ -170,15 +175,16 @@ export default class Picker {
         for (const obj of scene) {
             obj.walk(obj => {
                 if (obj instanceof Mesh) {
-                    const { worldMatrix, geo, id } = obj
-                    meshes[obj.id] = { worldMatrix, id, geoId: geo.id }
+                    const { worldMatrix, geo, id, rev } = obj
+                    meshes[obj.id] = { worldMatrix, id, rev, geoId: geo.id }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }
             })
         }
-        const { fov, aspect, near, far, worldMatrix } = camera
-        return await worker.render(meshes, geometries, { fov, aspect, near, far, worldMatrix }, opts)
+        const { fov, aspect, near, far, worldMatrix } = camera,
+            view = { fov, aspect, near, far, worldMatrix }
+        return await worker.render(meshes, geometries, view, opts)
     }
 
     private static created: Promise<Picker>

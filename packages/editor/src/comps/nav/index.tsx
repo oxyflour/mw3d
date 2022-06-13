@@ -21,6 +21,18 @@ export function walk(tree: TreeData, id: string, cb: (id: string, node: TreeNode
     }
 }
 
+export function select(tree: TreeData, id: string) {
+    const value = Object.fromEntries(Object.entries(tree)
+            .filter(([, node]) => node.selected)
+            .map(([id, node]) => [id, ({ ...node, selected: false })])),
+        selected = [] as string[]
+    walk(tree, id, id => {
+        value[id] = { ...tree[id], selected: true }
+        selected.push(id)
+    })
+    return { ...tree, ...value, $selected: { children: selected } }
+}
+
 export function Tree({ id = '', data, onChange }: {
     id?: string
     data: TreeData
@@ -30,20 +42,12 @@ export function Tree({ id = '', data, onChange }: {
     function updateSelf(update: Partial<TreeNode>) {
         onChange?.({ ...data, [id]: { ...node, ...update } })
     }
-    function updateRecursive(update: Partial<TreeNode>, value = { } as TreeData) {
+    function updateChild(update: Partial<TreeNode>, value = { } as TreeData) {
         walk(data, id, id => value[id] = { ...data[id], ...update })
         onChange?.({ ...data, ...value })
     }
     function updateSelected() {
-        const value = Object.fromEntries(Object.entries(data)
-                .filter(([, node]) => node.selected)
-                .map(([id, node]) => [id, ({ ...node, selected: false })])),
-            selected = [] as string[]
-        walk(data, id, id => {
-            value[id] = { ...data[id], selected: true }
-            selected.push(id)
-        })
-        onChange?.({ ...data, ...value, $selected: { children: selected } })
+        onChange?.(select(data, id))
     }
     return !node ? null : <div className="tree">
         <button className="carpet"
@@ -51,7 +55,7 @@ export function Tree({ id = '', data, onChange }: {
                 { (node.children?.length || 0) > 0 ? (node.open ? '▼' : '▶') : '-' }
             </button>
         <input className="check" type="checkbox" checked={ !!node.checked }
-            onChange={ evt => updateRecursive({ checked: evt.target.checked }) } />
+            onChange={ evt => updateChild({ checked: evt.target.checked }) } />
         <label className={ `${node.selected ? 'selected' : ''} title` }
             onClick={ () => updateSelected() }>
             { node.title || '<Empty>' }

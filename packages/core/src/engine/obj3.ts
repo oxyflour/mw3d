@@ -79,7 +79,7 @@ export default class Obj3 extends AutoIndex {
         this.update()
         this.cachedStatus.rev ++
     }
-    protected get rev() {
+    get rev() {
         return this.cachedStatus.rev +
             this.position.rev +
             this.rotation.rev +

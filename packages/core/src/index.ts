@@ -1,2 +1,3 @@
 import * as Engine from './engine'
-export { Engine }
+import * as Tool from './tool'
+export { Engine, Tool }

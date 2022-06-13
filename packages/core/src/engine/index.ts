@@ -6,8 +6,6 @@ import Material, { BasicMaterial } from "./material"
 import Light from "./light"
 import Camera, { PerspectiveCamera } from "./camera"
 
-import { Control } from "./tool/control"
-
 export {
     Renderer,
     Obj3, Scene,
@@ -16,5 +14,4 @@ export {
     Material, BasicMaterial,
     Camera, PerspectiveCamera,
     Light,
-    Control,
 }
