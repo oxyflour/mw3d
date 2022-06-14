@@ -15,6 +15,9 @@ export class Control {
         readonly camera: PerspectiveCamera,
         readonly opts?: {
             pivot?: Obj3
+            rotate?: {
+                speed?: number
+            }
             zoom?: {
                 factor?: number
                 distance?: {
@@ -65,7 +68,7 @@ export class Control {
             vec3.normalize(axis, axis)
             if (vec3.length(axis)) {
                 mat4.identity(rotation)
-                mat4.rotate(rotation, rotation, 0.02, axis)
+                mat4.rotate(rotation, rotation, opts?.rotate?.speed || 0.05, axis)
                 vec3.sub(delta, origin, target)
                 vec3.transformMat4(delta, delta, rotation)
                 vec3.add(target, target, delta)

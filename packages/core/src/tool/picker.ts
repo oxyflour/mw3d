@@ -42,7 +42,7 @@ async function getCache() {
     }
     return ret
 }
-async function readPixel({ x, y }: { x: number, y: number }) {
+async function readPixel({ x, y, w = 1, h = 1 }: { x: number, y: number, w?: number, h?: number }) {
     const { ctx, pixels, renderer, canvas } = await getCache(),
         image = canvas.transferToImageBitmap()
     pixels.width = image.width
@@ -50,8 +50,15 @@ async function readPixel({ x, y }: { x: number, y: number }) {
     ctx.drawImage(image,
         0, 0, image.width, image.height,
         0, 0, renderer.width, renderer.height)
-    const { data: [r = 0, g = 0, b = 0, a = 0] } = ctx.getImageData(x, y, 1, 1)
-    return { r, g, b, a }
+    const { data } = ctx.getImageData(x, y, w, h),
+        ret = new Set<number>()
+    for (let i = 0; i < data.length; i += 4) {
+        const [r = 0xff, g = 0xff, b = 0xff] = [data[i], data[i + 1], data[i + 2]]
+        if (r !== 0xff || g !== 0xff || b !== 0xff) {
+            ret.add(r + (g << 8) + (b << 16))
+        }
+    }
+    return Array.from(ret)
 }
 
 export interface PickMesh {
@@ -76,6 +83,11 @@ export interface PickCamera {
     worldMatrix: mat4
 }
 
+function sleep(time: number) {
+    return new Promise(resolve => setTimeout(resolve, time))
+}
+
+let renderLock = 0
 const worker = wrap({
     num: 1,
     // @ts-ignore
@@ -88,17 +100,20 @@ const worker = wrap({
         async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
             await cache.created || (cache.created = initCache(canvas, pixels, opts))
         },
-        async resize(width: number, height: number) {
-            const { renderer } = await getCache()
-            renderer.width = width
-            renderer.height = height
-        },
         async render(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
                      { fov, aspect, near, far, worldMatrix }: PickCamera,
-                     { x, y }: { x: number, y: number }) {
+                     { width, height, x, y }: { x: number, y: number, width: number, height: number }) {
+            while (renderLock > Date.now() - 5000) {
+                await sleep(10)
+            }
+            renderLock = Date.now()
+
             const { renderer, camera, pixels } = await getCache(),
                 { scene, geoMap, matMap, meshMap, meshRev } = cache
+            renderer.width = width
+            renderer.height = height
+
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
@@ -110,7 +125,7 @@ const worker = wrap({
                 const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(item)),
                     mat = matMap[id] || (matMap[id] = new BasicMaterial({
                         entry: { frag: 'fragMainColor' },
-                        color: new Uint8Array([id, id >> 8]),
+                        color: new Uint8Array([id, id >> 8, 0]),
                     })),
                     key = geoId + ':' + id,
                     mesh = meshMap[key] && meshRev[key] === rev ? meshMap[key]! : (meshMap[key] = new Mesh(geo, mat))
@@ -128,20 +143,17 @@ const worker = wrap({
                 format: 'depth24plus',
             })
             renderer.render(scene, camera, { depthTexture })
-            const pixel = await readPixel({ x, y }),
-                id = pixel.r === 0xff && pixel.g === 0xff ? -1 : pixel.r + (pixel.g << 8)
-
-            const plane = new Mesh(
-                new PlaneXY({ size: 1 }),
-                new BasicMaterial({
-                    entry: { frag: 'fragMainDepth' },
-                    texture: depthTexture,
-                }))
+            const [id = -1] = await readPixel({ x, y }),
+                plane = new Mesh(
+                    new PlaneXY({ size: 1 }),
+                    new BasicMaterial({
+                        entry: { frag: 'fragMainDepth' },
+                        texture: depthTexture,
+                    }))
             renderer.render(new Scene([plane]), new Camera())
-            const dp = await readPixel({ x, y }),
-                depthVal = (dp.r + (dp.g << 8) + (dp.b << 16)) / 0xffffff,
+            const [val = 0] = await readPixel({ x, y }),
                 // https://stackoverflow.com/a/66928245
-                depth = 1 / (depthVal * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
+                depth = 1 / (val / 0xffffff * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
             
             const [hw, hh, hf] = [renderer.width / 2, renderer.height / 2, camera.fov / 2],
                 position = vec3.fromValues(
@@ -155,6 +167,8 @@ const worker = wrap({
 
             const blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
+            
+            renderLock = 0
             return { id, buffer, distance, position }
         }
     }
@@ -169,7 +183,6 @@ export default class Picker {
         x: number
         y: number
     }) {
-        await worker.resize(opts.width, opts.height)
         const meshes = { } as Record<number, PickMesh>,
             geometries = { } as Record<number, PickGeo>
         for (const obj of scene) {

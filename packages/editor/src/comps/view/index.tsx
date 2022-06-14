@@ -1,41 +1,36 @@
-import { Canvas, Control, Engine, Mesh, MeshDefault, useCanvas, Tool, CanvasContextValue } from '@ttk/react'
+import { Canvas, Control, Engine, Mesh, MeshDefault, useCanvas, Tool, CanvasContextValue, useFrame } from '@ttk/react'
 import { useEffect, useRef } from 'react'
-import { TreeNode } from '../nav'
+import { Entity, TreeEnts } from '../../utils/data/entity'
 
 import './index.less'
-
-export interface Ent {
-    attrs?: {
-        $n?: string
-        $m?: string
-    } & Record<string, any>
-    trans?: number[]
-    geom?: {
-        faces?: string
-        edges?: string
-    }
-}
-
-export type TreeEntNode = TreeNode & { entities?: Ent[] }
-export type TreeEnts = Record<string, TreeEntNode> & {
-    $root?: TreeEntNode
-    $meshes?: TreeEntNode
-    $selected?: TreeEntNode
-}
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 
 const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data,
     MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.7] })
-export function Entity({ data, active, onCreated }: {
-    data: Ent
+export function EntityMesh({ data, active, onCreated }: {
+    data: Entity
     active: boolean
     onCreated?: (obj: Engine.Obj3) => any
-}) {
+}): JSX.Element {
     const props = { onCreated } as CompProp<typeof Mesh>
     data.trans && (props.matrix = data.trans)
     !active && (props.mat = MAT_DIM)
     return <Mesh { ...props } />
+}
+
+async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
+    const image = document.createElement('img')
+    image.src = URL.createObjectURL(new Blob([buffer]))
+    await image.decode()
+    image.style.position = 'absolute'
+    const { left, top, right, bottom } = canvas.getBoundingClientRect()
+    image.style.left = left + 'px'
+    image.style.top = top + 'px'
+    image.style.right = right + 'px'
+    image.style.bottom = bottom + 'px'
+    image.addEventListener('click', () => document.body.removeChild(image))
+    document.body.appendChild(image)
 }
 
 let pickerCache = null as null | Promise<Tool.Picker>
@@ -63,7 +58,10 @@ async function pick(
 async function updatePivot(
         ctx: CanvasContextValue,
         evt: { clientX: number, clientY: number }) {
-    const { id, position } = await pick(ctx, evt)
+    const { id, position, buffer } = await pick(ctx, evt)
+    if (ctx.canvas && (window as any).DEBUG_SHOW_PICK_BUFFER) {
+        await showBuffer(buffer, ctx.canvas)
+    }
     if (id > 0) {
         const [x = 0, y = 0, z = 0] = position
         pivot.position.set(x, y, z)
@@ -73,7 +71,7 @@ export function MouseControl({ onSelect }: {
     onSelect?: (obj: Engine.Obj3) => any
 }) {
     const ctx = useCanvas(),
-        { scene } = ctx,
+        { scene, camera } = ctx,
         clickedAt = useRef(0)
     useEffect(() => {
         if (scene) {
@@ -83,6 +81,15 @@ export function MouseControl({ onSelect }: {
             return () => { }
         }
     }, [scene])
+    useFrame(() => {
+        if (camera) {
+            const [cx, cy, cz] = camera.worldPosition as any as [number, number, number],
+                [px, py, pz] = pivot.worldPosition as any as [number, number, number],
+                d = Math.sqrt((cx - px) ** 2 + (cy - py) ** 2 + (cz - pz) ** 2) || 10,
+                r = camera.fov * 0.01 * d
+            pivot.scaling.set(r, r, r)
+        }
+    })
     async function align(
             evt: MouseEvent | WheelEvent,
             next: (evt: MouseEvent & WheelEvent) => Promise<any>) {
@@ -91,7 +98,7 @@ export function MouseControl({ onSelect }: {
     }
     async function click(evt: MouseEvent) {
         // double click
-        if (Date.now() - clickedAt.current < 300) {
+        if (Date.now() - clickedAt.current < 400) {
             const { id } = await pick(ctx, evt)
             if (id) {
                 let found = null as null | Engine.Obj3
@@ -110,12 +117,12 @@ export function MouseControl({ onSelect }: {
 
 export default ({ tree, onSelect }: {
     tree: TreeEnts
-    onSelect?: (id: string, ent: Ent) => any
+    onSelect?: (id: string, ent: Entity) => any
 }) => {
     const meshes = tree.$meshes?.children || [],
         selected = tree.$selected?.children || [],
         active = Object.fromEntries(selected.map(item => [item, true])),
-        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Ent, id: string }>),
+        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity, id: string }>),
         select = useRef(onSelect)
     select.current = onSelect
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
@@ -123,7 +130,7 @@ export default ({ tree, onSelect }: {
             meshes.map((id, idx) =>
                 tree[id]?.checked &&
                 tree[id]?.entities?.map((ent, val) =>
-                    <Entity key={ idx + val * meshes.length }
+                    <EntityMesh key={ idx + val * meshes.length }
                         data={ ent }
                         active={ !selected.length || !!active[id] }
                         onCreated={ obj => objs.current[obj.id] = { obj, ent, id } } />))
