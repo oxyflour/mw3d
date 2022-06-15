@@ -18,16 +18,26 @@ export function walk(tree: TreeData, id: string, cb: (id: string, node: TreeNode
     }
 }
 
-export function select(tree: TreeData, id: string) {
-    const value = Object.fromEntries(Object.entries(tree)
-            .filter(([, node]) => node.selected)
-            .map(([id, node]) => [id, ({ ...node, selected: false })])),
+export function select(tree: TreeData, id?: string) {
+    const value = { ...tree } as TreeData,
         selected = [] as string[]
-    walk(tree, id, id => {
-        value[id] = { ...tree[id], selected: true }
-        selected.push(id)
-    })
-    return { ...tree, ...value, $selected: { children: selected } }
+    for (const [id, { selected }] of Object.entries(tree)) {
+        if (selected) {
+            value[id] = { ...value[id], selected: false }
+        }
+    }
+    if (id) {
+        walk(value, id, id => {
+            value[id] = { ...value[id], selected: true }
+            selected.push(id)
+        })
+    }
+    for (const [id, { children = [] }] of Object.entries(tree)) {
+        if (children.some(id => value[id]?.selected)) {
+            value[id] = { ...value[id], open: true }
+        }
+    }
+    return { ...value, $selected: { children: selected } }
 }
 
 export function search(tree: TreeData, filter: string) {

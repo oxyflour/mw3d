@@ -143,7 +143,7 @@ const worker = wrap({
                 format: 'depth24plus',
             })
             renderer.render(scene, camera, { depthTexture })
-            const [id = -1] = await readPixel({ x, y }),
+            const [id = 0] = await readPixel({ x, y }),
                 plane = new Mesh(
                     new PlaneXY({ size: 1 }),
                     new BasicMaterial({

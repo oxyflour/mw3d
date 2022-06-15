@@ -68,7 +68,7 @@ async function updatePivot(
     }
 }
 export function MouseControl({ onSelect }: {
-    onSelect?: (obj: Engine.Obj3) => any
+    onSelect?: (obj?: Engine.Obj3) => any
 }) {
     const ctx = useCanvas(),
         { scene, camera } = ctx,
@@ -100,11 +100,9 @@ export function MouseControl({ onSelect }: {
         // double click
         if (Date.now() - clickedAt.current < 400) {
             const { id } = await pick(ctx, evt)
-            if (id) {
-                let found = null as null | Engine.Obj3
-                scene?.walk(obj => obj.id === id && (found = obj))
-                found && onSelect?.(found)
-            }
+            let found = undefined as undefined | Engine.Obj3
+            id && scene?.walk(obj => obj.id === id && (found = obj))
+            onSelect?.(found)
         }
         clickedAt.current = Date.now()
     }
@@ -117,7 +115,7 @@ export function MouseControl({ onSelect }: {
 
 export default ({ tree, onSelect }: {
     tree: TreeEnts
-    onSelect?: (id: string, ent: Entity) => any
+    onSelect?: (id?: string, ent?: Entity) => any
 }) => {
     const meshes = tree.$meshes?.children || [],
         selected = tree.$selected?.children || [],
@@ -137,8 +135,8 @@ export default ({ tree, onSelect }: {
         }
         <MouseControl onSelect={
             obj => {
-                const item = objs.current[obj.id]
-                item && select.current?.(item.id, item.ent)
+                const item = obj && objs.current[obj.id]
+                item ? select.current?.(item.id, item.ent) : select.current?.()
             }
         } />
     </Canvas>
