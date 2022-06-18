@@ -186,7 +186,7 @@ export default class Cache {
                         alpha: {
                             operation: 'add',
                             srcFactor: 'one',
-                            dstFactor: 'zero',
+                            dstFactor: 'one',
                         }
                     } : undefined,
                     format: this.opts.fragmentFormat
@@ -197,7 +197,7 @@ export default class Cache {
                 cullMode: 'back'
             },
             depthStencil: {
-                depthWriteEnabled: true,
+                depthWriteEnabled: mat.prop.a < 1 ? false : true,
                 depthCompare: 'less',
                 format: this.opts.depthFormat,
             },

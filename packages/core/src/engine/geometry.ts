@@ -21,7 +21,7 @@ export default class Geometry extends AutoIndex {
 
     readonly min = [Infinity, Infinity, Infinity]
     readonly max = [-Infinity, -Infinity, -Infinity]
-    readonly center = vec4.fromValues(0, 0, 0, 0)
+    readonly center = vec4.fromValues(0, 0, 0, 1)
 
     constructor({ type, positions, normals, indices, attributes }: {
         type?: GPUPrimitiveTopology
