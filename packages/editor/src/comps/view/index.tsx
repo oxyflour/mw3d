@@ -1,4 +1,7 @@
-import { Canvas, Control, Engine, Mesh, MeshDefault, useCanvas, Tool, CanvasContextValue, useFrame } from '@ttk/react'
+import {
+    Canvas, Control, Engine, Mesh, MeshDefault, useCanvas,
+    Tool, CanvasContextValue, useFrame
+} from '@ttk/react'
 import { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
 
@@ -98,7 +101,7 @@ export function MouseControl({ onSelect }: {
     }
     async function click(evt: MouseEvent) {
         // double click
-        if (Date.now() - clickedAt.current < 400) {
+        if (Date.now() - clickedAt.current < 500) {
             const { id } = await pick(ctx, evt)
             let found = undefined as undefined | Engine.Obj3
             id && scene?.walk(obj => obj.id === id && (found = obj))
@@ -125,13 +128,14 @@ export default ({ tree, onSelect }: {
     select.current = onSelect
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
         {
-            meshes.map((id, idx) =>
-                tree[id]?.checked &&
-                tree[id]?.entities?.map((ent, val) =>
+            meshes.map((id, idx) => {
+                const node = tree[id]
+                return node?.checked && node?.entities?.map((ent, val) =>
                     <EntityMesh key={ idx + val * meshes.length }
                         data={ ent }
                         active={ !selected.length || !!active[id] }
-                        onCreated={ obj => objs.current[obj.id] = { obj, ent, id } } />))
+                        onCreated={ obj => objs.current[obj.id] = { obj, ent, id } } />)
+            })
         }
         <MouseControl onSelect={
             obj => {
