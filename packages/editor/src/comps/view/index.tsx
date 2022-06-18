@@ -75,7 +75,9 @@ export function MouseControl({ onSelect }: {
 }) {
     const ctx = useCanvas(),
         { scene, camera } = ctx,
-        clickedAt = useRef(0)
+        clickedAt = useRef(0),
+        select = useRef(onSelect)
+    select.current = onSelect
     useEffect(() => {
         if (scene) {
             scene.add(pivot)
@@ -105,7 +107,7 @@ export function MouseControl({ onSelect }: {
             const { id } = await pick(ctx, evt)
             let found = undefined as undefined | Engine.Obj3
             id && scene?.walk(obj => obj.id === id && (found = obj))
-            onSelect?.(found)
+            select.current?.(found)
         }
         clickedAt.current = Date.now()
     }
@@ -116,31 +118,27 @@ export function MouseControl({ onSelect }: {
     }} />
 }
 
-export default ({ tree, onSelect }: {
+export default ({ tree, ents, onSelect }: {
     tree: TreeEnts
-    onSelect?: (id?: string, ent?: Entity) => any
+    ents: Entity[]
+    onSelect?: (nodes?: string[], ent?: Entity) => any
 }) => {
-    const meshes = tree.$meshes?.children || [],
-        selected = tree.$selected?.children || [],
-        active = Object.fromEntries(selected.map(item => [item, true])),
-        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity, id: string }>),
-        select = useRef(onSelect)
-    select.current = onSelect
+    const selected = Object.keys(tree.$selected?.children || { }),
+        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity, nodes: string[] }>)
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
         {
-            meshes.map((id, idx) => {
-                const node = tree[id]
-                return node?.checked && node?.entities?.map((ent, val) =>
-                    <EntityMesh key={ idx + val * meshes.length }
-                        data={ ent }
-                        active={ !selected.length || !!active[id] }
-                        onCreated={ obj => objs.current[obj.id] = { obj, ent, id } } />)
+            ents.map((ent, idx) => {
+                const nodes = ent.nodes || []
+                return nodes.some(id => tree[id]?.checked) && <EntityMesh key={ idx }
+                    data={ ent }
+                    active={ !selected.length || nodes.some(id => tree[id]?.selected) }
+                    onCreated={ obj => objs.current[obj.id] = { obj, ent, nodes } } />
             })
         }
         <MouseControl onSelect={
             obj => {
                 const item = obj && objs.current[obj.id]
-                item ? select.current?.(item.id, item.ent) : select.current?.()
+                item ? onSelect?.(item.nodes, item.ent) : onSelect?.()
             }
         } />
     </Canvas>

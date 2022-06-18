@@ -16,12 +16,13 @@ export function Tree({ id = '', data, onChange }: {
         onChange?.({ ...data, ...value })
     }
     function updateSelected() {
-        onChange?.(select(data, id))
+        onChange?.(select(data, [id]))
     }
+    const children = Object.keys(node?.children || { })
     return !node ? null : <div className="tree">
         <button className="carpet"
             onClick={ () => updateSelf({ open: !node.open }) }>
-                { (node.children?.length || 0) > 0 ? (node.open ? '▼' : '▶') : '-' }
+                { children.length > 0 ? (node.open ? '▼' : '▶') : '-' }
             </button>
         <input className="check" type="checkbox" checked={ !!node.checked }
             onChange={ evt => updateChild({ checked: evt.target.checked }) } />
@@ -30,10 +31,9 @@ export function Tree({ id = '', data, onChange }: {
             { node.title || '<Empty>' }
         </label>
         {
-            node.open && (node.children?.length || 0) > 0 && <div style={{ marginLeft: 16 }}>
+            node.open && (children.length || 0) > 0 && <div style={{ marginLeft: 16 }}>
             {
-                node.children
-                    ?.filter(id => data[id])
+                children.filter(id => data[id])
                     .map(id => <Tree
                         key={ id }
                         id={ id }
@@ -78,7 +78,7 @@ export default ({ tree, onChange }: {
         </div>
         <div className="content grow">
         {
-            children.map(id =>
+            Object.keys(children).map(id =>
                 <Tree id={ id } key={ id } data={ tree } onChange={ onChange } />)
         }
         </div>

@@ -1,5 +1,3 @@
-import React from "react"
-
 export function withMouseDown(
         onMove?: (evt: MouseEvent) => void,
         onUp?: (evt: MouseEvent) => void) {

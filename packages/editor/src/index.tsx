@@ -35,8 +35,8 @@ function App() {
         <Toolbar />
         <Resize className="grow">
             <Nav tree={ tree } onChange={ setTree } />
-            <View tree={ tree } onSelect={
-                id => setTree(select(tree, id))
+            <View tree={ tree } ents={ ents } onSelect={
+                nodes => setTree(select(tree, nodes?.filter(id => id.startsWith('Components'))))
             } />
         </Resize>
     </div>
