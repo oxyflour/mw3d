@@ -5,34 +5,24 @@ import {
 import { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
 import { pack, unpack } from '../../utils/data/pack'
-import { useAsync } from '../../utils/react/hooks'
 
 import './index.less'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
+export type MeshProps = CompProp<typeof Mesh>
 
 const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data,
     MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.2] })
-export function EntityMesh({ data, active, onCreated }: {
+export function EntityMesh({ data, active, render, onCreated }: {
     data: Entity
     active: boolean
+    render?: ((props: MeshProps) => any) | undefined
     onCreated?: (obj: Engine.Obj3) => any
 }): JSX.Element {
-    const props = { onCreated } as CompProp<typeof Mesh>
+    const props = { onCreated } as MeshProps
     data.trans && (props.matrix = data.trans)
     !active && (props.mat = MAT_DIM)
-
-    const [{ value }] = useAsync(async faces => {
-        if (faces) {
-            const req = await fetch(faces),
-                { } = unpack(new Uint8Array(await req.arrayBuffer()))
-            // TODO
-        }
-        return { geo: null }
-    }, [data.geoms?.[0]?.faces])
-    value?.geo && (props.geo = value.geo)
-
-    return <Mesh { ...props } />
+    return render ? render(props) : <Mesh { ...props } />
 }
 
 // TODO
@@ -138,10 +128,11 @@ export function MouseControl({ onSelect }: {
     }} />
 }
 
-export default ({ tree, ents, onSelect }: {
+export default ({ tree, ents, onSelect, render }: {
     tree: TreeEnts
     ents: Entity[]
     onSelect?: (ent?: Entity) => any
+    render?: (props: MeshProps) => any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { }),
         objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity }>)
@@ -149,9 +140,11 @@ export default ({ tree, ents, onSelect }: {
         {
             ents.map((ent, idx) => {
                 const nodes = ent.nodes || []
-                return nodes.length > 0 && nodes.every(id => tree[id]?.checked) && <EntityMesh key={ idx }
+                return nodes.length > 0 && nodes.every(id => tree[id]?.checked) &&
+                <EntityMesh key={ idx }
                     data={ ent }
                     active={ !selected.length || nodes.some(id => tree[id]?.selected) }
+                    render={ render }
                     onCreated={ obj => objs.current[obj.id] = { obj, ent } } />
             })
         }
