@@ -2,27 +2,27 @@ import {
     Canvas, Control, Engine, Mesh, MeshDefault, useCanvas,
     Tool, CanvasContextValue, useFrame
 } from '@ttk/react'
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
 import { pack, unpack } from '../../utils/data/pack'
 
 import './index.less'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
-export type MeshProps = CompProp<typeof Mesh>
+export type EntityProps = CompProp<typeof Mesh> & { data: Entity }
 
 const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data,
     MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.2] })
-export function EntityMesh({ data, active, render, onCreated }: {
+export function EntityMesh({ data, active, meshComponent, onCreated }: {
     data: Entity
     active: boolean
-    render?: ((props: MeshProps) => any) | undefined
+    meshComponent?: ((props: EntityProps) => any) | undefined
     onCreated?: (obj: Engine.Obj3) => any
 }): JSX.Element {
-    const props = { onCreated } as MeshProps
+    const props = { onCreated, data } as EntityProps
     data.trans && (props.matrix = data.trans)
     !active && (props.mat = MAT_DIM)
-    return render ? render(props) : <Mesh { ...props } />
+    return meshComponent ? React.createElement(meshComponent, props) : <Mesh { ...props } />
 }
 
 // TODO
@@ -128,11 +128,11 @@ export function MouseControl({ onSelect }: {
     }} />
 }
 
-export default ({ tree, ents, onSelect, render }: {
+export default ({ tree, ents, onSelect, meshComponent }: {
     tree: TreeEnts
     ents: Entity[]
     onSelect?: (ent?: Entity) => any
-    render?: (props: MeshProps) => any
+    meshComponent?: (props: EntityProps) => any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { }),
         objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity }>)
@@ -144,7 +144,7 @@ export default ({ tree, ents, onSelect, render }: {
                 <EntityMesh key={ idx }
                     data={ ent }
                     active={ !selected.length || nodes.some(id => tree[id]?.selected) }
-                    render={ render }
+                    meshComponent={ meshComponent }
                     onCreated={ obj => objs.current[obj.id] = { obj, ent } } />
             })
         }

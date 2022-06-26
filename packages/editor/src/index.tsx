@@ -4,7 +4,7 @@ import { mat4, vec3 } from 'gl-matrix'
 
 import Toolbar from './comps/toolbar'
 import Nav from './comps/nav'
-import View, { MeshProps } from './comps/view'
+import View, { EntityProps } from './comps/view'
 
 import './index.less'
 import Resize from './comps/utils/resize'
@@ -29,6 +29,10 @@ async function load() {
 }
 
 const geo = new Engine.BoxGeometry({ })
+function EntityMesh(props: EntityProps) {
+    return <Mesh { ...props } geo={ geo } />
+}
+
 function App() {
     const [{ value: ents = [] }] = useAsync(load, [], []),
         [tree, setTree] = useState({ } as TreeEnts)
@@ -37,14 +41,13 @@ function App() {
         const nodes = ent?.nodes?.filter(id => id.startsWith('Components'))
         setTree(select(tree, nodes))
     }
-    function renderEntity(props: MeshProps) {
-        return <Mesh { ...props } geo={ geo } />
-    }
     return <div className="app flex flex-col h-full">
         <Toolbar />
         <Resize className="grow">
             <Nav tree={ tree } onChange={ setTree } />
-            <View tree={ tree } ents={ ents } onSelect={ selectEntity } render={ renderEntity } />
+            <View tree={ tree } ents={ ents }
+                meshComponent={ EntityMesh }
+                onSelect={ selectEntity } />
         </Resize>
     </div>
 }
