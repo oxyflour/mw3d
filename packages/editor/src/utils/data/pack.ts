@@ -43,18 +43,17 @@ export function pack(data: any) {
     const str = enc.encode(json),
         head = new Uint32Array([0, 0, 0, 0]),
         space = Math.ceil((head.byteLength + str.byteLength) / 8) * 8,
-        chunks = [{ type: arr.length, start: 0, space, end: space, length: str.length, body: str }]
+        chunks = [{ type: arr.length, start: 0, end: space, length: str.length, body: str }]
     for (const { body, length, type } of arr) {
         const space = Math.ceil((head.byteLength + body.byteLength) / 8) * 8,
-            last = chunks[chunks.length - 1]!,
-            start = last.start + last.space,
+            start = chunks[chunks.length - 1]!.end,
             end = start + space
-        chunks.push({ type, start, space, end, length, body })
+        chunks.push({ type, start, end, length, body })
     }
 
     const buf = new Uint8Array(chunks[chunks.length - 1]!.end)
-    for (const { type, start, length, space, body } of chunks) {
-        head.set([type, length, start + space])
+    for (const { type, start, end, length, body } of chunks) {
+        head.set([type, length, end])
         buf.set(new Uint8Array(head.buffer), start)
         buf.set(body, start + head.byteLength)
     }
