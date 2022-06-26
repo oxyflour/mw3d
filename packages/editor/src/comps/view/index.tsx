@@ -4,6 +4,8 @@ import {
 } from '@ttk/react'
 import { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
+import { pack, unpack } from '../../utils/data/pack'
+import { useAsync } from '../../utils/react/hooks'
 
 import './index.less'
 
@@ -19,8 +21,26 @@ export function EntityMesh({ data, active, onCreated }: {
     const props = { onCreated } as CompProp<typeof Mesh>
     data.trans && (props.matrix = data.trans)
     !active && (props.mat = MAT_DIM)
+
+    const [{ value }] = useAsync(async faces => {
+        if (faces) {
+            const req = await fetch(faces),
+                { } = unpack(new Uint8Array(await req.arrayBuffer()))
+            // TODO
+        }
+        return { geo: null }
+    }, [data.geoms?.[0]?.faces])
+    value?.geo && (props.geo = value.geo)
+
     return <Mesh { ...props } />
 }
+
+// TODO
+const buf = pack({
+    vert: new Float32Array([1.1, 2.2, 3.3]),
+    face: new Uint32Array([0, 1, 2])
+})
+console.log(unpack(buf))
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')

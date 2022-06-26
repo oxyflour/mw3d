@@ -5,11 +5,11 @@ export interface Entity {
         $n?: string
         $m?: string
     } & Record<string, any>
-    trans?: number[]
-    geom?: {
+    geoms?: {
         faces?: string
         edges?: string
-    }
+    }[]
+    trans?: number[]
     nodes?: string[]
 }
 
