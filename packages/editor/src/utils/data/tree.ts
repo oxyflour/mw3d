@@ -23,6 +23,25 @@ export function walk(tree: TreeData, id: string,
     }
 }
 
+export function check(tree: TreeData, id: string, checked: boolean) {
+    const value = { } as TreeData,
+        prefix = id.split('/').shift() || '',
+        list = [{ id, checked }]
+    for (const id in tree.$root?.children || { }) {
+        if (id !== prefix) {
+            list.push({ id, checked: true })
+        }
+    }
+    for (const { id, checked } of list) {
+        walk(tree, id, (id, node) => {
+            if (node.checked !== checked) {
+                value[id] = { ...tree[id], checked }
+            }
+        })
+    }
+    return { ...tree, ...value }
+}
+
 export function select(tree: TreeData, nodes?: string[]) {
     const value = { ...tree } as TreeData,
         selected = { } as Record<string, true>

@@ -10,7 +10,7 @@ import './index.less'
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 
 const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data,
-    MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.7] })
+    MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.2] })
 export function EntityMesh({ data, active, onCreated }: {
     data: Entity
     active: boolean
@@ -121,24 +121,24 @@ export function MouseControl({ onSelect }: {
 export default ({ tree, ents, onSelect }: {
     tree: TreeEnts
     ents: Entity[]
-    onSelect?: (nodes?: string[], ent?: Entity) => any
+    onSelect?: (ent?: Entity) => any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { }),
-        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity, nodes: string[] }>)
+        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity }>)
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
         {
             ents.map((ent, idx) => {
                 const nodes = ent.nodes || []
-                return nodes.some(id => tree[id]?.checked) && <EntityMesh key={ idx }
+                return nodes.length > 0 && nodes.every(id => tree[id]?.checked) && <EntityMesh key={ idx }
                     data={ ent }
                     active={ !selected.length || nodes.some(id => tree[id]?.selected) }
-                    onCreated={ obj => objs.current[obj.id] = { obj, ent, nodes } } />
+                    onCreated={ obj => objs.current[obj.id] = { obj, ent } } />
             })
         }
         <MouseControl onSelect={
             obj => {
-                const item = obj && objs.current[obj.id]
-                item ? onSelect?.(item.nodes, item.ent) : onSelect?.()
+                const item = objs.current[obj?.id || -1]
+                item ? onSelect?.(item.ent) : onSelect?.()
             }
         } />
     </Canvas>

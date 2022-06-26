@@ -21,9 +21,7 @@ function randomPosition() {
 
 function load() {
     return [
-        { attrs: { $n: 'a/1' } },
-        { attrs: { $n: 'a/2' } },
-        ...Array(5).fill(0).map((_, i) => ({ attrs: { $n: `b/${i}` }, trans: randomPosition() }) as Entity)
+        ...Array(30).fill(0).map((_, i) => ({ attrs: { $n: `b/${i}` }, trans: randomPosition() }) as Entity)
     ] as Entity[]
 }
 
@@ -31,13 +29,14 @@ function App() {
     const ents = useMemo(load, []),
         [tree, setTree] = useState({ } as TreeEnts)
     useEffect(() => setTree(parse(ents)), [ents])
+    function selectEntity(ent?: Entity) {
+        setTree(select(tree, ent?.nodes?.filter(id => id.startsWith('Components'))))
+    }
     return <div className="app flex flex-col h-full">
         <Toolbar />
         <Resize className="grow">
             <Nav tree={ tree } onChange={ setTree } />
-            <View tree={ tree } ents={ ents } onSelect={
-                nodes => setTree(select(tree, nodes?.filter(id => id.startsWith('Components'))))
-            } />
+            <View tree={ tree } ents={ ents } onSelect={ selectEntity } />
         </Resize>
     </div>
 }

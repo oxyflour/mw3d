@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { search, select, TreeData, TreeNode, walk } from '../../utils/data/tree'
+import { check, search, select, TreeData, TreeNode } from '../../utils/data/tree'
 import './index.less'
 
 export function Tree({ id = '', data, onChange }: {
@@ -11,13 +11,6 @@ export function Tree({ id = '', data, onChange }: {
     function updateSelf(update: Partial<TreeNode>) {
         onChange?.({ ...data, [id]: { ...node, ...update } })
     }
-    function updateChild(update: Partial<TreeNode>, value = { } as TreeData) {
-        walk(data, id, id => value[id] = { ...data[id], ...update })
-        onChange?.({ ...data, ...value })
-    }
-    function updateSelected() {
-        onChange?.(select(data, [id]))
-    }
     const children = Object.keys(node?.children || { })
     return !node ? null : <div className="tree">
         <button className="carpet"
@@ -25,13 +18,13 @@ export function Tree({ id = '', data, onChange }: {
                 { children.length > 0 ? (node.open ? '▼' : '▶') : '-' }
             </button>
         <input className="check" type="checkbox" checked={ !!node.checked }
-            onChange={ evt => updateChild({ checked: evt.target.checked }) } />
+            onChange={ evt => onChange?.(check(data, id, evt.target.checked)) } />
         <label className={ `${node.selected ? 'selected' : ''} title` }
-            onClick={ () => updateSelected() }>
+            onClick={ () => onChange?.(select(data, [id])) }>
             { node.title || '<Empty>' }
         </label>
         {
-            node.open && (children.length || 0) > 0 && <div style={{ marginLeft: 16 }}>
+            node.open && children.length > 0 && <div style={{ marginLeft: 16 }}>
             {
                 children.filter(id => data[id])
                     .map(id => <Tree
@@ -49,8 +42,7 @@ export default ({ tree, onChange }: {
     tree: TreeData
     onChange?: ((tree: TreeData) => void) | undefined
 }) => {
-    const [filter, setFilter] = useState({ search: '', tree }),
-        { children = [] } = tree.$root || { }
+    const [filter, setFilter] = useState({ search: '', tree })
     return <div className="nav flex flex-col h-full">
         <div className="header flex">
             <input className="filter w-full grow" value={ filter.search }
@@ -77,10 +69,8 @@ export default ({ tree, onChange }: {
             }
         </div>
         <div className="content grow">
-        {
-            Object.keys(children).map(id =>
-                <Tree id={ id } key={ id } data={ tree } onChange={ onChange } />)
-        }
+            <Tree id="Components" data={ tree } onChange={ onChange } />
+            <Tree id="Materials" data={ tree } onChange={ onChange } />
         </div>
     </div>
 }
