@@ -4,33 +4,14 @@ import {
 } from '@ttk/react'
 import React, { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
-import { pack, unpack } from '../../utils/data/pack'
 
 import './index.less'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
-export type EntityProps = CompProp<typeof Mesh> & { data: Entity }
+export type EntityProps = CompProp<typeof Mesh> & { data: Entity, active: boolean }
 
-const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data,
-    MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.2] })
-export function EntityMesh({ data, active, meshComponent, onCreated }: {
-    data: Entity
-    active: boolean
-    meshComponent?: ((props: EntityProps) => any) | undefined
-    onCreated?: (obj: Engine.Obj3) => any
-}): JSX.Element {
-    const props = { onCreated, data } as EntityProps
-    data.trans && (props.matrix = data.trans)
-    !active && (props.mat = MAT_DIM)
-    return meshComponent ? React.createElement(meshComponent, props) : <Mesh { ...props } />
-}
-
-// TODO
-const buf = pack({
-    vert: new Float32Array([1.1, 2.2, 3.3]),
-    face: new Uint32Array([0, 1, 2])
-})
-console.log(unpack(buf))
+const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data
+export const MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.2] })
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')
@@ -138,14 +119,18 @@ export default ({ tree, ents, onSelect, meshComponent }: {
         objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity }>)
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
         {
-            ents.map((ent, idx) => {
+            ents.map((ent, key) => {
                 const nodes = ent.nodes || []
-                return nodes.length > 0 && nodes.every(id => tree[id]?.checked) &&
-                <EntityMesh key={ idx }
-                    data={ ent }
-                    active={ !selected.length || nodes.some(id => tree[id]?.selected) }
-                    meshComponent={ meshComponent }
-                    onCreated={ obj => objs.current[obj.id] = { obj, ent } } />
+                if (nodes.length > 0 && nodes.every(id => tree[id]?.checked)) {
+                    const active = !selected.length || nodes.some(id => tree[id]?.selected),
+                        onCreated = (obj: Engine.Obj3) => objs.current[obj.id] = { obj, ent },
+                        props = { key, onCreated, active, data: ent } as EntityProps
+                    ent.trans && (props.matrix = ent.trans)
+                    !active && (props.mat = MAT_DIM)
+                    return meshComponent ? React.createElement(meshComponent, props) : <Mesh { ...props } />
+                } else {
+                    return null
+                }
             })
         }
         <MouseControl onSelect={

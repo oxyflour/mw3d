@@ -4,14 +4,15 @@ import { mat4, vec3 } from 'gl-matrix'
 
 import Toolbar from './comps/toolbar'
 import Nav from './comps/nav'
-import View, { EntityProps } from './comps/view'
+import View, { EntityProps, MAT_DIM } from './comps/view'
 
 import './index.less'
 import Resize from './comps/utils/resize'
 import { select } from './utils/data/tree'
 import { Entity, parse, TreeEnts } from './utils/data/entity'
 import { useAsync } from './utils/react/hooks'
-import { Engine, Mesh } from '@ttk/react'
+import { Engine, Mesh, MeshDefault, Obj3 } from '@ttk/react'
+import { unpack } from './utils/data/pack'
 
 const m = mat4.create(),
     v = vec3.create()
@@ -21,20 +22,67 @@ function randomPosition() {
     return m.slice()
 }
 
-async function load() {
+async function loadEnts() {
     return [
-        ...Array(30).fill(0)
-            .map((_, i) => ({ attrs: { $n: `b/${i}` }, trans: randomPosition() }) as Entity)
+        ...Array(30).fill(0).map((_, i) => ({
+            attrs: { $n: `b/${i}` },
+            trans: randomPosition(),
+            bound: [-1, -1, -1, 1, 1, 1],
+            geom: {
+                url: ''
+            }
+        }) as Entity)
     ] as Entity[]
 }
 
-const geo = new Engine.BoxGeometry({ })
+type ClassArg0<F> = F extends new (...args: [infer A]) => any ? A : F
+type GeometryOptions = ClassArg0<Engine.Geometry>
+async function loadGeom(url?: string) {
+    if (url) {
+        const req = await fetch(url),
+            buf = await req.arrayBuffer(),
+            { faces, edges } = unpack(new Uint8Array(buf)) as { faces?: GeometryOptions, edges?: GeometryOptions }
+        if (faces || edges) {
+            return {
+                faces: faces && new Engine.Geometry(faces),
+                edges: edges && new Engine.Geometry(edges),
+            }
+        }
+    }
+    return undefined
+}
+
+const GEO_BOX = new Engine.BoxGeometry({ })
+function renderMeshDefault(props: EntityProps) {
+    const position = [0, 0, 0] as [number, number, number],
+        scaling = [1, 1, 1] as [number, number, number]
+    if (props.data.geom?.bound) {
+        const [x0, y0, z0, x1, y1, z1] = props.data.geom.bound
+        position[0] = (x0 + x1) / 2
+        position[1] = (y0 + y1) / 2
+        position[2] = (z0 + z1) / 2
+        scaling[0] = (x1 - x0) / 2
+        scaling[1] = (y1 - y0) / 2
+        scaling[2] = (z1 - z0) / 2
+    }
+    return <Mesh
+        onCreated={ props.onCreated as any }
+        geo={ GEO_BOX }
+        mat={ props.active ? MeshDefault.mat : MAT_DIM }
+        position={ position }
+        scaling={ scaling } />
+}
 function EntityMesh(props: EntityProps) {
-    return <Mesh { ...props } geo={ geo } />
+    const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
+    return geom?.faces ?
+        <Mesh { ...props } geo={ geom.faces }>
+            { props.active && geom.edges && <Mesh geo={ geom.edges } /> }
+        </Mesh> :
+        <Obj3 { ...props }>{ renderMeshDefault(props) }</Obj3>
 }
 
 function App() {
-    const [{ value: ents = [] }] = useAsync(load, [], []),
+    const [{ value: ents = [] }] = useAsync(loadEnts, [], []),
         [tree, setTree] = useState({ } as TreeEnts)
     useEffect(() => setTree(parse(ents)), [ents])
     function selectEntity(ent?: Entity) {
