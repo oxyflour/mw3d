@@ -44,9 +44,11 @@ export class Control {
             { left, top } = canvas.getBoundingClientRect(),
             start = { clientX: evt.clientX, clientY: evt.clientY, hasMoved: false }
         function onMouseUp(evt: MouseEvent) {
-            if (!start.hasMoved &&
-                Math.abs(start.clientX - evt.clientX) < 2 &&
-                Math.abs(start.clientY - evt.clientY) < 2) {
+            if (Math.abs(start.clientX - evt.clientX) > 2 ||
+                Math.abs(start.clientY - evt.clientY) > 2) {
+                start.hasMoved = true
+            }
+            if (start.hasMoved) {
                 opts?.hooks?.click?.(evt)
             }
         }
@@ -59,7 +61,10 @@ export class Control {
             rotation = mat4.create(),
             rot = quat.create()
         function onRotateAroundPivot(evt: MouseEvent) {
-            start.hasMoved = true
+            if (Math.abs(start.clientX - evt.clientX) > 2 ||
+                Math.abs(start.clientY - evt.clientY) > 2) {
+                start.hasMoved = true
+            }
             vec3FromObj(origin, camera)
             vec3FromObj(target, pivot)
             vec3.set(axis, start.clientY - evt.clientY, start.clientX - evt.clientX, 0)
@@ -93,7 +98,10 @@ export class Control {
             vec3.normalize(out, out)
         }
         function onDragWithPivot(evt: MouseEvent) {
-            start.hasMoved = true
+            if (Math.abs(start.clientX - evt.clientX) > 2 ||
+                Math.abs(start.clientY - evt.clientY) > 2) {
+                start.hasMoved = true
+            }
             vec3FromObj(origin, camera)
             getWorldDirFromScreen(from, start.clientX - left, start.clientY - top)
             getWorldDirFromScreen(target, evt.clientX - left, evt.clientY - top)
