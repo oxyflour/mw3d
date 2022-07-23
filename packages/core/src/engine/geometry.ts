@@ -136,7 +136,7 @@ export class SphereGeometry extends Geometry {
         radius = 1,
         phiArr = range(0, 361, 15),
         thetaArr = range(-90, 91, 15)
-    }: { radius?: number, phiArr?: number[], thetaArr?: number[] }) {
+    } = { } as { radius?: number, phiArr?: number[], thetaArr?: number[] }) {
         const positions = [] as number[],
             normals = [] as number[],
             indices = [] as number[]

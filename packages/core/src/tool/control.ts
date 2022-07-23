@@ -48,7 +48,7 @@ export class Control {
                 Math.abs(start.clientY - evt.clientY) > 2) {
                 start.hasMoved = true
             }
-            if (start.hasMoved) {
+            if (!start.hasMoved) {
                 opts?.hooks?.click?.(evt)
             }
         }

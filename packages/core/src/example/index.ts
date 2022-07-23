@@ -24,7 +24,7 @@ async function updatePivot({ x, y }: { x: number, y: number }) {
         height: renderer.height,
         x, y,
     })
-    if (id >= 0) {
+    if (id > 0) {
         const rot = quat.create(),
             { pivot } = control
         mat4.fromRotationTranslation(pivot.worldMatrix, rot, position)
@@ -45,14 +45,15 @@ async function showBuffer(buffer: ArrayBuffer) {
     document.body.appendChild(image)
 }
 async function clickScene(evt: MouseEvent) {
-    const { id } = await picker.pick(scene, camera, {
+    const { id, buffer } = await picker.pick(scene, camera, {
         width: canvas.clientWidth,
         height: canvas.clientHeight,
         x: evt.clientX,
         y: evt.clientY,
     })
-    // for debug
-    showBuffer
+    if ((window as any).DEBUG_SHOW_CLICK_BUFFER) {
+        await showBuffer(buffer)
+    }
     scene.walk(obj => {
         if (obj instanceof Mesh && obj.id === id) {
             const mat = oldMats[id]
@@ -95,6 +96,7 @@ const camera = new PerspectiveCamera({
             cube.mat),
     ]),
     control = new Control(canvas, camera, {
+        pivot: new Mesh(new SphereGeometry({ }), new BasicMaterial({ })),
         zoom: {
             distance: {
                 min: camera.near + 2000,
@@ -114,7 +116,7 @@ const camera = new PerspectiveCamera({
         }
     })
 
-for (let i = 0; i < 10000; i ++) {
+for (let i = 0; i < 10; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)

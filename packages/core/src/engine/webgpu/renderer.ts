@@ -171,6 +171,7 @@ export default class Renderer {
         return this.cache.bindings(this)
     }
 
+    readonly clearColor = { r: 1, g: 1, b: 1, a: 0 }
     private cachedRenderList = {
         revs: { } as Record<number, number>,
         list: [] as Obj3[],
@@ -246,7 +247,7 @@ export default class Renderer {
                         this.context.getCurrentTexture().createView(),
                     loadOp: 'clear',
                     storeOp: 'store',
-                    clearValue: { r: 1, g: 1, b: 1, a: 1.0 },
+                    clearValue: this.clearColor,
                 }],
                 depthStencilAttachment: {
                     view: opts.depthTexture ?

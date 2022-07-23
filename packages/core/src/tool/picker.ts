@@ -83,11 +83,17 @@ export interface PickCamera {
     worldMatrix: mat4
 }
 
-function sleep(time: number) {
-    return new Promise(resolve => setTimeout(resolve, time))
+export function enqueue<F extends (...args: any) => Promise<any>>(func: F) {
+    let promise: undefined | Promise<any>
+    return ((...args: any) => {
+        if (!promise) {
+            promise = func(...args)
+            promise.finally(() => { promise = undefined })
+        }
+        return promise
+    }) as F
 }
 
-let renderLock = 0
 const worker = wrap({
     num: 1,
     // @ts-ignore
@@ -104,11 +110,6 @@ const worker = wrap({
                      geometries: Record<number, PickGeo>,
                      { fov, aspect, near, far, worldMatrix }: PickCamera,
                      { width, height, x, y }: { x: number, y: number, width: number, height: number }) {
-            while (renderLock > Date.now() - 5000) {
-                await sleep(10)
-            }
-            renderLock = Date.now()
-
             const { renderer, camera, pixels } = await getCache(),
                 { scene, geoMap, matMap, meshMap, meshRev } = cache
             renderer.width = width
@@ -152,8 +153,11 @@ const worker = wrap({
                     }))
             renderer.render(new Scene([plane]), new Camera())
             const [val = 0] = await readPixel({ x, y }),
+                d = val / 0xffffff,
+                // convert from webgpu range (0, 1) to opengl range(-1, 1)
+                v = d * 2 - 1,
                 // https://stackoverflow.com/a/66928245
-                depth = 1 / (val / 0xffffff * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
+                depth = 1 / (v * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
             
             const [hw, hh, hf] = [renderer.width / 2, renderer.height / 2, camera.fov / 2],
                 position = vec3.fromValues(
@@ -167,8 +171,6 @@ const worker = wrap({
 
             const blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
-            
-            renderLock = 0
             return { id, buffer, distance, position }
         }
     }
@@ -177,7 +179,7 @@ const worker = wrap({
 export default class Picker {
     private constructor() {
     }
-    async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
+    private async doPick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
         width: number
         height: number
         x: number
@@ -199,6 +201,7 @@ export default class Picker {
             view = { fov, aspect, near, far, worldMatrix }
         return await worker.render(meshes, geometries, view, opts)
     }
+    pick = enqueue(this.doPick.bind(this))
 
     private static created: Promise<Picker>
     private static async create() {

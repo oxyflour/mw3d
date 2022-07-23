@@ -45,7 +45,7 @@ export class PerspectiveCamera extends Camera {
     }
     protected override update() {
         const { fov, aspect, near, far } = this.prop
-        mat4.perspective(this.projection, fov, aspect, near, far)
+        mat4.perspectiveZO(this.projection, fov, aspect, near, far)
         super.update()
     }
     get fov() {
@@ -79,7 +79,7 @@ export class PerspectiveCamera extends Camera {
         far?: number
     } & ObjOpts) {
         const { fov = 60 * Math.PI / 180, aspect = 1, near = 1, far = 1000 } = opts || { },
-            projection = mat4.perspective(mat4.create(), fov, aspect, near, far)
+            projection = mat4.perspectiveZO(mat4.create(), fov, aspect, near, far)
         super({ ...opts, projection })
         Object.assign(this.prop, { fov, aspect, near, far })
     }

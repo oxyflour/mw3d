@@ -53,7 +53,7 @@ async function loadGeom(url?: string) {
 }
 
 const GEO_BOX = new Engine.BoxGeometry({ })
-function renderMeshDefault(props: EntityProps) {
+function MeshBound(props: EntityProps) {
     const position = [0, 0, 0] as [number, number, number],
         scaling = [1, 1, 1] as [number, number, number]
     if (props.data.geom?.bound) {
@@ -61,24 +61,25 @@ function renderMeshDefault(props: EntityProps) {
         position[0] = (x0 + x1) / 2
         position[1] = (y0 + y1) / 2
         position[2] = (z0 + z1) / 2
-        scaling[0] = (x1 - x0) / 2
-        scaling[1] = (y1 - y0) / 2
-        scaling[2] = (z1 - z0) / 2
+        scaling[0] = (x1 - x0)
+        scaling[1] = (y1 - y0)
+        scaling[2] = (z1 - z0)
     }
-    return <Mesh
-        onCreated={ props.onCreated as any }
-        geo={ GEO_BOX }
-        mat={ props.active ? MeshDefault.mat : MAT_DIM }
-        position={ position }
-        scaling={ scaling } />
+    return <Obj3 { ...props }>
+        <Mesh onCreated={ props.onCreated as any }
+            geo={ GEO_BOX }
+            mat={ props.active ? MeshDefault.mat : MAT_DIM }
+            position={ position }
+            scaling={ scaling } />
+    </Obj3>
 }
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
     return geom?.faces ?
         <Mesh { ...props } geo={ geom.faces }>
-            { props.active && geom.edges && <Mesh geo={ geom.edges } /> }
+            { geom.edges && <Mesh isVisible={ props.active } geo={ geom.edges } /> }
         </Mesh> :
-        <Obj3 { ...props }>{ renderMeshDefault(props) }</Obj3>
+        <MeshBound { ...props } />
 }
 
 function App() {

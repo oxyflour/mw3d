@@ -207,26 +207,25 @@ export const MeshDefault = {
     mat: new Engine.BasicMaterial({ metallic: 1, roughness: 0.5 }),
     geo: new Engine.SphereGeometry({ radius: 1 })
 }
-function MeshSetter({ geo, mat }: {
+function MeshSetter({ geo, mat, isVisible }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
+    isVisible?: boolean
 }) {
     const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
     useEffect(() => {
         if (mesh) {
             mesh.geo = geo || MeshDefault.geo
             mesh.mat = mat || MeshDefault.mat
+            mesh.isVisible = isVisible === undefined || isVisible
         }
-    }, [mesh, geo, mat])
+    }, [mesh, geo, mat, isVisible])
     return null
 }
-export function Mesh({ geo, mat, children, ...props }: {
-    geo?: Engine.Geometry
-    mat?: Engine.Material
-} & Args<typeof Obj3>['0']) {
+export function Mesh({ children, ...props }: Args<typeof MeshSetter>['0'] & Args<typeof Obj3>['0']) {
     return <Obj3 { ...props }
             create={ () => new Engine.Mesh(MeshDefault.geo, MeshDefault.mat) }>
-        <MeshSetter geo={ geo } mat={ mat } />
+        <MeshSetter { ...props } />
         { children }
     </Obj3>
 }
