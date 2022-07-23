@@ -11,7 +11,7 @@ type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { data: Entity, active: boolean }
 
 const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data
-export const MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.2] })
+export const MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.7] })
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')

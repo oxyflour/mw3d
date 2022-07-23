@@ -185,8 +185,8 @@ export default class Cache {
                         },
                         alpha: {
                             operation: 'add',
-                            srcFactor: 'one',
-                            dstFactor: 'one',
+                            srcFactor: 'src-alpha',
+                            dstFactor: 'zero',
                         }
                     } : undefined,
                     format: this.opts.fragmentFormat

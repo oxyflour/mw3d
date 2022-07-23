@@ -171,7 +171,7 @@ export default class Renderer {
         return this.cache.bindings(this)
     }
 
-    readonly clearColor = { r: 1, g: 1, b: 1, a: 1 }
+    readonly clearColor = { r: 1, g: 1, b: 1, a: 0 }
     private cachedRenderList = {
         revs: { } as Record<number, number>,
         list: [] as Obj3[],
