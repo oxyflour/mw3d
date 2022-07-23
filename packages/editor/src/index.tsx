@@ -8,7 +8,6 @@ import View, { EntityProps, MAT_DIM } from './comps/view'
 
 import './index.less'
 import Resize from './comps/utils/resize'
-import { select } from './utils/data/tree'
 import { Entity, parse, TreeEnts } from './utils/data/entity'
 import { useAsync } from './utils/react/hooks'
 import { Engine, Mesh, MeshDefault, Obj3 } from '@ttk/react'
@@ -86,17 +85,12 @@ function App() {
     const [{ value: ents = [] }] = useAsync(loadEnts, [], []),
         [tree, setTree] = useState({ } as TreeEnts)
     useEffect(() => setTree(parse(ents)), [ents])
-    function selectEntity(ent?: Entity) {
-        const nodes = ent?.nodes?.filter(id => id.startsWith('Components'))
-        setTree(select(tree, nodes))
-    }
     return <div className="app flex flex-col h-full">
         <Toolbar />
         <Resize className="grow">
             <Nav tree={ tree } onChange={ setTree } />
-            <View tree={ tree } ents={ ents }
-                meshComponent={ EntityMesh }
-                onSelect={ selectEntity } />
+            <View tree={ tree } setTree={ setTree } ents={ ents }
+                meshComponent={ EntityMesh } />
         </Resize>
     </div>
 }

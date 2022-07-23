@@ -4,6 +4,7 @@ import {
 } from '@ttk/react'
 import React, { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
+import { select } from '../../utils/data/tree'
 
 import './index.less'
 
@@ -99,8 +100,10 @@ export function MouseControl({ onSelect }: {
             let found = undefined as undefined | Engine.Obj3
             id && scene?.walk(obj => obj.id === id && (found = obj))
             select.current?.(found)
+            clickedAt.current = 0
+        } else {
+            clickedAt.current = Date.now()
         }
-        clickedAt.current = Date.now()
     }
     return <Control pivot={ pivot } hooks={{
         mouse: align,
@@ -109,10 +112,10 @@ export function MouseControl({ onSelect }: {
     }} />
 }
 
-export default ({ tree, ents, onSelect, meshComponent }: {
+export default ({ tree, setTree, ents, meshComponent }: {
     tree: TreeEnts
+    setTree: (tree: TreeEnts) => void
     ents: Entity[]
-    onSelect?: (ent?: Entity) => any
     meshComponent?: (props: EntityProps) => any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { }),
@@ -135,8 +138,9 @@ export default ({ tree, ents, onSelect, meshComponent }: {
         }
         <MouseControl onSelect={
             obj => {
-                const item = objs.current[obj?.id || -1]
-                item ? onSelect?.(item.ent) : onSelect?.()
+                const ent = objs.current[obj?.id || -1]?.ent,
+                    nodes = ent?.nodes?.filter(id => id.startsWith('Components'))
+                setTree(select(tree, nodes))
             }
         } />
     </Canvas>
