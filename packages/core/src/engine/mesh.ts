@@ -6,12 +6,14 @@ import Material from './material'
 
 export default class Mesh extends Obj3 {
     private modelMatrix = mat4.create()
+    readonly clipPlane = vec4.fromValues(0, 0, 0, 0)
 
     readonly bindingGroup = 2
     readonly uniforms = [
         [
             this.modelMatrix,
             this.worldPosition,
+            this.clipPlane,
         ]
     ]
 

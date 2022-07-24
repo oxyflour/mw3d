@@ -201,7 +201,7 @@ export default class Renderer {
         // Obj3.update(objs)
         for (const obj of scene) {
             obj.updateIfNecessary(revs, addToUpdated)
-            obj.walk(obj => list.push(obj))
+            obj.walk(obj => (obj instanceof Mesh || obj instanceof Light) && list.push(obj))
         }
 
         const { opaque, translucent, lights } = this.cachedRenderList
@@ -223,14 +223,16 @@ export default class Renderer {
         }
 
         const { pipeline } = this.cache,
-            opaqueSorted = opaque.sort((a, b) => 
-                (a.renderOrder - b.renderOrder) ||
-                (pipeline(a.geo.type, a.mat).pipelineId - pipeline(b.geo.type, b.mat).pipelineId) ||
-                (a.mat.id - b.mat.id) ||
-                (a.geo.id - b.geo.id)),
+            opaqueSorted = (opaque as (Mesh & { pipelineId: number })[])
+                .map(item => ((item.pipelineId = pipeline(item.geo.type, item.mat).pipelineId), item))
+                .sort((a, b) => 
+                    (a.renderOrder - b.renderOrder) ||
+                    (a.pipelineId - b.pipelineId) ||
+                    (a.mat.id - b.mat.id) ||
+                    (a.geo.id - b.geo.id)) as Mesh[],
             transSorted = (translucent as (Mesh & { cameraDist: number })[])
                 .map(item => ((item.cameraDist = vec4.dist(item.center, camera.worldPosition)), item))
-                .sort((a, b) => b.cameraDist - a.cameraDist),
+                .sort((a, b) => b.cameraDist - a.cameraDist) as Mesh[],
             sorted = opaqueSorted.concat(transSorted)
 
         this.updateUniforms(this.buildRenderUnifroms(lights))

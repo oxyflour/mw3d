@@ -1,6 +1,6 @@
-const WGSL_IGNORE_UNUSED = false;
+let WGSL_IGNORE_UNUSED = false;
 
-const MAX_LIGHTS = 4;
+let MAX_LIGHTS = 4;
 struct Light {
   worldPosition: vec4<f32>,
 }
@@ -17,6 +17,7 @@ struct CameraUniforms {
 struct MeshUniforms {
   modelMatrix: mat4x4<f32>,
   worldPosition: vec4<f32>,
+  clipPlane: vec4<f32>,
 }
 @group(2) @binding(0) var<uniform> mesh: MeshUniforms;
 
@@ -61,7 +62,7 @@ struct FragInput {
 
 // https://github.com/samdauwe/webgpu-native-assets/blob/cac1816df6e3778c218bb0df29c1193a27ee0b40/shaders/pbr_basic/pbr.frag
 
-const PI = 3.14159;
+let PI = 3.14159;
 fn D_GGX(dotNH: f32, roughness: f32) -> f32 {
   var alpha = roughness * roughness;
   var alpha2 = alpha * alpha;
@@ -111,6 +112,13 @@ fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
   }
   if (WGSL_IGNORE_UNUSED) {
     var c = canvasSize;
+  }
+  if (any(mesh.clipPlane != vec4<f32>())) {
+    var c = mesh.clipPlane;
+    var p = input.worldPosition;
+    if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {
+      discard;
+    }
   }
   return vec4<f32>(C, material.color.a);
 }

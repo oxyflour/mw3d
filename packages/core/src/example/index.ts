@@ -116,7 +116,7 @@ const camera = new PerspectiveCamera({
         }
     })
 
-for (let i = 0; i < 100; i ++) {
+for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
