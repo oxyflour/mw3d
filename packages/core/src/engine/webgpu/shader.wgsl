@@ -1,5 +1,7 @@
+// @replace-let-with-const
 let WGSL_IGNORE_UNUSED = false;
 
+// @replace-let-with-const
 let MAX_LIGHTS = 4;
 struct Light {
   worldPosition: vec4<f32>,
@@ -62,6 +64,7 @@ struct FragInput {
 
 // https://github.com/samdauwe/webgpu-native-assets/blob/cac1816df6e3778c218bb0df29c1193a27ee0b40/shaders/pbr_basic/pbr.frag
 
+// @replace-let-with-const
 let PI = 3.14159;
 fn D_GGX(dotNH: f32, roughness: f32) -> f32 {
   var alpha = roughness * roughness;
@@ -129,6 +132,13 @@ fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
     var a = lightNum;
     var b = lights;
     var c = canvasSize;
+  }
+  if (any(mesh.clipPlane != vec4<f32>())) {
+    var c = mesh.clipPlane;
+    var p = input.worldPosition;
+    if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {
+      discard;
+    }
   }
   return material.color;
 }

@@ -9,6 +9,8 @@ import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
 import { Sampler, Texture, UniformValue } from "../uniform"
 
+const MAX_LIGHTS = 4
+
 export default class Renderer {
     private cache!: Cache
     private device!: GPUDevice
@@ -149,23 +151,26 @@ export default class Renderer {
         }
     }
 
-    private readonly lightDummy = new Light()
     readonly bindingGroup = 0
     readonly uniforms = [
         [new Float32Array([0, 0])],
         [new Int32Array([0])],
-        [],
-    ] as [UniformValue[], UniformValue[], UniformValue[]]
+        Array(MAX_LIGHTS).fill(0).map(() => new Light().uniforms.flat()).flat(),
+    ] as [[UniformValue], [UniformValue], UniformValue[]]
     private buildRenderUnifroms(lights: Light[]) {
-        const [[canvasSize], [lightNum], lightList] = this.uniforms
-        lightNum![0] = lights.length
-        canvasSize![0] = this.renderSize.width
-        canvasSize![1] = this.renderSize.height
-        lightList.length = 0
-        for (let i = 0; i < 4; i ++) {
-            const light = lights[i] || this.lightDummy
-            for (const uniforms of light.uniforms) {
-                lightList.push(...uniforms)
+        const [[canvasSize], [lightNum], lightUniforms] = this.uniforms
+        lightNum[0] = lights.length
+        canvasSize[0] = this.renderSize.width
+        canvasSize[1] = this.renderSize.height
+        let index = 0
+        for (const { uniforms } of lights) {
+            for (const arr of uniforms) {
+                for (const src of arr) {
+                    const dst = lightUniforms[index ++]
+                    for (let i = 0; dst && i < src.length && i < dst.length; i ++) {
+                        dst[i] = src[i]!
+                    }
+                }
             }
         }
         return this.cache.bindings(this)

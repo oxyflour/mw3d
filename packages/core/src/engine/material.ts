@@ -3,7 +3,10 @@
 import { AutoIndex } from '../utils/common'
 import { MutableArray } from '../utils/math'
 import { Sampler, Texture, Uniform } from './uniform'
-import code from './webgpu/shader.wgsl?raw'
+import wgsl from './webgpu/shader.wgsl?raw'
+
+// Note: wgsl global const not yet supported
+const code = (wgsl + '').replace(/\r\n/g, '\n').replace(/\/\/ @replace-let-with-const\nlet /g, 'const ')
 
 export type ProgramEntry = { [k in GPUPrimitiveTopology]: string } | string
 

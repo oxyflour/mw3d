@@ -1,4 +1,4 @@
-import { mat4, vec3 } from "gl-matrix"
+import { mat4, vec3, vec4 } from "gl-matrix"
 
 import wrap from "../utils/worker"
 import Renderer from "../engine/webgpu/renderer"
@@ -66,6 +66,7 @@ export interface PickMesh {
     rev: number
     geoId: number 
     worldMatrix: mat4
+    clipPlane: vec4
 }
 
 export interface PickGeo {
@@ -118,7 +119,7 @@ const worker = wrap({
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
-            for (const { worldMatrix, geoId, id, rev } of Object.values(meshes)) {
+            for (const { worldMatrix, geoId, id, rev, clipPlane } of Object.values(meshes)) {
                 const item = geometries[geoId]
                 if (!item) {
                     throw Error(`geometry ${geoId} is not found`)
@@ -128,9 +129,11 @@ const worker = wrap({
                         entry: { frag: 'fragMainColor' },
                         color: new Uint8Array([id, id >> 8, 0]),
                     })),
-                    key = geoId + ':' + id,
-                    mesh = meshMap[key] && meshRev[key] === rev ? meshMap[key]! : (meshMap[key] = new Mesh(geo, mat))
-                meshRev[key] = rev
+                    mesh = meshMap[id] && meshRev[id] === rev ? meshMap[id]! : (meshMap[id] = new Mesh(geo, mat))
+                meshRev[id] = rev
+                vec4.copy(mesh.clipPlane, clipPlane)
+                mesh.geo = geo
+                mesh.mat = mat
                 mesh.setWorldMatrix(worldMatrix)
                 scene.add(mesh)
             }
@@ -190,8 +193,8 @@ export default class Picker {
         for (const obj of scene) {
             obj.walk(obj => {
                 if (obj instanceof Mesh) {
-                    const { worldMatrix, geo, id, rev } = obj
-                    meshes[obj.id] = { worldMatrix, id, rev, geoId: geo.id }
+                    const { worldMatrix, geo, id, rev, clipPlane } = obj
+                    meshes[obj.id] = { worldMatrix, id, rev, clipPlane, geoId: geo.id }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }
