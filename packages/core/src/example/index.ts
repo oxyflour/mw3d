@@ -8,7 +8,7 @@ import { rand } from '../utils/math'
 import { BoxGeometry, BoxLines, SphereGeometry } from '../engine/geometry'
 import { PerspectiveCamera } from '../engine/camera'
 import { Control } from '../tool/control'
-import { mat4, quat } from 'gl-matrix'
+import { mat4, quat, vec4 } from 'gl-matrix'
 
 (async function() {
 
@@ -116,10 +116,12 @@ const camera = new PerspectiveCamera({
         }
     })
 
+const CLIP_PLANE = vec4.fromValues(1, 1, 0, 0)
 for (let i = 0; i < 10000; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)
+    vec4.copy(mesh.clipPlane, CLIP_PLANE)
     mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
     mesh.rotation.rotX(rand(0, 10)).rotY(rand(0, 10))

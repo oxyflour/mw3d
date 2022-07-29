@@ -198,7 +198,7 @@ export default class Cache {
             },
             depthStencil: {
                 depthWriteEnabled: mat.prop.a < 1 ? false : true,
-                depthCompare: 'less',
+                depthCompare: 'greater',
                 format: this.opts.depthFormat,
             },
         }), { pipelineId })

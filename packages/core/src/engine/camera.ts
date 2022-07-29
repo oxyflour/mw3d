@@ -3,6 +3,10 @@ import { MutableArray } from '../utils/math'
 
 import Obj3, { ObjOpts } from './obj3'
 
+const DEPTH_RANGE_REMAP = mat4.create()
+DEPTH_RANGE_REMAP[10] = -1
+DEPTH_RANGE_REMAP[14] = 1
+
 export default class Camera extends Obj3 {
     private viewProjection = mat4.create()
     private viewMatrix = mat4.create()
@@ -19,6 +23,7 @@ export default class Camera extends Obj3 {
         super.update()
         mat4.invert(this.viewMatrix, this.worldMatrix)
         mat4.multiply(this.viewProjection, this.projection, this.viewMatrix)
+        mat4.multiply(this.viewProjection, DEPTH_RANGE_REMAP, this.viewProjection)
     }
     readonly projection: mat4
     constructor(opts?: {

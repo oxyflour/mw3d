@@ -160,7 +160,7 @@ const worker = wrap({
                 // convert from webgpu range (0, 1) to opengl range(-1, 1)
                 v = d * 2 - 1,
                 // https://stackoverflow.com/a/66928245
-                depth = 1 / (v * (1 / camera.far - 1 / camera.near) + 1 / camera.near)
+                depth = 1 / (v * (1 / camera.near - 1 / camera.far) + 1 / camera.far)
             
             const [hw, hh, hf] = [renderer.width / 2, renderer.height / 2, camera.fov / 2],
                 position = vec3.fromValues(

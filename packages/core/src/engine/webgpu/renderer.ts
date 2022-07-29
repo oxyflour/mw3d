@@ -261,7 +261,7 @@ export default class Renderer {
                         this.cache.texture(opts.depthTexture).createView() :
                         this.cache.depthTexture.createView(),
                     depthLoadOp: 'clear',
-                    depthClearValue: 1.0,
+                    depthClearValue: 0.0,
                     depthStoreOp: 'store',
                 }
             })
