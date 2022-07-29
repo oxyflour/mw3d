@@ -19,7 +19,6 @@ struct CameraUniforms {
 struct MeshUniforms {
   modelMatrix: mat4x4<f32>,
   worldPosition: vec4<f32>,
-  clipPlane: vec4<f32>,
 }
 @group(2) @binding(0) var<uniform> mesh: MeshUniforms;
 
@@ -27,6 +26,9 @@ struct MaterialUniforms {
   color: vec4<f32>,
   roughness: f32,
   metallic: f32,
+  x: f32,
+  y: f32,
+  clipPlane: vec4<f32>,
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
 @group(3) @binding(1) var depthTexture: texture_depth_2d;
@@ -116,8 +118,8 @@ fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
   if (WGSL_IGNORE_UNUSED) {
     var c = canvasSize;
   }
-  if (any(mesh.clipPlane != vec4<f32>())) {
-    var c = mesh.clipPlane;
+  if (any(material.clipPlane != vec4<f32>())) {
+    var c = material.clipPlane;
     var p = input.worldPosition;
     if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {
       discard;
@@ -133,8 +135,8 @@ fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
     var b = lights;
     var c = canvasSize;
   }
-  if (any(mesh.clipPlane != vec4<f32>())) {
-    var c = mesh.clipPlane;
+  if (any(material.clipPlane != vec4<f32>())) {
+    var c = material.clipPlane;
     var p = input.worldPosition;
     if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {
       discard;

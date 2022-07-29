@@ -1,7 +1,7 @@
 import { mat4, vec4 } from "gl-matrix"
 
 export class Texture {
-    constructor(readonly opts: GPUTextureDescriptor) {
+    constructor(readonly opts: GPUTextureDescriptor, readonly view?: GPUTextureViewDescriptor) {
     }
 }
 

@@ -1,5 +1,6 @@
 /// <reference path="../typing.d.ts" />
 
+import { vec4 } from 'gl-matrix'
 import { AutoIndex } from '../utils/common'
 import { MutableArray } from '../utils/math'
 import { Sampler, Texture, Uniform } from './uniform'
@@ -17,19 +18,29 @@ export class MaterialProp extends MutableArray({
     a: 1,
     roughness: 0.1,
     metallic: 1.0,
+    x: 0,
+    y: 0,
 }) {
-    constructor(readonly data = new Float32Array(6)) {
+    constructor(readonly data = new Float32Array(8)) {
         super(data)
     }
 }
 
 export default class Material extends AutoIndex {
     prop = new MaterialProp()
+    readonly clipPlane = vec4.fromValues(0, 0, 0, 0)
+    get needsClip() {
+        const [a, b, c, d] = this.clipPlane
+        return a || b || c || d
+    }
 
     readonly bindingGroup = 3
     private static DEFAULT_SAMPLER = new Sampler({ })
     readonly uniforms = [
-        [this.prop.data],
+        [
+            this.prop.data,
+            this.clipPlane,
+        ],
         // texture
     ] as Uniform[]
 
@@ -70,6 +81,7 @@ export class BasicMaterial extends Material {
         roughness?: number
         metallic?: number
         texture?: Texture
+        clipPlane?: vec4 | number[]
     }) {
         const entry = BasicMaterial.defaultEntry,
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }
@@ -84,5 +96,9 @@ export class BasicMaterial extends Material {
         Object.assign(this.prop, { r, g, b, a })
         opts.roughness && (this.prop.roughness = opts.roughness)
         opts.metallic && (this.prop.metallic = opts.metallic)
+        if (opts.clipPlane) {
+            const [a = 0, b = 0, c = 0, d = 0] = opts.clipPlane
+            vec4.set(this.clipPlane, a, b, c, d)
+        }
     }
 }

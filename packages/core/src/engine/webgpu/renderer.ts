@@ -50,7 +50,7 @@ export default class Renderer {
         this.cache = new Cache(device, {
             size: this.renderSize,
             fragmentFormat: this.format,
-            depthFormat: 'depth24plus',
+            depthFormat: 'depth24plus-stencil8',
         })
         this.context.configure({
             size: this.renderSize,
@@ -121,9 +121,14 @@ export default class Renderer {
         let pipeline!: GPURenderPipeline,
             mat!: Material,
             geo!: Geometry
+        const arr = [] as { mesh: Mesh, pipeline: GPURenderPipeline }[]
         for (const mesh of sorted) {
-            const cached = this.cache.pipeline(mesh.geo.type, mesh.mat)
-            if (pipeline !== cached && (pipeline = cached)) {
+            const { pipeline, pre } = this.cache.pipeline(mesh.geo.type, mesh.mat)
+            pre && arr.push({ mesh, pipeline: pre })
+            arr.push({ mesh, pipeline })
+        }
+        for (const { mesh, pipeline: pip } of arr) {
+            if (pipeline !== pip && (pipeline = pip)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
@@ -229,7 +234,7 @@ export default class Renderer {
 
         const { pipeline } = this.cache,
             opaqueSorted = (opaque as (Mesh & { pipelineId: number })[])
-                .map(item => ((item.pipelineId = pipeline(item.geo.type, item.mat).pipelineId), item))
+                .map(item => ((item.pipelineId = pipeline(item.geo.type, item.mat).id), item))
                 .sort((a, b) => 
                     (a.renderOrder - b.renderOrder) ||
                     (a.pipelineId - b.pipelineId) ||
@@ -261,8 +266,11 @@ export default class Renderer {
                         this.cache.texture(opts.depthTexture).createView() :
                         this.cache.depthTexture.createView(),
                     depthLoadOp: 'clear',
-                    depthClearValue: 0.0,
+                    depthClearValue: 0,
                     depthStoreOp: 'store',
+                    stencilLoadOp: 'clear',
+                    stencilClearValue: 0,
+                    stencilStoreOp: 'store',
                 }
             })
 

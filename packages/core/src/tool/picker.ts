@@ -95,6 +95,12 @@ export function enqueue<F extends (...args: any) => Promise<any>>(func: F) {
     }) as F
 }
 
+const textureCache = {
+    width: 0,
+    height: 0,
+    texture: undefined as undefined | Texture
+}
+
 const worker = wrap({
     num: 1,
     // @ts-ignore
@@ -131,7 +137,7 @@ const worker = wrap({
                     })),
                     mesh = meshMap[id] && meshRev[id] === rev ? meshMap[id]! : (meshMap[id] = new Mesh(geo, mat))
                 meshRev[id] = rev
-                vec4.copy(mesh.clipPlane, clipPlane)
+                vec4.copy(mat.clipPlane, clipPlane)
                 mesh.geo = geo
                 mesh.mat = mat
                 mesh.setWorldMatrix(worldMatrix)
@@ -141,11 +147,17 @@ const worker = wrap({
                 throw Error(`picker support ${0xffff} meshes at max`)
             }
 
-            const depthTexture = new Texture({
-                size: { width: renderer.width, height: renderer.height, depthOrArrayLayers: 1 },
-                usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
-                format: 'depth24plus',
-            })
+            const depthTexture = (textureCache.width === width && textureCache.height === height ?
+                textureCache : Object.assign(textureCache, {
+                    width, height,
+                    texture: new Texture({
+                        size: { width: renderer.width, height: renderer.height, depthOrArrayLayers: 1 },
+                        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+                        format: 'depth24plus-stencil8',
+                    }, {
+                        aspect: 'depth-only'
+                    })
+                })).texture!
             renderer.render(scene, camera, { depthTexture })
             const [id = 0] = await readPixel({ x, y }),
                 plane = new Mesh(
@@ -193,8 +205,8 @@ export default class Picker {
         for (const obj of scene) {
             obj.walk(obj => {
                 if (obj instanceof Mesh) {
-                    const { worldMatrix, geo, id, rev, clipPlane } = obj
-                    meshes[obj.id] = { worldMatrix, id, rev, clipPlane, geoId: geo.id }
+                    const { worldMatrix, geo, id, rev, mat } = obj
+                    meshes[obj.id] = { worldMatrix, id, rev, clipPlane: mat.clipPlane, geoId: geo.id }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }
