@@ -67,13 +67,16 @@ export class Control {
             }
             vec3FromObj(origin, camera)
             vec3FromObj(target, pivot)
-            vec3.set(axis, start.clientY - evt.clientY, start.clientX - evt.clientX, 0)
+            const dx = start.clientX - evt.clientX,
+                dy = start.clientY - evt.clientY,
+                ds = Math.sqrt(dx * dx + dy * dy)
+            vec3.set(axis, dy, dx, 0)
             vec3.transformMat4(axis, axis, camera.worldMatrix)
             vec3.sub(axis, axis, origin)
             vec3.normalize(axis, axis)
             if (vec3.length(axis)) {
                 mat4.identity(rotation)
-                mat4.rotate(rotation, rotation, opts?.rotate?.speed || 0.05, axis)
+                mat4.rotate(rotation, rotation, (opts?.rotate?.speed || 0.05) * ds, axis)
                 vec3.sub(delta, origin, target)
                 vec3.transformMat4(delta, delta, rotation)
                 vec3.add(target, target, delta)

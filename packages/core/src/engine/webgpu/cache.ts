@@ -19,7 +19,6 @@ export interface CachedBind {
 }
 
 export type CachedPipeline = {
-    pre?: GPURenderPipeline
     pipeline: GPURenderPipeline
     id: number
 }
@@ -155,125 +154,8 @@ export default class Cache {
     buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology }, mat: Material) => {
         const { code, entry: { vert, frag } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
-            module = this.device.createShaderModule({ code })
-        if (mat.needsClip) {
-            const pre = this.device.createRenderPipeline({
-                layout: 'auto',
-                vertex: {
-                    module,
-                    entryPoint: typeof vert === 'string' ? vert : vert[geo.primitive],
-                    // TODO
-                    buffers: [{
-                        arrayStride: 4 * 3,
-                        attributes: [{
-                            shaderLocation: 0,
-                            offset: 0,
-                            format: 'float32x3'
-                        }]
-                    }, {
-                        arrayStride: 4 * 3,
-                        attributes: [{
-                            shaderLocation: 1,
-                            offset: 0,
-                            format: 'float32x3'
-                        }]
-                    }]
-                },
-                fragment: {
-                    module,
-                    entryPoint: 'fragMainColor',// typeof frag === 'string' ? frag : frag[geo.primitive],
-                    targets: [{
-                        blend: mat.prop.a < 1 ? {
-                            color: {
-                                operation: 'add',
-                                srcFactor: 'src-alpha',
-                                dstFactor: 'one-minus-src-alpha',
-                            },
-                            alpha: {
-                                operation: 'add',
-                                srcFactor: 'src-alpha',
-                                dstFactor: 'zero',
-                            }
-                        } : undefined,
-                        format: this.opts.fragmentFormat
-                    }]
-                },
-                primitive: {
-                    topology: geo.primitive,
-                    cullMode: 'front'
-                },
-                depthStencil: {
-                    depthWriteEnabled: mat.prop.a < 1 ? false : true,
-                    depthCompare: 'greater',
-                    format: this.opts.depthFormat,
-                    stencilBack: {
-                        compare: 'always',
-                        failOp: 'increment-clamp',
-                        passOp: 'increment-clamp',
-                        depthFailOp: 'increment-clamp',
-                    }
-                },
-            })
-            const pipeline = this.device.createRenderPipeline({
-                layout: 'auto',
-                vertex: {
-                    module,
-                    entryPoint: typeof vert === 'string' ? vert : vert[geo.primitive],
-                    // TODO
-                    buffers: [{
-                        arrayStride: 4 * 3,
-                        attributes: [{
-                            shaderLocation: 0,
-                            offset: 0,
-                            format: 'float32x3'
-                        }]
-                    }, {
-                        arrayStride: 4 * 3,
-                        attributes: [{
-                            shaderLocation: 1,
-                            offset: 0,
-                            format: 'float32x3'
-                        }]
-                    }]
-                },
-                fragment: {
-                    module,
-                    entryPoint: typeof frag === 'string' ? frag : frag[geo.primitive],
-                    targets: [{
-                        blend: mat.prop.a < 1 ? {
-                            color: {
-                                operation: 'add',
-                                srcFactor: 'src-alpha',
-                                dstFactor: 'one-minus-src-alpha',
-                            },
-                            alpha: {
-                                operation: 'add',
-                                srcFactor: 'src-alpha',
-                                dstFactor: 'zero',
-                            }
-                        } : undefined,
-                        format: this.opts.fragmentFormat
-                    }]
-                },
-                primitive: {
-                    topology: geo.primitive,
-                    cullMode: 'back'
-                },
-                depthStencil: {
-                    depthWriteEnabled: mat.prop.a < 1 ? false : true,
-                    depthCompare: 'greater',
-                    format: this.opts.depthFormat,
-                    stencilFront: {
-                        compare: 'always',
-                        failOp: 'decrement-clamp',
-                        depthFailOp: 'decrement-clamp',
-                        passOp: 'decrement-clamp',
-                    }
-                },
-            })
-            return { pre, pipeline, id }
-        } else {
-            const pipeline = this.device.createRenderPipeline({
+            module = this.device.createShaderModule({ code }),
+            pipeline = this.device.createRenderPipeline({
                 layout: 'auto',
                 vertex: {
                     module,
@@ -324,7 +206,6 @@ export default class Cache {
                     format: this.opts.depthFormat,
                 },
             })
-            return { pipeline, id }
-        }
+        return { pipeline, id }
     })
 }

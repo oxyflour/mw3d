@@ -194,7 +194,7 @@ const worker = wrap({
 export default class Picker {
     private constructor() {
     }
-    private async doPick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
+    async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
         width: number
         height: number
         x: number
@@ -216,7 +216,6 @@ export default class Picker {
             view = { fov, aspect, near, far, worldMatrix }
         return await worker.render(meshes, geometries, view, opts)
     }
-    pick = enqueue(this.doPick.bind(this))
 
     private static created: Promise<Picker>
     private static async create() {

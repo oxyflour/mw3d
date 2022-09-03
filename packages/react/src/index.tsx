@@ -1,7 +1,7 @@
 import React, { createContext, CSSProperties, MutableRefObject, useContext, useEffect, useRef, useState } from 'react'
 
 import { Engine, Tool } from '@ttk/core'
-import { mat4, quat, vec4 } from 'gl-matrix'
+import { mat4, quat } from 'gl-matrix'
 
 export { Engine, Tool } from '@ttk/core'
 
@@ -207,11 +207,10 @@ export const MeshDefault = {
     mat: new Engine.BasicMaterial({ metallic: 1, roughness: 0.5 }),
     geo: new Engine.SphereGeometry({ radius: 1 })
 }
-function MeshSetter({ geo, mat, isVisible, clipPlane }: {
+function MeshSetter({ geo, mat, isVisible }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
     isVisible?: boolean
-    clipPlane?: [number, number, number, number]
 }) {
     const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
     useEffect(() => {
@@ -219,10 +218,8 @@ function MeshSetter({ geo, mat, isVisible, clipPlane }: {
             mesh.geo = geo || MeshDefault.geo
             mesh.mat = mat || MeshDefault.mat
             mesh.isVisible = isVisible === undefined || isVisible
-            const [x = 0, y = 0, z = 0, w = 0] = clipPlane || []
-            vec4.set(mesh.clipPlane, x, y, z, w)
         }
-    }, [mesh, geo, mat, isVisible, clipPlane])
+    }, [mesh, geo, mat, isVisible])
     return null
 }
 export function Mesh({ children, ...props }: Args<typeof MeshSetter>['0'] & Args<typeof Obj3>['0']) {

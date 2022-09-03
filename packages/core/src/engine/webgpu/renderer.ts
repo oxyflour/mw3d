@@ -123,12 +123,12 @@ export default class Renderer {
             geo!: Geometry
         const arr = [] as { mesh: Mesh, pipeline: GPURenderPipeline }[]
         for (const mesh of sorted) {
-            const { pipeline, pre } = this.cache.pipeline(mesh.geo.type, mesh.mat)
-            pre && arr.push({ mesh, pipeline: pre })
+            const { pipeline } = this.cache.pipeline(mesh.geo.type, mesh.mat)
             arr.push({ mesh, pipeline })
         }
-        for (const { mesh, pipeline: pip } of arr) {
-            if (pipeline !== pip && (pipeline = pip)) {
+        for (const item of arr) {
+            const { mesh } = item
+            if (pipeline !== item.pipeline && (pipeline = item.pipeline)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))

@@ -28,7 +28,6 @@ async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     document.body.appendChild(image)
 }
 
-let pickerCache = null as null | Promise<Tool.Picker>
 const pivot = new Engine.Mesh(MeshDefault.geo, new Engine.BasicMaterial({
     color: [1, 0, 0]
 }), {
@@ -40,7 +39,7 @@ async function pick(
     if (!canvas || !scene || !camera) {
         throw Error(`renderer not initialized`)
     }
-    const picker = await (pickerCache || (pickerCache = Tool.Picker.init())),
+    const picker = await Tool.Picker.init(),
         { left, top } = canvas.getBoundingClientRect(),
         list = new Set(Array.from(scene).filter(item => item !== pivot))
     return await picker.pick(list, camera, {

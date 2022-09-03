@@ -34,7 +34,7 @@ async function updatePivot({ x, y }: { x: number, y: number }) {
 
 const picker = await Picker.init(),
     seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1 }),
-    oldMats = { } as Record<number, Material>
+    oldMats = { } as Record<number, Material | undefined>
 async function showBuffer(buffer: ArrayBuffer) {
     const image = document.createElement('img')
     image.src = URL.createObjectURL(new Blob([buffer]))
