@@ -81,8 +81,6 @@ export function Canvas({ children, options, style, className }: {
                 camera = new Engine.PerspectiveCamera({
                     fov: 2 / 180 * Math.PI,
                     aspect: canvas.clientWidth / canvas.clientHeight,
-                    near: 1,
-                    far: 2000,
                 }),
                 light = new Engine.Light(),
                 frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>

@@ -32,7 +32,7 @@ async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
 }
 
 const pivot = new Engine.Mesh(
-    new Engine.BoxGeometry({ size: 1 }),
+    new Engine.SphereGeometry(),
     new Engine.BasicMaterial({
         color: [1, 0, 0]
     }), {

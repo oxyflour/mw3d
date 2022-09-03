@@ -5,7 +5,7 @@ import Light from '../engine/light'
 import Material, { BasicMaterial } from '../engine/material'
 import Picker from '../tool/picker'
 import { rand } from '../utils/math'
-import { BoxGeometry, BoxLines, SphereGeometry } from '../engine/geometry'
+import { BoxGeometry, BoxLines, SphereGeometry } from '../engine'
 import { PerspectiveCamera } from '../engine/camera'
 import { Control } from '../tool/control'
 import { mat4, quat, vec4 } from 'gl-matrix'
@@ -98,7 +98,7 @@ const camera = new PerspectiveCamera({
             cube.mat),
     ]),
     control = new Control(canvas, camera, {
-        pivot: new Mesh(new SphereGeometry({ }), new BasicMaterial({ })),
+        pivot: new Mesh(new SphereGeometry(), new BasicMaterial()),
         zoom: {
             distance: {
                 min: camera.near + 2000,

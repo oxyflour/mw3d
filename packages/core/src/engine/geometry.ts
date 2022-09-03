@@ -68,7 +68,7 @@ export default class Geometry extends AutoIndex {
 }
 
 export class LineList extends Geometry {
-    constructor({ lines }: { lines: [number, number, number][][] }) {
+    constructor({ lines } = { } as { lines: [number, number, number][][] }) {
         const pos = [] as number[],
             norm = [] as number[],
             idx = [] as number[]
@@ -92,7 +92,7 @@ export class LineList extends Geometry {
 }
 
 export class BoxLines extends LineList {
-    constructor({ size = 1 }: { size?: number }) {
+    constructor({ size = 1 } = { } as { size?: number }) {
         const h = size / 2
         super({
             lines: [
@@ -109,7 +109,7 @@ export class BoxLines extends LineList {
 export class PlaneXY extends Geometry {
     constructor({
         size = 1,
-    }: { size?: number }) {
+    } = { } as { size?: number }) {
         super({
             positions: new Float32Array([
                 -size, -size, 0,
@@ -167,7 +167,7 @@ export class SphereGeometry extends Geometry {
 }
 
 export class BoxGeometry extends Geometry {
-    constructor({ size = 1 }: { size?: number }) {
+    constructor({ size = 1 } = { } as { size?: number }) {
         const h = size / 2,
             positions = new Float32Array([
                 -h, -h,  h,

@@ -38,7 +38,7 @@ export class PerspectiveProp extends MutableArray({
     fov: 30 * Math.PI / 180,
     aspect: 1,
     near: 1,
-    far: 100,
+    far: Infinity,
 }) {
 }
 
@@ -83,9 +83,11 @@ export class PerspectiveCamera extends Camera {
         near?: number
         far?: number
     } & ObjOpts) {
-        const { fov = 60 * Math.PI / 180, aspect = 1, near = 1, far = 1000 } = opts || { },
+        const { fov = 60 * Math.PI / 180, aspect = 1, near = 1, far = Infinity } = opts || { },
             projection = mat4.perspectiveZO(mat4.create(), fov, aspect, near, far)
         super({ ...opts, projection })
         Object.assign(this.prop, { fov, aspect, near, far })
     }
 }
+
+Object.assign(Camera, { PerspectiveCamera })
