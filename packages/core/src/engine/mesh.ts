@@ -22,8 +22,8 @@ export default class Mesh extends Obj3 {
     public count = -1
     public offset = 0
     constructor(
-        public geo: Geometry,
-        public mat: Material,
+        public geo?: Geometry,
+        public mat?: Material,
         readonly opts?: {
             offset?: number
             count?: number
@@ -35,6 +35,8 @@ export default class Mesh extends Obj3 {
     protected override update() {
         super.update()
         mat4.copy(this.modelMatrix, this.worldMatrix)
-        vec4.transformMat4(this.center, this.geo.center, this.modelMatrix)
+        if (this.geo) {
+            vec4.transformMat4(this.center, this.geo.center, this.modelMatrix)
+        }
     }
 }

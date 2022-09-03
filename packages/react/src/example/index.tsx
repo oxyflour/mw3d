@@ -1,30 +1,31 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Canvas, Control, Mesh, MeshDefault } from '..'
+import { Canvas, Control, Mesh } from '..'
 import { Engine } from '@ttk/core'
 
 function rand(begin: number, end = 0) {
     return Math.random() * (end - begin) + begin
 }
 const GEOMS = [
-    new Engine.BoxGeometry({ size: 5 }),
-    new Engine.SphereGeometry({ radius: 2.5 }),
+    new Engine.BoxGeometry({ size: 0.5 }),
+    new Engine.SphereGeometry({ radius: 0.25 }),
 ] as Engine.Geometry[]
 
 function makeMesh() {
     const s = rand(1, 5)
     return {
-        position: [rand(-200, 200), rand(-200, 200), rand(-200, 200)] as [number, number, number],
+        position: [rand(-20, 20), rand(-20, 20), rand(-20, 20)] as [number, number, number],
         scaling:  [s, s, s] as [number, number, number],
         rotation: [rand(3), rand(3), rand(3)] as [number, number, number]
     }
 }
 
 const MESH_NUM = 1000,
-    INIT_MESHES = Array(MESH_NUM).fill(0).map(makeMesh)
+    INIT_MESHES = Array(MESH_NUM).fill(0).map(makeMesh),
+    INIT_MATERIAL = new Engine.BasicMaterial({ })
 function App() {
     const [meshes, setMeshes] = useState(INIT_MESHES),
-        [material, setMaterial] = useState(MeshDefault.mat),
+        [material, setMaterial] = useState(INIT_MATERIAL),
         [geometry, setGeometry] = useState(GEOMS[0]!),
         { prop } = material,
         [metallic, setMetallic] = useState(prop.metallic),
@@ -79,4 +80,6 @@ function App() {
 }
 
 document.body.style.margin = document.body.style.padding = '0'
-createRoot(document.getElementById('root')!).render(<App />)
+const div = document.getElementById('root') as any,
+    root = div.__root || (div.__root = createRoot(div))
+root.render(<App />)

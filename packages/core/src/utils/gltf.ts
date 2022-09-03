@@ -113,7 +113,7 @@ export default {
                 obj.walk(obj => {
                     nodes.push(obj.id)
                     objMap[obj.id] = obj
-                    if (obj instanceof Mesh) {
+                    if (obj instanceof Mesh && obj.mat) {
                         meshMap[obj.id] = obj
                         const { mat } = obj
                         matMap[mat.id] = mat
@@ -209,29 +209,31 @@ export default {
             nodes.push({
                 mesh: meshToMesh[mesh.id]
             })
-            const { geo, mat } = mesh,
-                geometry = geoPrim[geo.id] || (geoPrim[geo.id] = {
-                    attributes: {
-                        POSITION: appendBuffer(geo.positions, 'VEC3'),
-                        ...(geo.normals ? {
-                            NORMAL: appendBuffer(geo.normals, 'VEC3'),
-                        }: { })
-                    },
-                    indices: geo.indices && appendBuffer(geo.indices, 'SCALAR'),
-                    mode: ({
-                        'point-list': 0,
-                        'line-list': 1,
-                        'line-strip': 3,
-                        'triangle-list': 4,
-                        'triangle-strip': 5,
-                    } as Record<GPUPrimitiveTopology, number>)[geo.type],
+            const { geo, mat } = mesh
+            if (geo && mat) {
+                const geometry = geoPrim[geo.id] || (geoPrim[geo.id] = {
+                        attributes: {
+                            POSITION: appendBuffer(geo.positions, 'VEC3'),
+                            ...(geo.normals ? {
+                                NORMAL: appendBuffer(geo.normals, 'VEC3'),
+                            }: { })
+                        },
+                        indices: geo.indices && appendBuffer(geo.indices, 'SCALAR'),
+                        mode: ({
+                            'point-list': 0,
+                            'line-list': 1,
+                            'line-strip': 3,
+                            'triangle-list': 4,
+                            'triangle-strip': 5,
+                        } as Record<GPUPrimitiveTopology, number>)[geo.type],
+                    })
+                meshes.push({
+                    primitives: [{
+                        ...geometry,
+                        material: matToMat[mat.id]
+                    }]
                 })
-            meshes.push({
-                primitives: [{
-                    ...geometry,
-                    material: matToMat[mat.id]
-                }]
-            })
+            }
         }
         const materials = [] as NonNullable<GlTf['materials']>
         for (const mat of Object.values(matMap)) {

@@ -1,5 +1,5 @@
 import {
-    Canvas, Control, Engine, Mesh, MeshDefault, useCanvas,
+    Canvas, Control, Engine, Mesh, useCanvas,
     Tool, CanvasContextValue, useFrame
 } from '@ttk/react'
 import React, { useEffect, useRef } from 'react'
@@ -11,8 +11,11 @@ import './index.less'
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { data: Entity, active: boolean }
 
-const [r = 0, g = 0, b = 0] = MeshDefault.mat.prop.data
-export const MAT_DIM = new Engine.BasicMaterial({ color: [r, g, b, 0.7] })
+const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
+export const MATERIAL_SET = {
+    default: new Engine.BasicMaterial({ color: [r, g, b, 1.0] }),
+    dimmed:  new Engine.BasicMaterial({ color: [r, g, b, 0.7] })
+}
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')
@@ -28,11 +31,13 @@ async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     document.body.appendChild(image)
 }
 
-const pivot = new Engine.Mesh(MeshDefault.geo, new Engine.BasicMaterial({
-    color: [1, 0, 0]
-}), {
-    scaling: [0.1, 0.1, 0.1]
-})
+const pivot = new Engine.Mesh(
+    new Engine.BoxGeometry({ size: 1 }),
+    new Engine.BasicMaterial({
+        color: [1, 0, 0]
+    }), {
+        scaling: [0.1, 0.1, 0.1]
+    })
 async function pick(
         { canvas, scene, camera }: CanvasContextValue,
         { clientX, clientY }: { clientX: number, clientY: number }) {
@@ -126,9 +131,9 @@ export default ({ tree, setTree, ents, meshComponent }: {
                 if (nodes.length > 0 && nodes.every(id => tree[id]?.checked)) {
                     const active = !selected.length || nodes.some(id => tree[id]?.selected),
                         onCreated = (obj: Engine.Obj3) => objs.current[obj.id] = { obj, ent },
-                        props = { key, onCreated, active, data: ent } as EntityProps
+                        mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
+                        props = { key, onCreated, active, mat, data: ent } as EntityProps
                     ent.trans && (props.matrix = ent.trans)
-                    !active && (props.mat = MAT_DIM)
                     return meshComponent ? React.createElement(meshComponent, props) : <Mesh { ...props } />
                 } else {
                     return null

@@ -137,7 +137,9 @@ const worker = wrap({
                     })),
                     mesh = meshMap[id] && meshRev[id] === rev ? meshMap[id]! : (meshMap[id] = new Mesh(geo, mat))
                 meshRev[id] = rev
-                vec4.copy(mat.clipPlane, clipPlane)
+                if (clipPlane) {
+                    vec4.copy(mat.clipPlane, clipPlane)
+                }
                 mesh.geo = geo
                 mesh.mat = mat
                 mesh.setWorldMatrix(worldMatrix)
@@ -204,7 +206,7 @@ export default class Picker {
             geometries = { } as Record<number, PickGeo>
         for (const obj of scene) {
             obj.walk(obj => {
-                if (obj instanceof Mesh) {
+                if (obj instanceof Mesh && obj.geo && obj.mat) {
                     const { worldMatrix, geo, id, rev, mat } = obj
                     meshes[obj.id] = { worldMatrix, id, rev, clipPlane: mat.clipPlane, geoId: geo.id }
                     const { type, positions, normals, indices } = geo

@@ -4,13 +4,13 @@ import { mat4, vec3 } from 'gl-matrix'
 
 import Toolbar from './comps/toolbar'
 import Nav from './comps/nav'
-import View, { EntityProps, MAT_DIM } from './comps/view'
+import View, { EntityProps } from './comps/view'
 
 import './index.less'
 import Resize from './comps/utils/resize'
 import { Entity, parse, TreeEnts } from './utils/data/entity'
 import { useAsync } from './utils/react/hooks'
-import { Engine, Mesh, MeshDefault, Obj3 } from '@ttk/react'
+import { Engine, Mesh, Obj3 } from '@ttk/react'
 import { unpack } from './utils/data/pack'
 
 const m = mat4.create(),
@@ -67,7 +67,7 @@ function MeshBound(props: EntityProps) {
     return <Obj3 { ...props }>
         <Mesh onCreated={ props.onCreated as any }
             geo={ GEO_BOX }
-            mat={ props.active ? MeshDefault.mat : MAT_DIM }
+            mat={ props.mat }
             position={ position }
             scaling={ scaling } />
     </Obj3>

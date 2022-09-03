@@ -11,6 +11,8 @@ import { Sampler, Texture, UniformValue } from "../uniform"
 
 const MAX_LIGHTS = 4
 
+type RenderMesh = Mesh & { geo: Geometry, mat: Material }
+
 export default class Renderer {
     private cache!: Cache
     private device!: GPUDevice
@@ -116,19 +118,14 @@ export default class Renderer {
     }
     private runRenderPass(
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
-            sorted: Mesh[],
+            sorted: (Mesh & { geo: Geometry, mat: Material })[],
             camera: Camera) {
         let pipeline!: GPURenderPipeline,
             mat!: Material,
             geo!: Geometry
-        const arr = [] as { mesh: Mesh, pipeline: GPURenderPipeline }[]
         for (const mesh of sorted) {
-            const { pipeline } = this.cache.pipeline(mesh.geo.type, mesh.mat)
-            arr.push({ mesh, pipeline })
-        }
-        for (const item of arr) {
-            const { mesh } = item
-            if (pipeline !== item.pipeline && (pipeline = item.pipeline)) {
+            const cache = this.cache.pipeline(mesh.geo.type, mesh.mat)
+            if (pipeline !== cache.pipeline && (pipeline = cache.pipeline)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
                 pass.setBindGroup(...this.cache.bind(pipeline, mesh.mat))
@@ -189,8 +186,8 @@ export default class Renderer {
         addToUpdated: (obj: Obj3 | Material) =>
             (obj instanceof Mesh || obj instanceof Light || obj instanceof Material) &&
             this.cachedRenderList.updated.push(obj),
-        opaque: [] as Mesh[],
-        translucent: [] as Mesh[],
+        opaque: [] as RenderMesh[],
+        translucent: [] as RenderMesh[],
         lights: [] as Light[],
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
@@ -217,15 +214,15 @@ export default class Renderer {
         const { opaque, translucent, lights } = this.cachedRenderList
         opaque.length = translucent.length = lights.length = 0
         for (const obj of list) {
-            if (obj instanceof Mesh && obj.isVisible) {
+            if (obj instanceof Mesh && obj.isVisible && obj.geo && obj.mat) {
                 const { mat } = obj
                 if (revs[mat.id] !== mat.rev && (revs[mat.id] = mat.rev)) {
                     addToUpdated(mat)
                 }
                 if (obj.mat.prop.a < 1) {
-                    translucent.push(obj)
+                    translucent.push(obj as any)
                 } else {
-                    opaque.push(obj)
+                    opaque.push(obj as any)
                 }
             } else if (obj instanceof Light) {
                 lights.push(obj)
@@ -233,16 +230,16 @@ export default class Renderer {
         }
 
         const { pipeline } = this.cache,
-            opaqueSorted = (opaque as (Mesh & { pipelineId: number })[])
+            opaqueSorted = (opaque as (RenderMesh & { pipelineId: number })[])
                 .map(item => ((item.pipelineId = pipeline(item.geo.type, item.mat).id), item))
                 .sort((a, b) => 
                     (a.renderOrder - b.renderOrder) ||
                     (a.pipelineId - b.pipelineId) ||
                     (a.mat.id - b.mat.id) ||
-                    (a.geo.id - b.geo.id)) as Mesh[],
-            transSorted = (translucent as (Mesh & { cameraDist: number })[])
+                    (a.geo.id - b.geo.id)) as RenderMesh[],
+            transSorted = (translucent as (RenderMesh & { cameraDist: number })[])
                 .map(item => ((item.cameraDist = vec4.dist(item.center, camera.worldPosition)), item))
-                .sort((a, b) => b.cameraDist - a.cameraDist) as Mesh[],
+                .sort((a, b) => b.cameraDist - a.cameraDist) as RenderMesh[],
             sorted = opaqueSorted.concat(transSorted)
 
         this.updateUniforms(this.buildRenderUnifroms(lights))
