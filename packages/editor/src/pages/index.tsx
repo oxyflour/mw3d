@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { createRoot } from 'react-dom/client'
 import { mat4, vec3 } from 'gl-matrix'
 
-import Toolbar from './comps/toolbar'
-import Nav from './comps/nav'
-import View, { EntityProps } from './comps/view'
+import Toolbar from '../comps/toolbar'
+import Nav from '../comps/nav'
+import View, { EntityProps } from '../comps/view'
 
 import './index.less'
-import Resize from './comps/utils/resize'
-import { Entity, parse, TreeEnts } from './utils/data/entity'
-import { useAsync } from './utils/react/hooks'
+import Resize from '../comps/utils/resize'
+import { Entity, parse, TreeEnts } from '../utils/data/entity'
+import { useAsync } from '../utils/react/hooks'
 import { Engine, Mesh, Obj3 } from '@ttk/react'
-import { unpack } from './utils/data/pack'
+import { unpack } from '../utils/data/pack'
 
 const m = mat4.create(),
     v = vec3.create()
@@ -81,7 +80,7 @@ function EntityMesh(props: EntityProps) {
         <MeshBound { ...props } />
 }
 
-function App() {
+export default function App() {
     const [{ value: ents = [] }] = useAsync(loadEnts, [], []),
         [tree, setTree] = useState({ } as TreeEnts)
     useEffect(() => setTree(parse(ents)), [ents])
@@ -94,7 +93,3 @@ function App() {
         </Resize>
     </div>
 }
-
-const root = document.getElementById('root')!,
-    elem = (root as any).__mounted || ((root as any).__mounted = createRoot(root))
-elem.render(<App />)
