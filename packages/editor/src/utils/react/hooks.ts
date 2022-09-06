@@ -1,12 +1,12 @@
 import { DependencyList, useEffect, useState } from "react"
 
-const savedIntCacne = { } as Record<string, number>
-export function useSavedInt(key: string, init: number) {
-    const saved = key in savedIntCacne ? savedIntCacne[key]! :
-            (savedIntCacne[key] = parseInt(localStorage.getItem(key) || init + '')),
+const localStoreCache = { } as Record<string, any>
+export function useLocalStore<T>(key: string, init: T) {
+    const saved = key in localStoreCache ? localStoreCache[key]! as T :
+            (localStoreCache[key] = JSON.parse(localStorage.getItem(key) || init + '')) as T,
         ret = useState(saved),
         [val] = ret
-    useEffect(() => localStorage.setItem(key, val + ''), [val])
+    useEffect(() => localStorage.setItem(key, JSON.stringify(val)), [val])
     return ret
 }
 

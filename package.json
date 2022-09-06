@@ -7,7 +7,7 @@
     "dev:core": "npx -w packages/core vite",
     "dev:react": "npm run build:core && npx -w packages/react vite",
     "dev:tool": "npm run build:react && npx -w packages/tool vite",
-    "dev:editor": "npm run build:react && npx -w packages/editor vite",
+    "dev:editor": "npm run build:react && npx -w packages/editor sn",
     "build:core": "npm -w packages/core run build",
     "build:react": "npm run build:core && npm -w packages/react run build",
     "pub-patch:core": "npm -w packages/core version patch && npm run build:core && npm -w packages/core publish",

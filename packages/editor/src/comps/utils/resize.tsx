@@ -1,16 +1,20 @@
 import { withMouseDown } from "../../utils/dom/mouse"
-import { useSavedInt } from "../../utils/react/hooks"
+import { useLocalStore } from "../../utils/react/hooks"
 
 const clamp = (min: number, val: number, max: number) => Math.max(Math.min(max, val), min)
 
-export default ({ className, children }: {
+export default ({ className, children, ...props }: {
     className?: string
     children: any[]
+    onResize?: () => void
 }) => {
-    const [width, setTreeWidth] = useSavedInt('saved-nav-width', 180)
+    const [width, setTreeWidth] = useLocalStore('saved-nav-width', 180)
     function onResize(evt: React.MouseEvent) {
         const startX = evt.clientX - width
-        withMouseDown(({ clientX }) => setTreeWidth(clamp(100, clientX - startX, innerWidth - 100)))
+        withMouseDown(({ clientX }) => {
+            setTreeWidth(clamp(100, clientX - startX, innerWidth - 100))
+            props.onResize?.()
+        })
     }
     return <div className={ `flex ${className || ''}` }>
         <div style={{ width }}>
