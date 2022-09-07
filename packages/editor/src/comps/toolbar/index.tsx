@@ -1,6 +1,7 @@
 import { CSSProperties, ReactElement, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
 import lambda from '../../lambda'
+import { upload } from '../../utils/dom/upload'
 import Dropdown from '../utils/dropdown'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
@@ -98,15 +99,16 @@ export default ({ className }: {
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
         <div title="File">
             <Group title="Home">
-                <ImageButton title={ <span>log</span> }
-                onClick={
-                    async () => {
-                        for await (const msg of lambda.open()) {
-                            console.log(msg)
-                        }
-                        console.log('done')
-                    }
-                } />
+                <ImageButton title="open"
+                    onClick={
+                        () => upload(async files => {
+                            const arr = files ? Array.from(files) : []
+                            for await (const msg of lambda.open(arr)) {
+                                console.log(msg)
+                            }
+                            console.log('done')
+                        })
+                    } />
             </Group>
         </div>
         <div title="Home">

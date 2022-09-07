@@ -1,8 +1,8 @@
 import cp from 'child_process'
 
 export type ForkData = { stdout?: string, stderr?: string }
-export async function *fork(cmd: string, args?: string[]): AsyncGenerator<ForkData, void> {
-    const proc = cp.spawn(cmd, args, { shell: true, stdio: 'pipe' }),
+export async function *fork(cmd: string, args?: string[], options?: cp.SpawnOptionsWithoutStdio): AsyncGenerator<ForkData, void> {
+    const proc = cp.spawn(cmd, args, { shell: true, stdio: 'pipe', ...options }),
         output = [] as Function[],
         input = [] as ForkData[]
     function emit(data: ForkData) {
