@@ -12,8 +12,9 @@
   "license": "ISC",
   "dependencies": {
     "@headlessui/react": "^1.6.4",
-    "@yff/ncc": "^1.0.4",
-    "@yff/sn": "^1.0.1",
+    "@yff/ncc": "^2.0.0",
+    "@yff/sn": "^1.0.2",
+    "commander": "^9.4.0",
     "less": "^4.1.2",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
@@ -21,13 +22,9 @@
     "three": "^0.144.0"
   },
   "devDependencies": {
-    "@types/node": "^18.7.14",
+    "@types/node": "^18.7.15",
     "@types/react": "^18.0.18",
-    "@types/react-dom": "^18.0.5",
     "@types/react-router-dom": "^5.3.3",
-    "@types/three": "^0.144.0",
-    "autoprefixer": "^10.4.7",
-    "postcss": "^8.4.14",
-    "tailwindcss": "^3.0.24"
+    "tap": "~0.4.4"
   }
 }

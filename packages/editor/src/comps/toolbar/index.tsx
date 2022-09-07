@@ -1,6 +1,7 @@
 import { CSSProperties, ReactElement, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
 import lambda from '../../lambda'
+import { Entity } from '../../utils/data/entity'
 import { upload } from '../../utils/dom/upload'
 import Dropdown from '../utils/dropdown'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
@@ -93,8 +94,10 @@ function Tabs({ initActive, style, className, children = [] }: {
     </div>
 }
 
-export default ({ className }: {
+export default ({ className, ents, setEnts }: {
     className?: string
+    ents: Entity[]
+    setEnts: (ents: Entity[]) => void
 }) => {
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
         <div title="File">
@@ -102,11 +105,14 @@ export default ({ className }: {
                 <ImageButton title="open"
                     onClick={
                         () => upload(async files => {
-                            const arr = files ? Array.from(files) : []
+                            const arr = files ? Array.from(files) : [],
+                                ret = ents.slice()
                             for await (const msg of lambda.open(arr)) {
-                                console.log(msg)
+                                if (msg.entities) {
+                                    ret.push(...msg.entities)
+                                }
                             }
-                            console.log('done')
+                            setEnts(ret)
                         })
                     } />
             </Group>

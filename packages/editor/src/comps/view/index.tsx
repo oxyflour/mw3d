@@ -128,11 +128,12 @@ export default ({ tree, setTree, ents, component, children }: {
         {
             ents.map((data, key) => {
                 const nodes = data.nodes || []
-                if (nodes.length > 0 && nodes.some(id => tree[id]?.checked)) {
+                if (nodes.length > 0 && nodes.every(id => tree[id]?.checked)) {
                     const active = !selected.length || nodes.some(id => tree[id]?.selected),
+                        mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                         matrix = data.trans,
                         create = () => Object.assign(new Engine.Mesh(), { data })
-                    return React.createElement(component || Mesh, { key, active, data, matrix, create })
+                    return React.createElement(component || Mesh, { key, active, data, mat, matrix, create } as EntityProps)
                 } else {
                     return null
                 }

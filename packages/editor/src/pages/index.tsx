@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { mat4, vec3 } from 'gl-matrix'
 
 import Toolbar from '../comps/toolbar'
 import Nav from '../comps/nav'
@@ -11,34 +10,13 @@ import { Entity, parse, TreeEnts } from '../utils/data/entity'
 import { useAsync } from '../utils/react/hooks'
 import { Engine, Mesh, Obj3 } from '@ttk/react'
 import { unpack } from '../utils/data/pack'
-
-const m = mat4.create(),
-    v = vec3.create()
-function randomPosition() {
-    vec3.set(v, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5)
-    mat4.fromTranslation(m, v)
-    return m.slice()
-}
-
-async function loadEnts() {
-    return [
-        ...Array(30).fill(0).map(() => ({
-            attrs: { $n: `b/c${Math.floor(Math.random() * 10)}/d${Math.floor(Math.random() * 10)}` },
-            trans: randomPosition(),
-            bound: [-1, -1, -1, 1, 1, 1],
-            geom: {
-                url: ''
-            }
-        }) as Entity)
-    ] as Entity[]
-}
+import lambda from '../lambda'
 
 type ClassArg0<F> = F extends new (...args: [infer A]) => any ? A : F
 type GeometryOptions = ClassArg0<Engine.Geometry>
 async function loadGeom(url?: string) {
     if (url) {
-        const req = await fetch(url),
-            buf = await req.arrayBuffer(),
+        const buf = await lambda.geom.get(url),
             { faces, edges } = unpack(new Uint8Array(buf)) as { faces?: GeometryOptions, edges?: GeometryOptions }
         if (faces || edges) {
             return {
@@ -85,11 +63,11 @@ function EntityMesh(props: EntityProps) {
 }
 
 export default function App() {
-    const [{ value: ents = [] }] = useAsync(loadEnts, [], []),
+    const [ents, setEnts] = useState([] as Entity[]),
         [tree, setTree] = useState({ } as TreeEnts)
     useEffect(() => setTree(parse(ents)), [ents])
     return <div className="app flex flex-col h-full">
-        <Toolbar />
+        <Toolbar ents={ ents } setEnts={ setEnts } />
         <Resize className="grow">
             <Nav tree={ tree } onChange={ setTree } />
             <View tree={ tree } setTree={ setTree } ents={ ents } component={ EntityMesh } />
