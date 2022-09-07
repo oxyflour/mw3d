@@ -116,36 +116,35 @@ export function MouseControl({ onSelect }: {
     }} />
 }
 
-export default ({ tree, setTree, ents, meshComponent }: {
+export default ({ tree, setTree, ents, component, children }: {
     tree: TreeEnts
     setTree: (tree: TreeEnts) => void
     ents: Entity[]
-    meshComponent?: (props: EntityProps) => any
+    component?: (props: EntityProps) => JSX.Element
+    children?: any
 }) => {
-    const selected = Object.keys(tree.$selected?.children || { }),
-        objs = useRef({ } as Record<number, { obj: Engine.Obj3, ent: Entity }>)
+    const selected = Object.keys(tree.$selected?.children || { })
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
         {
-            ents.map((ent, key) => {
-                const nodes = ent.nodes || []
-                if (nodes.length > 0 && nodes.every(id => tree[id]?.checked)) {
+            ents.map((data, key) => {
+                const nodes = data.nodes || []
+                if (nodes.length > 0 && nodes.some(id => tree[id]?.checked)) {
                     const active = !selected.length || nodes.some(id => tree[id]?.selected),
-                        onCreated = (obj: Engine.Obj3) => objs.current[obj.id] = { obj, ent },
-                        mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
-                        props = { key, onCreated, active, mat, data: ent } as EntityProps
-                    ent.trans && (props.matrix = ent.trans)
-                    return meshComponent ? React.createElement(meshComponent, props) : <Mesh { ...props } />
+                        matrix = data.trans,
+                        create = () => Object.assign(new Engine.Mesh(), { data })
+                    return React.createElement(component || Mesh, { key, active, data, matrix, create })
                 } else {
                     return null
                 }
             })
         }
         <MouseControl onSelect={
-            obj => {
-                const ent = objs.current[obj?.id || -1]?.ent,
-                    nodes = ent?.nodes?.filter(id => id.startsWith('Components'))
+            (obj?: Engine.Obj3 & { data?: Entity }) => {
+                console.log(obj)
+                const nodes = obj?.data?.nodes?.filter(id => id.startsWith('Components'))
                 setTree(select(tree, nodes))
             }
         } />
+        { children }
     </Canvas>
 }

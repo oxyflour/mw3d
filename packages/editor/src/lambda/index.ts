@@ -1,8 +1,7 @@
+import { fork } from "../utils/node/fork"
+
 export default {
-    async hello(name?: string) {
-        return Buffer.from('world from a ' + name)
-    },
-    async upload(file: File) {
-        console.log(await file.arrayBuffer())
+    async *open() {
+        yield *fork('ping localhost -n 10')
     },
 }

@@ -12,7 +12,8 @@
   "license": "ISC",
   "dependencies": {
     "@headlessui/react": "^1.6.4",
-    "@yff/sn": "^1.0.0",
+    "@yff/ncc": "^1.0.4",
+    "@yff/sn": "^1.0.1",
     "less": "^4.1.2",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",

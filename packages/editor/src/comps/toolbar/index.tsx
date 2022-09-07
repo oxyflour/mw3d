@@ -1,5 +1,6 @@
 import { CSSProperties, ReactElement, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
+import lambda from '../../lambda'
 import Dropdown from '../utils/dropdown'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
@@ -96,6 +97,17 @@ export default ({ className }: {
 }) => {
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
         <div title="File">
+            <Group title="Home">
+                <ImageButton title={ <span>log</span> }
+                onClick={
+                    async () => {
+                        for await (const msg of lambda.open()) {
+                            console.log(msg)
+                        }
+                        console.log('done')
+                    }
+                } />
+            </Group>
         </div>
         <div title="Home">
             <Group title="Home">

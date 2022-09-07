@@ -1,4 +1,4 @@
-import React, { createContext, CSSProperties, MutableRefObject, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, CSSProperties, MutableRefObject, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Engine, Tool } from '@ttk/core'
 import { mat4, quat } from 'gl-matrix'
@@ -149,23 +149,17 @@ export function useObj3() {
     return useContext(Obj3Context)
 }
 
-export function Obj3({ children, create, matrix, position, rotation, scaling, onCreated }: {
+export function Obj3({ children, create, matrix, position, rotation, scaling }: {
     children?: any
     matrix?: number[]
     position?: [number, number, number]
     rotation?: [number, number, number]
     scaling?: [number, number, number]
     create?: () => Engine.Obj3
-    onCreated?: (obj: Engine.Obj3) => any
 }) {
     const { scene } = useCanvas(),
         { obj: node } = useObj3(),
-        [obj, setObj] = useState(undefined as undefined | Engine.Obj3)
-    useEffect(() => {
-        const obj = create ? create() : new Engine.Obj3()
-        setObj(obj)
-        onCreated?.(obj)
-    }, [])
+        obj = useMemo(() => create?.() || new Engine.Obj3(), [])
     useEffect(() => {
         if (scene && obj) {
             const parent = node || scene
@@ -217,7 +211,7 @@ function MeshSetter({ geo, mat, isVisible }: {
     return null
 }
 export function Mesh({ children, ...props }: Args<typeof MeshSetter>['0'] & Args<typeof Obj3>['0']) {
-    return <Obj3 { ...props } create={ () => new Engine.Mesh() }>
+    return <Obj3 create={ () => new Engine.Mesh() } { ...props }>
         <MeshSetter { ...props } />
         { children }
     </Obj3>

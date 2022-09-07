@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { mat4, vec3 } from 'gl-matrix'
 
 import Toolbar from '../comps/toolbar'
 import Nav from '../comps/nav'
-import View, { EntityProps } from '../comps/view'
+import View, { EntityProps, MATERIAL_SET } from '../comps/view'
 
 import './index.less'
 import Resize from '../comps/utils/resize'
@@ -22,8 +22,8 @@ function randomPosition() {
 
 async function loadEnts() {
     return [
-        ...Array(30).fill(0).map((_, i) => ({
-            attrs: { $n: `b/${i}` },
+        ...Array(30).fill(0).map(() => ({
+            attrs: { $n: `b/c${Math.floor(Math.random() * 10)}/d${Math.floor(Math.random() * 10)}` },
             trans: randomPosition(),
             bound: [-1, -1, -1, 1, 1, 1],
             geom: {
@@ -51,26 +51,30 @@ async function loadGeom(url?: string) {
 }
 
 const GEO_BOX = new Engine.BoxGeometry({ })
-function MeshBound(props: EntityProps) {
-    const position = [0, 0, 0] as [number, number, number],
-        scaling = [1, 1, 1] as [number, number, number]
-    if (props.data.geom?.bound) {
-        const [x0, y0, z0, x1, y1, z1] = props.data.geom.bound
-        position[0] = (x0 + x1) / 2
-        position[1] = (y0 + y1) / 2
-        position[2] = (z0 + z1) / 2
-        scaling[0] = (x1 - x0)
-        scaling[1] = (y1 - y0)
-        scaling[2] = (z1 - z0)
-    }
+function MeshBound({ create, ...props }: EntityProps) {
+    const { position, scaling } = useMemo(() => {
+        const position = [0, 0, 0] as [number, number, number],
+            scaling = [1, 1, 1] as [number, number, number]
+        if (props.data.geom?.bound) {
+            const [x0, y0, z0, x1, y1, z1] = props.data.geom.bound
+            position[0] = (x0 + x1) / 2
+            position[1] = (y0 + y1) / 2
+            position[2] = (z0 + z1) / 2
+            scaling[0] = (x1 - x0)
+            scaling[1] = (y1 - y0)
+            scaling[2] = (z1 - z0)
+        }
+        return { position, scaling }
+    }, [props.data.geom?.bound])
     return <Obj3 { ...props }>
-        <Mesh onCreated={ props.onCreated as any }
+        <Mesh create={ create }
             geo={ GEO_BOX }
-            mat={ props.mat }
+            mat={ props.active ? MATERIAL_SET.default : MATERIAL_SET.dimmed }
             position={ position }
             scaling={ scaling } />
     </Obj3>
 }
+
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
     return geom?.faces ?
@@ -88,8 +92,7 @@ export default function App() {
         <Toolbar />
         <Resize className="grow">
             <Nav tree={ tree } onChange={ setTree } />
-            <View tree={ tree } setTree={ setTree } ents={ ents }
-                meshComponent={ EntityMesh } />
+            <View tree={ tree } setTree={ setTree } ents={ ents } component={ EntityMesh } />
         </Resize>
     </div>
 }
