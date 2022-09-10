@@ -11,24 +11,34 @@ const program = new Command()
 program
 .command('convert')
 .arguments('<files...>')
-.option('--save')
+.option('--save <path>')
 .action(async (files: string[], { save = './commit.json' }) => {
 try {
     for (const file of files) {
         if (file.toLowerCase().endsWith('.stp')) {
             const dir = path.dirname(save),
                 shape = step.load(file),
-                faces = mesh.create(shape),
+                { faces, edges, geom } = mesh.topo(shape),
                 { min, max } = shape.bound()
             await mkdir(dir, { recursive: true })
             await writeFile(path.join(dir, 'data'), await readFile(file))
-            await writeFile(path.join(dir, 'geom'), pack({ faces }))
+            await writeFile(path.join(dir, 'geom'), pack({
+                faces: geom,
+                edges: { lines: edges.map(item => item.positions) }
+            }))
+            await writeFile(path.join(dir, 'faces'), pack(faces))
+            await writeFile(path.join(dir, 'edges'), pack(edges))
             await writeFile(save, JSON.stringify({
                 entities: [{
                     data: 'data',
-                    geom: {
-                        url: 'geom',
-                        bound: [min.x, min.y, min.z, max.x, max.y, max.z],
+                    bound: [min.x, min.y, min.z, max.x, max.y, max.z],
+                    attrs: {
+                        $n: path.basename(file)
+                    },
+                    geom: { url: 'geom' },
+                    topo: {
+                        faces: { url: 'faces' },
+                        edges: { url: 'edges' }
                     }
                 } as Entity]
             }))

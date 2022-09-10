@@ -20,12 +20,13 @@ export default class Renderer {
     private context!: GPUCanvasContext
     private constructor(
         public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-        private readonly opts = { } as {
+        public readonly opts = { } as {
             size?: { width: number, height: number }
             devicePixelRatio?: number
             adaptorOptions?: GPURequestAdapterOptions
             deviceDescriptor?: GPUDeviceDescriptor
             canvasConfig?: GPUCanvasConfiguration
+            multisample?: GPUMultisampleState
         }) {
     }
     private async init() {
@@ -53,6 +54,7 @@ export default class Renderer {
             size: this.renderSize,
             fragmentFormat: this.format,
             depthFormat: 'depth24plus-stencil8',
+            multisample: this.opts.multisample,
         })
         this.context.configure({
             size: this.renderSize,
@@ -251,9 +253,16 @@ export default class Renderer {
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginRenderPass({
                 colorAttachments: [{
-                    view: opts.colorTexture ?
-                        this.cache.texture(opts.colorTexture).createView() :
-                        this.context.getCurrentTexture().createView(),
+                    ...(this.opts.multisample?.count! > 1 ? {
+                        view: this.cache.fragmentTexture.createView(),
+                        resolveTarget: opts.colorTexture ?
+                            this.cache.texture(opts.colorTexture).createView() :
+                            this.context.getCurrentTexture().createView(),
+                    } : {
+                        view: opts.colorTexture ?
+                            this.cache.texture(opts.colorTexture).createView() :
+                            this.context.getCurrentTexture().createView(),
+                    }),
                     loadOp: 'clear',
                     storeOp: 'store',
                     clearValue: this.clearColor,
@@ -279,7 +288,8 @@ export default class Renderer {
             this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat }))
             const encoder = this.device.createRenderBundleEncoder({
                 colorFormats: [this.cache.opts.fragmentFormat],
-                depthStencilFormat: this.cache.opts.depthFormat
+                depthStencilFormat: this.cache.opts.depthFormat,
+                sampleCount: this.opts.multisample?.count
             })
             this.runRenderPass(encoder, sorted, camera)
             this.cachedRenderPass.bundles = [encoder.finish()]

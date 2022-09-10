@@ -17,7 +17,7 @@ canvas.style.width = canvas.style.height = '100%'
 document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 
-const renderer = await WebGPURenderer.create(canvas)
+const renderer = await WebGPURenderer.create(canvas, { multisample: { count: 4 }, devicePixelRatio: 1 })
 async function updatePivot({ x, y }: { x: number, y: number }) {
     const { id, position } = await picker.pick(scene, camera, {
         width: renderer.width,

@@ -68,18 +68,28 @@ export default class Geometry extends AutoIndex {
 }
 
 export class LineList extends Geometry {
-    constructor({ lines } = { } as { lines: [number, number, number][][] }) {
+    constructor({ lines } = { } as { lines: ([number, number, number][] | Float32Array)[] }) {
         const pos = [] as number[],
             norm = [] as number[],
             idx = [] as number[]
         for (const pts of lines) {
             const start = pos.length / 3
-            for (const [x, y, z] of pts) {
-                pos.push(x, y, z)
-                norm.push(0, 0, 1)
-            }
-            for (let i = 0; i < pts.length - 1; i ++) {
-                idx.push(start + i, start + i + 1)
+            if (Array.isArray(pts)) {
+                for (const [x, y, z] of pts) {
+                    pos.push(x, y, z)
+                    norm.push(0, 0, 1)
+                }
+                for (let i = 0; i < pts.length - 1; i ++) {
+                    idx.push(start + i, start + i + 1)
+                }
+            } else {
+                for (const v of pts) {
+                    pos.push(v)
+                    norm.push(0)
+                }
+                for (let i = 0; i < pts.length / 3 - 1; i ++) {
+                    idx.push(start + i, start + i + 1)
+                }
             }
         }
         super({

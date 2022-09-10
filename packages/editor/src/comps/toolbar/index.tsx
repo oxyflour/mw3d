@@ -131,7 +131,7 @@ export default ({ className, ents, setEnts }: {
                             setEnts(ents.concat(Array(20).fill(0).map(() => {
                                 return {
                                     attrs: { $n: `b/c${Math.floor(Math.random() * 10)}/d${Math.floor(Math.random() * 10)}` },
-                                    geom: { bound: [-1, -1, -1, 1, 1, 1] },
+                                    bound: [-1, -1, -1, 1, 1, 1],
                                     trans: randomPosition(10),
                                 }
                             })))

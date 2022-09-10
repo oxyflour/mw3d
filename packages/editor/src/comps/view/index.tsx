@@ -124,7 +124,9 @@ export default ({ tree, setTree, ents, component, children }: {
     children?: any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { })
-    return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
+    return <Canvas className="view"
+            style={{ width: '100%', height: '100%' }}
+            options={ () => ({ multisample: { count: 4 }, devicePixelRatio: 1 }) }>
         {
             ents.map((data, key) => {
                 const nodes = (data.nodes || []).map(id => tree[id])

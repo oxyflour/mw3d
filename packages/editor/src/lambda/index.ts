@@ -18,18 +18,21 @@ export default {
         await mkdir(cwd, { recursive: true })
         for (const file of files) {
             await writeFile(path.join(cwd, file.name), Buffer.from(await file.arrayBuffer()))
-            const command = [
-                process.execPath,
-                SCRIPT_PATH,
-                'convert',
-                path.join(cwd, file.name)
-            ].map(item => `"${item}"`).join(' ')
+            const output = path.join(cwd, file.name + '.commit.json'),
+                command = [
+                    process.execPath,
+                    SCRIPT_PATH,
+                    'convert',
+                    path.join(cwd, file.name),
+                    '--save',
+                    output,
+                ].map(item => `"${item}"`).join(' ')
             yield { message: `parsing ${file.name}` }
             yield { command }
             for await (const item of fork(command, [], { cwd })) {
                 yield { ...item }
             }
-            const json = await readFile(path.join(cwd, 'commit.json'), 'utf-8'),
+            const json = await readFile(output, 'utf-8'),
                 { entities } = JSON.parse(json) as { entities: Entity[] }
             for (const entity of entities) {
                 if (entity.geom?.url) {

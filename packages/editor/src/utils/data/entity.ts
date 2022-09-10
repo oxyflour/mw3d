@@ -6,9 +6,11 @@ export interface Entity {
         $n?: string
         $m?: string
     } & Record<string, any>
-    geom?: {
-        url?: string
-        bound?: [number, number, number, number, number, number]
+    bound?: [number, number, number, number, number, number]
+    geom?: { url?: string }
+    topo?: {
+        faces?: { url?: string }
+        edges?: { url?: string }
     }
     trans?: number[]
     nodes?: string[]

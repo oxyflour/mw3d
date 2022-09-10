@@ -7,12 +7,15 @@
     "dev": "sn",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "sn": {
+    "port": 3000
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@headlessui/react": "^1.6.4",
-    "@yff/ncc": "^2.0.2",
+    "@yff/ncc": "^2.0.4",
     "@yff/sn": "^1.0.2",
     "commander": "^9.4.0",
     "less": "^4.1.2",
@@ -23,7 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.7.15",
-    "@types/react": "^18.0.18",
+    "@types/react": "^18.0.19",
     "@types/react-router-dom": "^5.3.3",
     "tap": "~0.4.4"
   }

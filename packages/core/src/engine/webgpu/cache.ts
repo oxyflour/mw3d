@@ -24,6 +24,10 @@ export type CachedPipeline = {
 }
 
 export default class Cache {
+    private cachedFragmentTexture: GPUTexture
+    get fragmentTexture() {
+        return this.cachedFragmentTexture
+    }
     private cachedDepthTexture: GPUTexture
     get depthTexture() {
         return this.cachedDepthTexture
@@ -33,19 +37,35 @@ export default class Cache {
         fragmentFormat: GPUTextureFormat
         depthFormat: GPUTextureFormat
         uniformBufferBatchSize?: number
+        multisample?: GPUMultisampleState
     }) {
+        this.cachedFragmentTexture = this.device.createTexture({
+            size: opts.size,
+            format: this.opts.fragmentFormat,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+            sampleCount: this.opts.multisample?.count,
+        })
         this.cachedDepthTexture = this.device.createTexture({
             size: opts.size,
             format: this.opts.depthFormat,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+            sampleCount: this.opts.multisample?.count,
         })
     }
     resize(size: { width: number, height: number }) {
+        this.cachedFragmentTexture.destroy(),
+        this.cachedFragmentTexture = this.device.createTexture({
+            size: size,
+            format: this.opts.fragmentFormat,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+            sampleCount: this.opts.multisample?.count,
+        })
         this.cachedDepthTexture.destroy()
         this.cachedDepthTexture = this.device.createTexture({
             size,
             format: this.opts.depthFormat,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+            sampleCount: this.opts.multisample?.count,
         })
     }
     texture = cache((tex: Texture) => {
@@ -205,6 +225,7 @@ export default class Cache {
                     depthCompare: 'greater',
                     format: this.opts.depthFormat,
                 },
+                multisample: this.opts.multisample
             })
         return { pipeline, id }
     })

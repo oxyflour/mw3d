@@ -81,11 +81,10 @@ export function Canvas({ children, options, style, className }: {
                 camera = new Engine.PerspectiveCamera({
                     fov: 2 / 180 * Math.PI,
                     aspect: canvas.clientWidth / canvas.clientHeight,
+                    position: [0, 0, 500],
                 }),
-                light = new Engine.Light(),
+                light = new Engine.Light({ position: [10, 20, 30] }),
                 frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>
-            camera.position.set(0, 0, 500)
-            light.position.set(5, 5, 5)
             scene.add(light)
             requestAnimationFrame(function render(time: number) {
                 if (handle.running) {
@@ -195,10 +194,11 @@ export function Obj3({ children, create, matrix, position, rotation, scaling }: 
 
 type Args<A> = A extends (...args: infer C) => any ? C : A
 
-function MeshSetter({ geo, mat, isVisible }: {
+function MeshSetter({ geo, mat, isVisible, renderOrder }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
     isVisible?: boolean
+    renderOrder?: number
 }) {
     const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
     useEffect(() => {
@@ -206,8 +206,9 @@ function MeshSetter({ geo, mat, isVisible }: {
             mesh.geo = geo
             mesh.mat = mat
             mesh.isVisible = isVisible === undefined || isVisible
+            renderOrder !== undefined && (mesh.renderOrder = renderOrder)
         }
-    }, [mesh, geo, mat, isVisible])
+    }, [mesh, geo, mat, isVisible, renderOrder])
     return null
 }
 export function Mesh({ children, ...props }: Args<typeof MeshSetter>['0'] & Args<typeof Obj3>['0']) {
