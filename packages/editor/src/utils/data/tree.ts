@@ -2,6 +2,7 @@ export interface TreeNode {
     open?: boolean
     selected?: boolean
     checked?: boolean
+    checkedAt?: number
     title?: string
     parents?: Record<string, true>
     children?: Record<string, true>
@@ -25,20 +26,12 @@ export function walk(tree: TreeData, id: string,
 
 export function check(tree: TreeData, id: string, checked: boolean) {
     const value = { } as TreeData,
-        prefix = id.split('/').shift() || '',
-        list = [{ id, checked }]
-    for (const id in tree.$root?.children || { }) {
-        if (id !== prefix) {
-            list.push({ id, checked: true })
+        now = Date.now()
+    walk(tree, id, (id, node) => {
+        if (node.checked !== checked) {
+            value[id] = { ...tree[id], checked, checkedAt: now }
         }
-    }
-    for (const { id, checked } of list) {
-        walk(tree, id, (id, node) => {
-            if (node.checked !== checked) {
-                value[id] = { ...tree[id], checked }
-            }
-        })
-    }
+    })
     return { ...tree, ...value }
 }
 

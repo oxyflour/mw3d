@@ -127,9 +127,10 @@ export default ({ tree, setTree, ents, component, children }: {
     return <Canvas className="view" style={{ width: '100%', height: '100%' }}>
         {
             ents.map((data, key) => {
-                const nodes = data.nodes || []
-                if (nodes.length > 0 && nodes.every(id => tree[id]?.checked)) {
-                    const active = !selected.length || nodes.some(id => tree[id]?.selected),
+                const nodes = (data.nodes || []).map(id => tree[id])
+                    .sort((a, b) => (b?.checkedAt || 0) - (a?.checkedAt || 0))
+                if (nodes.length > 0 && nodes[0]?.checked) {
+                    const active = !selected.length || nodes.some(item => item?.selected),
                         mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                         matrix = data.trans,
                         create = () => Object.assign(new Engine.Mesh(), { data })

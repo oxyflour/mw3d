@@ -69,7 +69,7 @@ export default function App() {
     return <div className="app flex flex-col h-full">
         <Toolbar ents={ ents } setEnts={ setEnts } />
         <Resize className="grow">
-            <Nav tree={ tree } onChange={ setTree } />
+            <Nav tree={ tree } ents={ ents } onChange={ setTree } />
             <View tree={ tree } setTree={ setTree } ents={ ents } component={ EntityMesh } />
         </Resize>
     </div>
