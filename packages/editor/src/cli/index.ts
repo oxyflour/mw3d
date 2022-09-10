@@ -25,6 +25,7 @@ try {
             await writeFile(path.join(dir, 'geom'), pack({ faces }))
             await writeFile(save, JSON.stringify({
                 entities: [{
+                    data: 'data',
                     geom: {
                         url: 'geom',
                         bound: [min.x, min.y, min.z, max.x, max.y, max.z],

@@ -1,6 +1,7 @@
 import { TreeNode } from "./tree"
 
 export interface Entity {
+    data?: string
     attrs?: {
         $n?: string
         $m?: string

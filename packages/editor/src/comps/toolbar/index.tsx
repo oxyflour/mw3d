@@ -1,11 +1,21 @@
 import { CSSProperties, ReactElement, useState } from 'react'
 import { GoAlert } from 'react-icons/go'
+import { mat4, vec3 } from 'gl-matrix'
+
 import lambda from '../../lambda'
+import Dropdown from '../utils/dropdown'
 import { Entity } from '../../utils/data/entity'
 import { upload } from '../../utils/dom/upload'
-import Dropdown from '../utils/dropdown'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
+
+const m = mat4.create(),
+    v = vec3.create()
+function randomPosition(size: number) {
+    vec3.set(v, (Math.random() - 0.5) * size, (Math.random() - 0.5) * size, (Math.random() - 0.5) * size)
+    mat4.fromTranslation(m, v)
+    return Array.from(m)
+}
 
 export function ImageButton({ icon, title, onClick, menu }: {
     icon?: any
@@ -114,6 +124,18 @@ export default ({ className, ents, setEnts }: {
                             }
                             setEnts(ret)
                         })
+                    } />
+                <ImageButton title="generate"
+                    onClick={
+                        () => {
+                            setEnts(ents.concat(Array(20).fill(0).map(() => {
+                                return {
+                                    attrs: { $n: `b/c${Math.floor(Math.random() * 10)}/d${Math.floor(Math.random() * 10)}` },
+                                    geom: { bound: [-1, -1, -1, 1, 1, 1] },
+                                    trans: randomPosition(10),
+                                }
+                            })))
+                        }
                     } />
             </Group>
         </div>

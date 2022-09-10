@@ -10,7 +10,7 @@ const DIST_PATH = path.join(__dirname, '..', '..', 'dist'),
 export default {
     geom: {
         async get(url: string) {
-            return readFile(path.join(ASSETS_PATH, url))
+            return readFile(path.join(ASSETS_PATH, 'geom', url))
         },
     },
     async *open(files: File[]) {
@@ -33,7 +33,7 @@ export default {
                 { entities } = JSON.parse(json) as { entities: Entity[] }
             for (const entity of entities) {
                 if (entity.geom?.url) {
-                    const tmp = path.join(ASSETS_PATH, entity.geom.url)
+                    const tmp = path.join(ASSETS_PATH, 'geom', entity.geom.url)
                     await mkdir(path.dirname(tmp), { recursive: true })
                     await rename(path.join(cwd, entity.geom.url), tmp)
                 }
