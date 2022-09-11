@@ -1,16 +1,12 @@
 import path from "path"
-import crypto from 'crypto'
 import { mkdir, readFile, cp, writeFile } from "fs/promises"
 import { Entity } from "../utils/data/entity"
 import { fork } from "../utils/node/fork"
+import { sha256 } from "../utils/node/common"
 
 const DIST_PATH = path.join(__dirname, '..', '..', 'dist'),
     SCRIPT_PATH = path.join(DIST_PATH, 'cli', 'index.js'),
     ASSETS_PATH = path.join(DIST_PATH, 'assets')
-
-function sha256(buf: Buffer | string) {
-    return crypto.createHash('sha256').update(buf).digest('hex')
-}
 
 export default {
     geom: {
@@ -38,14 +34,14 @@ export default {
                 yield { ...item }
             }
             const json = await readFile(output, 'utf-8'),
-                hash = sha256(json),
                 { entities } = JSON.parse(json) as { entities: Entity[] }
-            for (const entity of entities) {
-                if (entity.geom?.url) {
-                    const tmp = path.join(ASSETS_PATH, 'geom', hash, entity.geom.url)
+            for (const { geom, data } of entities) {
+                if (data && geom?.url) {
+                    const hash = sha256(await readFile(path.join(cwd, data))),
+                        tmp = path.join(ASSETS_PATH, 'geom', hash, geom.url)
                     await mkdir(path.dirname(tmp), { recursive: true })
-                    await cp(path.join(cwd, entity.geom.url), tmp)
-                    entity.geom.url = hash + '/' + entity.geom.url
+                    await cp(path.join(cwd, geom.url), tmp)
+                    geom.url = hash + '/' + geom.url
                 }
             }
             yield { entities }
