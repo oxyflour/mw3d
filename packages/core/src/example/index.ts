@@ -144,4 +144,6 @@ requestAnimationFrame(function render() {
     renderer.render(scene, camera)
 })
 
+document.body.style.background = 'linear-gradient(45deg, black, transparent)'
+
 })()
