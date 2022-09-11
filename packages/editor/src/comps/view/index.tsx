@@ -4,7 +4,7 @@ import {
 } from '@ttk/react'
 import React, { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
-import { select } from '../../utils/data/tree'
+import { select, TreeNode } from '../../utils/data/tree'
 
 import './index.less'
 
@@ -124,15 +124,25 @@ export default ({ tree, setTree, ents, component, children }: {
     children?: any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { })
+    function checked(nodes: string[]) {
+        const ret = { } as TreeNode
+        for (const id of nodes) {
+            const node = tree[id]
+            if (node && (node.checkedAt || 0) > (ret.checkedAt || -1)) {
+                ret.checkedAt = node.checkedAt
+                ret.checked = node.checked
+            }
+        }
+        return ret.checked
+    }
     return <Canvas className="view"
             style={{ width: '100%', height: '100%' }}
             options={ () => ({ multisample: { count: 4 }, devicePixelRatio: 1 }) }>
         {
             ents.map((data, key) => {
-                const nodes = (data.nodes || []).map(id => tree[id])
-                    .sort((a, b) => (b?.checkedAt || 0) - (a?.checkedAt || 0))
-                if (nodes.length > 0 && nodes[0]?.checked) {
-                    const active = !selected.length || nodes.some(item => item?.selected),
+                const nodes = data.nodes || []
+                if (nodes.length > 0 && checked(nodes)) {
+                    const active = !selected.length || nodes.some(id => tree[id]?.selected),
                         mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                         matrix = data.trans,
                         create = () => Object.assign(new Engine.Mesh(), { data })
