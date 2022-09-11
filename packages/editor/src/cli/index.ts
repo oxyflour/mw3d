@@ -15,6 +15,7 @@ program
 .option('--save <path>')
 .action(async (files: string[], { save = './commit.json' }) => {
 async function saveSolid(solid: Shape, root: string, file: string) {
+    console.log(solid.meta)
     const { faces, edges, geom } = mesh.topo(solid),
         { min, max } = solid.bound(),
         data = Math.random().toString(16).slice(2, 10)
@@ -35,7 +36,8 @@ async function saveSolid(solid: Shape, root: string, file: string) {
         data: data,
         bound: [min.x, min.y, min.z, max.x, max.y, max.z],
         attrs: {
-            $n: path.basename(file) + '/' + data
+            $n: solid.meta['ManifoldSolidBrep']?.replace(/\|/g, '/') ||
+                path.basename(file) + '/' + data
         },
         geom: { url: hash + '/geom' },
         topo: {
