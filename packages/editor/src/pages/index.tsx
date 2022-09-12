@@ -9,12 +9,14 @@ import Resize from '../comps/utils/resize'
 import { Entity, parse, TreeEnts } from '../utils/data/entity'
 import { useAsync } from '../utils/react/hooks'
 import { Engine, Mesh, Obj3 } from '@ttk/react'
-import { unpack } from '../utils/data/pack'
+import { unpack } from '../utils/common/pack'
 import lambda from '../lambda'
+import { ViewOpts } from '../utils/data/view'
+import { select } from '../utils/data/tree'
 
 async function loadGeom(url?: string) {
     if (url) {
-        const buf = await lambda.geom.get(url),
+        const buf = await lambda.assets.get(url),
             { faces, edges } = unpack(new Uint8Array(buf))
         if (faces || edges) {
             return {
@@ -55,20 +57,28 @@ const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0] })
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
     return geom?.faces || geom?.edges ? <>
-        { geom.faces && <Mesh { ...props } geo={ geom.faces } renderOrder={ 100 } /> }
+        { geom.faces && <Mesh { ...props } geo={ geom.faces } /> }
         { geom.edges && <Mesh isVisible={ props.active } geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
 }
 
 export default function App() {
     const [ents, setEnts] = useState([] as Entity[]),
-        [tree, setTree] = useState({ } as TreeEnts)
+        [tree, setTree] = useState({ } as TreeEnts),
+        [view, setView] = useState({ } as ViewOpts)
     useEffect(() => setTree(parse(ents)), [ents])
     return <div className="app flex flex-col h-full">
-        <Toolbar ents={ ents } setEnts={ setEnts } />
+        <Toolbar { ...{ ents, setEnts, view, setView } } />
         <Resize className="grow">
-            <Nav tree={ tree } onChange={ setTree } />
-            <View tree={ tree } setTree={ setTree } ents={ ents } component={ EntityMesh } />
+            <Nav { ...{ tree, setTree } } />
+            <View { ...{ tree, view, ents, setView } }
+                component={ EntityMesh }
+                onSelect={
+                    nodes => {
+                        const selected = nodes?.filter(id => id.startsWith('Components'))
+                        setTree(select(tree, selected))
+                    }
+                } />
         </Resize>
     </div>
 }

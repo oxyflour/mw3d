@@ -8,6 +8,15 @@ function vec3FromObj(out: vec3, obj: Obj3) {
     return vec3.set(out, x, y, z)
 }
 
+function withMouseDown(onMouseMove: (evt: MouseEvent) => any, onMouseUp?: (evt: MouseEvent) => any) {
+    document.body.addEventListener('mousemove', onMouseMove)
+    document.body.addEventListener('mouseup', function onceMouseUp(evt) {
+        onMouseUp?.(evt)
+        document.body.removeEventListener('mousemove', onMouseMove)
+        document.body.removeEventListener('mouseup', onceMouseUp)
+    })
+}
+
 export class Control {
     readonly pivot: Obj3
     constructor(
@@ -126,19 +135,9 @@ export class Control {
             start.clientY = evt.clientY
         }
         if (evt.button === 0) {
-            document.body.addEventListener('mousemove', onRotateAroundPivot)
-            document.body.addEventListener('mouseup', function onceMouseUp(evt) {
-                onMouseUp(evt)
-                document.body.removeEventListener('mousemove', onRotateAroundPivot)
-                document.body.removeEventListener('mouseup', onceMouseUp)
-            })
-        } else if (evt.button === 1) {
-            document.body.addEventListener('mousemove', onDragWithPivot)
-            document.body.addEventListener('mouseup', function onceMouseUp(evt) {
-                onMouseUp(evt)
-                document.body.removeEventListener('mousemove', onDragWithPivot)
-                document.body.removeEventListener('mouseup', onceMouseUp)
-            })
+            withMouseDown(onRotateAroundPivot, onMouseUp)
+        } else if (evt.button === 2) {
+            withMouseDown(onDragWithPivot, onMouseUp)
         }
     }
     bindMouseWheel(evt: WheelEvent) {

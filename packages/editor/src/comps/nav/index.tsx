@@ -38,9 +38,9 @@ export function Tree({ id = '', data, onChange }: {
     </div>
 }
 
-export default ({ tree, onChange }: {
+export default ({ tree, setTree }: {
     tree: TreeData
-    onChange?: ((tree: TreeData) => void) | undefined
+    setTree?: ((tree: TreeData) => void) | undefined
 }) => {
     const [filter, setFilter] = useState({ search: '', tree })
     return <div className="nav flex flex-col h-full">
@@ -54,7 +54,7 @@ export default ({ tree, onChange }: {
                             tree: data,
                             search: evt.target.value
                         })
-                        onChange?.(evt.target.value ?
+                        setTree?.(evt.target.value ?
                             search(data, evt.target.value) :
                             data)
                     }
@@ -63,14 +63,14 @@ export default ({ tree, onChange }: {
                 filter.search && <button onClick={
                     () => {
                         setFilter({ tree: { }, search: '' })
-                        onChange?.(filter.tree)
+                        setTree?.(filter.tree)
                     }
                 }>clear</button>
             }
         </div>
         <div className="content grow">
-            <Tree id="Components" data={ tree } onChange={ onChange } />
-            <Tree id="Materials" data={ tree } onChange={ onChange } />
+            <Tree id="Components" data={ tree } onChange={ setTree } />
+            <Tree id="Materials" data={ tree } onChange={ setTree } />
         </div>
     </div>
 }

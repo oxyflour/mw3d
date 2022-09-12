@@ -4,7 +4,9 @@ import {
 } from '@ttk/react'
 import React, { useEffect, useRef } from 'react'
 import { Entity, TreeEnts } from '../../utils/data/entity'
-import { select, TreeNode } from '../../utils/data/tree'
+import { TreeData, TreeNode } from '../../utils/data/tree'
+import { ViewOpts } from '../../utils/data/view'
+import { KeyBinding, KeyMap } from '../../utils/dom/keys'
 
 import './index.less'
 
@@ -116,32 +118,60 @@ export function MouseControl({ onSelect }: {
     }} />
 }
 
-export default ({ tree, setTree, ents, component, children }: {
+function checked(tree: TreeData, nodes: string[]) {
+    const ret = { } as TreeNode
+    for (const id of nodes) {
+        const node = tree[id]
+        if (node && (node.checkedAt || 0) > (ret.checkedAt || -1)) {
+            ret.checkedAt = node.checkedAt
+            ret.checked = node.checked
+        }
+    }
+    return ret.checked
+}
+
+function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
+    const { canvas } = useCanvas(),
+        map = useRef({ } as KeyMap)
+    useEffect(() => {
+        if (canvas) {
+            const binding = new KeyBinding(canvas)
+            binding.load(map.current)
+            return () => binding.destroy()
+        } else {
+            return () => { }
+        }
+    }, [canvas])
+    Object.assign(map.current, {
+        'Control + x': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'face' } }),
+        'Escape': down => !down && setView({ ...view, pick: { ...view.pick, mode: undefined } }),
+    } as KeyMap)
+    return null
+}
+
+export default ({ tree, ents, view, setView, component, children, onSelect }: {
     tree: TreeEnts
-    setTree: (tree: TreeEnts) => void
     ents: Entity[]
+    view: ViewOpts
+    setView: (view: ViewOpts) => void
     component?: (props: EntityProps) => JSX.Element
     children?: any
+    onSelect?: (nodes?: string[], obj?: Engine.Obj3) => any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { })
-    function checked(nodes: string[]) {
-        const ret = { } as TreeNode
-        for (const id of nodes) {
-            const node = tree[id]
-            if (node && (node.checkedAt || 0) > (ret.checkedAt || -1)) {
-                ret.checkedAt = node.checkedAt
-                ret.checked = node.checked
-            }
-        }
-        return ret.checked
-    }
     return <Canvas className="view"
             style={{ width: '100%', height: '100%' }}
-            options={ () => ({ multisample: { count: 4 }, devicePixelRatio: 1 }) }>
+            options={
+                canvas => {
+                    // TODO: set context menu
+                    canvas.oncontextmenu = () => false
+                    return ({ multisample: { count: 4 }, devicePixelRatio: 1 })
+                }
+            }>
         {
             ents.map((data, key) => {
                 const nodes = data.nodes || []
-                if (nodes.length > 0 && checked(nodes)) {
+                if (nodes.length > 0 && checked(tree, nodes)) {
                     const active = !selected.length || nodes.some(id => tree[id]?.selected),
                         mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                         matrix = data.trans,
@@ -152,12 +182,9 @@ export default ({ tree, setTree, ents, component, children }: {
                 }
             })
         }
+        <KeyControl view={ view } setView={ setView } />
         <MouseControl onSelect={
-            (obj?: Engine.Obj3 & { data?: Entity }) => {
-                console.log(obj)
-                const nodes = obj?.data?.nodes?.filter(id => id.startsWith('Components'))
-                setTree(select(tree, nodes))
-            }
+            (obj?: Engine.Obj3 & { data?: Entity }) => onSelect?.(obj?.data?.nodes, obj)
         } />
         { children }
     </Canvas>

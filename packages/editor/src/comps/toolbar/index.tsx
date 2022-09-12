@@ -8,6 +8,7 @@ import { Entity } from '../../utils/data/entity'
 import { upload } from '../../utils/dom/upload'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
+import { ViewOpts } from '../../utils/data/view'
 
 const m = mat4.create(),
     v = vec3.create()
@@ -104,11 +105,16 @@ function Tabs({ initActive, style, className, children = [] }: {
     </div>
 }
 
-export default ({ className, ents, setEnts }: {
+export default ({ className, ents, view, setEnts, setView }: {
     className?: string
     ents: Entity[]
+    view: ViewOpts
     setEnts: (ents: Entity[]) => void
+    setView: (view: ViewOpts) => void
 }) => {
+    function updateView<K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) {
+        setView({ ...view, [key]: { ...view[key], ...val } })
+    }
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
         <div title="File">
             <Group title="Home">
@@ -141,15 +147,16 @@ export default ({ className, ents, setEnts }: {
         </div>
         <div title="Home">
             <Group title="Home">
-                <ImageButton title="ok" menu={
+                <ImageButton title={
+                    view.pick?.mode ? `Picking ${view.pick.mode}` : 'Pick'
+                } menu={
                     <Menu>
                         <MenuGroup>
-                            <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
-                            <MenuItem>Cancel</MenuItem>
-                        </MenuGroup>
-                        <MenuGroup>
-                            <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
-                            <MenuItem>Cancel</MenuItem>
+                            <MenuItem onClick={ () => updateView('pick', { mode: 'solid' }) }>Solid</MenuItem>
+                            <MenuItem onClick={ () => updateView('pick', { mode: 'face' }) }>Face</MenuItem>
+                            <MenuItem onClick={ () => updateView('pick', { mode: 'edge' }) }>Edge</MenuItem>
+                            <MenuItem onClick={ () => updateView('pick', { mode: 'vertex' }) }>Vertex</MenuItem>
+                            <MenuItem onClick={ () => updateView('pick', { mode: undefined }) }>None</MenuItem>
                         </MenuGroup>
                     </Menu>
                 } />

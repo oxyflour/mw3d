@@ -14,6 +14,7 @@ import { mat4, quat, vec4 } from 'gl-matrix'
 
 const canvas = document.createElement('canvas')
 canvas.style.width = canvas.style.height = '100%'
+canvas.oncontextmenu = () => false
 document.body.style.margin = document.body.style.padding = '0'
 document.body.appendChild(canvas)
 

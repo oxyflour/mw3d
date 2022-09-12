@@ -4,7 +4,7 @@ import path from 'path'
 import { Command } from 'commander'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { step, mesh, Shape } from '@yff/ncc'
-import { pack } from '../utils/data/pack'
+import { pack } from '../utils/common/pack'
 import { Entity } from '../utils/data/entity'
 import { sha256 } from '../utils/node/common'
 
