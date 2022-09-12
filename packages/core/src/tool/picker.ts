@@ -101,6 +101,7 @@ const textureCache = {
     texture: undefined as undefined | Texture
 }
 
+let renderLock = 0
 const worker = wrap({
     num: 1,
     // @ts-ignore
@@ -117,6 +118,11 @@ const worker = wrap({
                      geometries: Record<number, PickGeo>,
                      { fov, aspect, near, far, worldMatrix }: PickCamera,
                      { width, height, x, y }: { x: number, y: number, width: number, height: number }) {
+            while (renderLock > Date.now() - 5000) {
+                await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            renderLock = Date.now()
+
             const { renderer, camera, pixels } = await getCache(),
                 { scene, geoMap, matMap, meshMap, meshRev } = cache
             renderer.width = width
@@ -188,6 +194,7 @@ const worker = wrap({
 
             const blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
+            renderLock = 0
             return { id, buffer, distance, position }
         }
     }

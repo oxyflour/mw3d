@@ -224,6 +224,7 @@ export default class Cache {
                     depthWriteEnabled: mat.prop.a < 1 ? false : true,
                     depthCompare: 'greater',
                     format: this.opts.depthFormat,
+                    depthBias: mat.opts.depth?.bias,
                 },
                 multisample: this.opts.multisample
             })

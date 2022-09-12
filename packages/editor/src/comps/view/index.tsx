@@ -1,17 +1,22 @@
 import {
     Canvas, Control, Engine, Mesh, useCanvas,
-    Tool, CanvasContextValue, useFrame
+    Tool, CanvasContextValue, useFrame, Obj3
 } from '@ttk/react'
-import React, { useEffect, useRef } from 'react'
+import { Edge, Face } from '@yff/ncc'
+import React, { useEffect, useRef, useState } from 'react'
+import lambda from '../../lambda'
+import { unpack } from '../../utils/common/pack'
+import { queue } from '../../utils/common/queue'
 import { Entity, TreeEnts } from '../../utils/data/entity'
 import { TreeData, TreeNode } from '../../utils/data/tree'
 import { ViewOpts } from '../../utils/data/view'
 import { KeyBinding, KeyMap } from '../../utils/dom/keys'
+import { useAsync } from '../../utils/react/hooks'
 
 import './index.less'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
-export type EntityProps = CompProp<typeof Mesh> & { data: Entity, active: boolean }
+export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity, active: boolean }
 
 const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
 export const MATERIAL_SET = {
@@ -143,10 +148,79 @@ function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: ViewOpt
         }
     }, [canvas])
     Object.assign(map.current, {
-        'Control + x': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'face' } }),
+        'f': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'face' } }),
+        'e': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'edge' } }),
         'Escape': down => !down && setView({ ...view, pick: { ...view.pick, mode: undefined } }),
     } as KeyMap)
     return null
+}
+
+type Obj3WithEntity = Engine.Obj3 & { entity?: Entity }
+
+const pickEntity = queue(pick),
+    SELECT_MAT = new Engine.BasicMaterial({ color: [1, 0, 0, 0.1], depth: { bias: 1 }, entry: { frag: 'fragMainColor' } }),
+    HOVER_MAT = new Engine.BasicMaterial({ color: [1, 0, 0, 0.99], depth: { bias: 1 }, entry: { frag: 'fragMainColor' } }),
+    PICK_CACHE = { } as Record<string, Record<number, Engine.Mesh>>
+function EntityPicker({ mode }: { mode: string }) {
+    const { scene, canvas, ...rest } = useCanvas(),
+        [hover, setHover] = useState({ clientX: -1, clientY: -1, entity: undefined as undefined | Entity }),
+        callback = useRef<(evt: MouseEvent) => any>()
+    callback.current = async function onMouseMove({ clientX, clientY }: MouseEvent) {
+        const meshes = (Array.from(scene || []) as Obj3WithEntity[]).filter(item => item.entity),
+            map = Object.fromEntries(meshes.map(mesh => [mesh.id, mesh.entity!])),
+            ret = await pickEntity({ scene: new Engine.Scene(meshes), canvas, ...rest }, { clientX, clientY })
+        setHover({ clientX, clientY, entity: map[ret.id] })
+    }
+    useEffect(() => {
+        if (canvas) {
+            const onMouseMove = (evt: MouseEvent) => callback.current?.(evt)
+            canvas.addEventListener('mousemove', onMouseMove)
+            return () => canvas.removeEventListener('mousemove', onMouseMove)
+        } else {
+            return () => { }
+        }
+    }, [canvas])
+    return hover.entity &&
+        <TopoPicker mode={ mode } entity={ hover.entity } hover={ hover } /> || null
+}
+
+const pickTopo = queue(pick)
+async function loadTopo(mode: string, entity: Entity) {
+    const url = 
+        (mode === 'face' && entity.topo?.faces?.url) ||
+        (mode === 'edge' && entity.topo?.edges?.url) ||
+        ''
+    return PICK_CACHE[url] || (PICK_CACHE[url] = Object.fromEntries(
+        (url ? unpack(await lambda.assets.get(url)) as any[] : [])
+            .map(data => {
+                const geo =
+                    mode === 'face' ? new Engine.Geometry(data as Face) :
+                    mode === 'edge' ? new Engine.LineList({ lines: [(data as Edge).positions] }) :
+                    undefined
+                return new Engine.Mesh(geo, SELECT_MAT)
+            }).map(mesh => [mesh.id, mesh])))
+}
+function TopoPicker({ mode, entity, hover }: { mode: string, entity: Entity, hover: { clientX: number, clientY: number } }) {
+    const [{ value = { } }] = useAsync(loadTopo, [mode, entity]),
+        ctx = useCanvas(),
+        [hoverTopo, setHoverTopo] = useState<Engine.Mesh>()
+    async function updateHoverFace(meshes: Engine.Mesh[]) {
+        const ret = meshes.length && await pickTopo({ ...ctx, scene: new Engine.Scene(meshes) }, hover) || { id: 0 }
+        setHoverTopo(value[ret.id])
+    }
+    useEffect(() => {
+        updateHoverFace(Object.values(value))
+    }, [value, hover])
+    return <Obj3 matrix={ entity.trans }>
+    {
+        Object.values(value).map(item => <Mesh key={ item.id } geo={ item.geo }
+            mat={
+                item.id === hoverTopo?.id ? HOVER_MAT :
+                mode === 'face' ? undefined :
+                    item.mat
+            } />)
+    }
+    </Obj3>
 }
 
 export default ({ tree, ents, view, setView, component, children, onSelect }: {
@@ -175,8 +249,8 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
                     const active = !selected.length || nodes.some(id => tree[id]?.selected),
                         mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                         matrix = data.trans,
-                        create = () => Object.assign(new Engine.Mesh(), { data })
-                    return React.createElement(component || Mesh, { key, active, data, mat, matrix, create } as EntityProps)
+                        create = () => Object.assign(new Engine.Mesh(), { entity: data })
+                    return React.createElement(component || Mesh, { key, view, active, data, mat, matrix, create } as EntityProps)
                 } else {
                     return null
                 }
@@ -184,8 +258,9 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
         }
         <KeyControl view={ view } setView={ setView } />
         <MouseControl onSelect={
-            (obj?: Engine.Obj3 & { data?: Entity }) => onSelect?.(obj?.data?.nodes, obj)
+            (obj?: Obj3WithEntity) => onSelect?.(obj?.entity?.nodes, obj)
         } />
+        { view.pick?.mode && <EntityPicker mode={ view.pick.mode } /> }
         { children }
     </Canvas>
 }

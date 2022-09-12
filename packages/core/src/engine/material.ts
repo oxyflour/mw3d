@@ -49,6 +49,9 @@ export default class Material extends AutoIndex {
         entry: { vert: ProgramEntry, frag: ProgramEntry }
         texture?: Texture
         sampler?: Sampler
+        depth?: {
+            bias?: number
+        }
     }) {
         super()
         if (opts.texture) {
@@ -82,6 +85,9 @@ export class BasicMaterial extends Material {
         metallic?: number
         texture?: Texture
         clipPlane?: vec4 | number[]
+        depth?: {
+            bias?: number
+        }
     }) {
         const entry = BasicMaterial.defaultEntry,
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }

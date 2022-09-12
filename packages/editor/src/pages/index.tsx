@@ -58,7 +58,9 @@ function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props } geo={ geom.faces } /> }
-        { geom.edges && <Mesh isVisible={ props.active } geo={ geom.edges } mat={ EDGE_MAT } /> }
+        { geom.edges && <Mesh
+            isVisible={ props.active && props.view.pick?.mode !== 'edge' }
+            geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
 }
 
