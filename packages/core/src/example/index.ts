@@ -70,6 +70,7 @@ async function clickScene(evt: MouseEvent) {
 }
 
 const CLIP_PLANE = vec4.fromValues(1, 1, 0, 0)
+vec4.set(CLIP_PLANE, 0, 0, 0, 0)
 
 const camera = new PerspectiveCamera({
         fov: 5 / 180 * Math.PI,
@@ -119,7 +120,7 @@ const camera = new PerspectiveCamera({
         }
     })
 
-for (let i = 0; i < 10000; i ++) {
+for (let i = 0; i < 100; i ++) {
     const { geo } = cube,
         mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
         mesh = new Mesh(geo, mat)

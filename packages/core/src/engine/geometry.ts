@@ -12,7 +12,7 @@ export interface Attr {
 }
 
 export default class Geometry extends AutoIndex {
-    readonly type: GPUPrimitiveTopology
+    readonly type: GPUPrimitiveTopology | 'fat-line-list'
     readonly positions: Float32Array
     readonly count: number
     readonly normals?: Float32Array
@@ -24,7 +24,7 @@ export default class Geometry extends AutoIndex {
     readonly center = vec4.fromValues(0, 0, 0, 1)
 
     constructor({ type, positions, normals, indices, attributes }: {
-        type?: GPUPrimitiveTopology
+        type?: GPUPrimitiveTopology | 'fat-line-list'
         positions: Float32Array
         normals?: Float32Array
         indices?: Uint32Array | Uint16Array
@@ -62,38 +62,47 @@ export default class Geometry extends AutoIndex {
                 'line-strip': positions.length / 6,
                 'triangle-list': positions.length / 3,
                 'triangle-strip': positions.length / 3,
+                'fat-line-list': positions.length / 3,
             }[this.type] || 0
         }
     }
 }
 
 export class LineList extends Geometry {
-    constructor({ lines } = { } as { lines: ([number, number, number][] | Float32Array)[] }) {
+    constructor({ lines } = { } as {
+        lines: ([number, number, number][] | Float32Array)[]
+    }) {
         const pos = [] as number[],
             norm = [] as number[],
             idx = [] as number[]
         for (const pts of lines) {
             const start = pos.length / 3
             if (Array.isArray(pts)) {
-                for (const [x, y, z] of pts) {
-                    pos.push(x, y, z)
-                    norm.push(0, 0, 1)
+                for (let i = 0; i < pts.length - 1; i ++) {
+                    const p0 = pts[i]!,
+                        p1 = pts[i + 1]!
+                    pos.push(...p0, ...p1, ...p0, ...p1)
+                    norm.push(...p1, ...p0, ...p1, ...p0)
                 }
                 for (let i = 0; i < pts.length - 1; i ++) {
-                    idx.push(start + i, start + i + 1)
+                    const j = start + i * 4
+                    idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2)
                 }
             } else {
-                for (const v of pts) {
-                    pos.push(v)
-                    norm.push(0)
+                for (let i = 0; i < pts.length - 3; i += 3) {
+                    const p0 = pts.slice(i, i + 3),
+                        p1 = pts.slice(i + 3, i + 6)
+                    pos.push(...p0, ...p1, ...p0, ...p1)
+                    norm.push(...p1, ...p0, ...p1, ...p0)
                 }
                 for (let i = 0; i < pts.length / 3 - 1; i ++) {
-                    idx.push(start + i, start + i + 1)
+                    const j = start + i * 4
+                    idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2)
                 }
             }
         }
         super({
-            type: 'line-list',
+            type: 'fat-line-list',
             positions: new Float32Array(pos),
             normals: new Float32Array(norm),
             indices: new Uint32Array(idx)

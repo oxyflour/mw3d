@@ -37,6 +37,7 @@ struct MaterialUniforms {
 // vert
 
 struct VertexInput {
+  @builtin(vertex_index) vertexID : u32,
   @location(0) position: vec4<f32>,
   @location(1) normal: vec3<f32>,
 }
@@ -53,6 +54,26 @@ fn vertMain(input: VertexInput) -> VertexOutput {
   output.position = camera.viewProjection * mesh.modelMatrix * input.position;
   output.normal = (mesh.modelMatrix * vec4<f32>(input.normal, 0.0)).xyz;
   output.worldPosition = mesh.modelMatrix * input.position;
+  return output;
+}
+
+@vertex
+fn vertLineMain(input: VertexInput) -> VertexOutput {
+  var output: VertexOutput;
+  output.position = camera.viewProjection * mesh.modelMatrix * input.position;
+  output.normal = (mesh.modelMatrix * vec4<f32>(input.normal, 0.0)).xyz;
+  output.worldPosition = mesh.modelMatrix * input.position;
+
+  var p0 = output.position;
+  var p1 = camera.viewProjection * mesh.modelMatrix * vec4<f32>(input.normal, 1.);
+  var dir = normalize(p0 - p1);
+  var idx = input.vertexID % 4u;
+  var thickness = 2. / canvasSize.x * p0.w;
+  if (idx == 0u || idx == 3u) {
+    thickness *= -1.;
+  }
+  output.position.y -= thickness * dir.x;
+  output.position.x += thickness * dir.y;
   return output;
 }
 

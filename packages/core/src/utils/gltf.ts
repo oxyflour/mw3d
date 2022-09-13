@@ -211,6 +211,9 @@ export default {
             })
             const { geo, mat } = mesh
             if (geo && mat) {
+                if (geo.type === 'fat-line-list') {
+                    throw Error(`primitive ${geo.type} not supported for gltf`)
+                }
                 const geometry = geoPrim[geo.id] || (geoPrim[geo.id] = {
                         attributes: {
                             POSITION: appendBuffer(geo.positions, 'VEC3'),

@@ -70,7 +70,7 @@ export interface PickMesh {
 }
 
 export interface PickGeo {
-    type: GPUPrimitiveTopology
+    type: GPUPrimitiveTopology | 'fat-line-list'
     positions: Float32Array
     normals?: Float32Array
     indices?: Uint16Array | Uint32Array
