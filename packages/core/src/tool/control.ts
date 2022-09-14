@@ -136,7 +136,7 @@ export class Control {
         }
         if (evt.button === 0) {
             withMouseDown(onRotateAroundPivot, onMouseUp)
-        } else if (evt.button === 2) {
+        } else if (evt.button === 1) {
             withMouseDown(onDragWithPivot, onMouseUp)
         }
     }

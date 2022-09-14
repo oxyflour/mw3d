@@ -11,8 +11,10 @@ export interface Attr {
     offset?: number
 }
 
+export type GeometryPrimitive = GPUPrimitiveTopology | 'fat-line-list' | 'point-sprite'
+
 export default class Geometry extends AutoIndex {
-    readonly type: GPUPrimitiveTopology | 'fat-line-list'
+    readonly type: GeometryPrimitive
     readonly positions: Float32Array
     readonly count: number
     readonly normals?: Float32Array
@@ -24,7 +26,7 @@ export default class Geometry extends AutoIndex {
     readonly center = vec4.fromValues(0, 0, 0, 1)
 
     constructor({ type, positions, normals, indices, attributes }: {
-        type?: GPUPrimitiveTopology | 'fat-line-list'
+        type?: GeometryPrimitive
         positions: Float32Array
         normals?: Float32Array
         indices?: Uint32Array | Uint16Array
@@ -63,8 +65,29 @@ export default class Geometry extends AutoIndex {
                 'triangle-list': positions.length / 3,
                 'triangle-strip': positions.length / 3,
                 'fat-line-list': positions.length / 3,
+                'point-sprite': positions.length / 3,
             }[this.type] || 0
         }
+    }
+}
+
+export class SpriteGeometry extends Geometry {
+    constructor({ width = 1, height = 1, fixed = false } = { } as {
+        width?: number
+        height?: number
+        fixed?: boolean
+    }) {
+        super({
+            type: 'point-sprite',
+            positions: new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            indices: new Uint32Array([0, 1, 2, 1, 3, 2]),
+            normals: new Float32Array([
+                width, height, fixed ? 1 : 0,
+                width, height, fixed ? 1 : 0,
+                width, height, fixed ? 1 : 0,
+                width, height, fixed ? 1 : 0,
+            ]),
+        })
     }
 }
 

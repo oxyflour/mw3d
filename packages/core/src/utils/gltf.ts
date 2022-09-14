@@ -211,7 +211,7 @@ export default {
             })
             const { geo, mat } = mesh
             if (geo && mat) {
-                if (geo.type === 'fat-line-list') {
+                if (geo.type === 'fat-line-list' || geo.type === 'point-sprite') {
                     throw Error(`primitive ${geo.type} not supported for gltf`)
                 }
                 const geometry = geoPrim[geo.id] || (geoPrim[geo.id] = {

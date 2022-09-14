@@ -83,8 +83,9 @@ export class BasicMaterial extends Material {
         color?: Float32Array | Uint8Array | number[]
         roughness?: number
         metallic?: number
-        texture?: Texture
         clipPlane?: vec4 | number[]
+        texture?: Texture
+        sampler?: Sampler
         depth?: {
             bias?: number
         }

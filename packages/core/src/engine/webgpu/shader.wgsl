@@ -32,6 +32,7 @@ struct MaterialUniforms {
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
 @group(3) @binding(1) var depthTexture: texture_depth_2d;
+@group(3) @binding(1) var imageTexture: texture_2d<f32>;
 @group(3) @binding(2) var materialSampler: sampler;
 
 // vert
@@ -58,10 +59,36 @@ fn vertMain(input: VertexInput) -> VertexOutput {
 }
 
 @vertex
+fn vertSpriteMain(input: VertexInput) -> VertexOutput {
+  var output: VertexOutput;
+  output.position = camera.viewProjection * mesh.modelMatrix * input.position;
+  output.worldPosition = mesh.modelMatrix * input.position;
+  var size = vec2<f32>(input.normal.x, input.normal.y);
+  if (input.normal.z != 0.) {
+    size = size / canvasSize * output.position.w;
+  }
+  var idx = input.vertexID % 4u;
+  var delta = vec2<f32>(0., 0.);
+  if (idx == 0u) {
+    delta = vec2<f32>(-0.5, -0.5);
+  } else if (idx == 1u) {
+    delta = vec2<f32>( 0.5, -0.5);
+  } else if (idx == 2u) {
+    delta = vec2<f32>(-0.5,  0.5);
+  } else if (idx == 3u) {
+    delta = vec2<f32>( 0.5,  0.5);
+  }
+  output.position.x += size.x * delta.x;
+  output.position.y += size.y * delta.y;
+  output.normal.x = delta.x + 0.5;
+  output.normal.y = delta.y + 0.5;
+  return output;
+}
+
+@vertex
 fn vertLineMain(input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
   output.position = camera.viewProjection * mesh.modelMatrix * input.position;
-  output.normal = (mesh.modelMatrix * vec4<f32>(input.normal, 0.0)).xyz;
   output.worldPosition = mesh.modelMatrix * input.position;
 
   var p0 = output.position;
@@ -127,8 +154,7 @@ fn BRDF(L: vec3<f32>, V: vec3<f32>, N: vec3<f32>, metallic: f32, roughness: f32)
   return color;
 }
 
-@fragment
-fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
+fn pbrRender(input: FragInput) -> vec3<f32> {
   var N = normalize(input.normal);
   var V = normalize(camera.worldPosition.xyz - input.worldPosition.xyz);
   var C = vec3<f32>(0.0, 0.0, 0.0);
@@ -136,9 +162,10 @@ fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
     var L = normalize(lights[i].worldPosition.xyz - input.worldPosition.xyz);
     C = C + BRDF(L, V, N, material.metallic, material.roughness);
   }
-  if (WGSL_IGNORE_UNUSED) {
-    var c = canvasSize;
-  }
+  return C;
+}
+
+fn checkClip(input: FragInput) {
   if (any(material.clipPlane != vec4<f32>())) {
     var c = material.clipPlane;
     var p = input.worldPosition;
@@ -146,6 +173,15 @@ fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
       discard;
     }
   }
+}
+
+@fragment
+fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
+  var C = pbrRender(input);
+  if (WGSL_IGNORE_UNUSED) {
+    var c = canvasSize;
+  }
+  checkClip(input);
   return vec4<f32>(C, material.color.a);
 }
 
@@ -156,14 +192,20 @@ fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
     var b = lights;
     var c = canvasSize;
   }
-  if (any(material.clipPlane != vec4<f32>())) {
-    var c = material.clipPlane;
-    var p = input.worldPosition;
-    if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {
-      discard;
-    }
-  }
+  checkClip(input);
   return material.color;
+}
+
+@fragment
+fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
+  if (WGSL_IGNORE_UNUSED) {
+    var a = lightNum;
+    var b = lights;
+    var c = canvasSize;
+  }
+  var C = textureSample(imageTexture, materialSampler, input.normal.xy);
+  checkClip(input);
+  return vec4<f32>(C.xyz, material.color.a);
 }
 
 @fragment

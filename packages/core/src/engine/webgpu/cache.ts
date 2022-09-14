@@ -1,5 +1,5 @@
 import cache from "../../utils/cache"
-import Geometry from "../geometry"
+import Geometry, { GeometryPrimitive } from "../geometry"
 import Material from "../material"
 import { Sampler, Texture, Uniform, UniformValue } from '../uniform'
 
@@ -69,7 +69,12 @@ export default class Cache {
         })
     }
     texture = cache((tex: Texture) => {
-        return this.device.createTexture(tex.opts)
+        const texture = this.device.createTexture(tex.opts),
+            { source, size } = tex.opts
+        if (source) {
+            this.device.queue.copyExternalImageToTexture({ source }, { texture }, size)
+        }
+        return texture
     })
     sampler = cache((sampler: Sampler) => {
         return this.device.createSampler(sampler.opts)
@@ -157,8 +162,8 @@ export default class Cache {
     })
 
     private cachedPipelines = { } as Record<string, Record<string, CachedPipeline>>
-    private cachedPrimitive = { } as Record<string, { primitive: GPUPrimitiveTopology | 'fat-line-list' }>
-    pipeline = (primitive: GPUPrimitiveTopology | 'fat-line-list', mat: Material) => {
+    private cachedPrimitive = { } as Record<string, { primitive: GeometryPrimitive }>
+    pipeline = (primitive: GeometryPrimitive, mat: Material) => {
         const cache = this.cachedPipelines[primitive] || (this.cachedPipelines[primitive] = { })
         if (cache[mat.id]) {
             return cache[mat.id]!
@@ -172,7 +177,7 @@ export default class Cache {
     }
 
     private cachedModules = { } as Record<string, GPUShaderModule>
-    buildPipeline = cache((geo: { primitive: GPUPrimitiveTopology | 'fat-line-list' }, mat: Material) => {
+    buildPipeline = cache((geo: { primitive: GeometryPrimitive }, mat: Material) => {
         const { code, entry: { vert, frag } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
             module = this.cachedModules[code] || (this.cachedModules[code] = this.device.createShaderModule({ code })),
@@ -182,6 +187,7 @@ export default class Cache {
                     module,
                     entryPoint:
                         geo.primitive === 'fat-line-list' ? 'vertLineMain' :
+                        geo.primitive === 'point-sprite' ? 'vertSpriteMain' :
                         typeof vert === 'string' ? vert : vert[geo.primitive],
                     // TODO
                     buffers: [{
@@ -204,6 +210,7 @@ export default class Cache {
                     module,
                     entryPoint:
                         geo.primitive === 'fat-line-list' ? 'fragMainColor' :
+                        geo.primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
                         typeof frag === 'string' ? frag : frag[geo.primitive],
                     targets: [{
                         blend: mat.prop.a < 1 ? {
@@ -222,7 +229,7 @@ export default class Cache {
                     }]
                 },
                 primitive: {
-                    topology: geo.primitive === 'fat-line-list' ? 'triangle-list' : geo.primitive,
+                    topology: geo.primitive === 'fat-line-list' || geo.primitive === 'point-sprite' ? 'triangle-list' : geo.primitive,
                     cullMode: 'back'
                 },
                 depthStencil: {

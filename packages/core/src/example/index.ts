@@ -5,10 +5,11 @@ import Light from '../engine/light'
 import Material, { BasicMaterial } from '../engine/material'
 import Picker from '../tool/picker'
 import { rand } from '../utils/math'
-import { BoxGeometry, BoxLines, SphereGeometry } from '../engine'
+import { BoxGeometry, BoxLines, SphereGeometry, SpriteGeometry } from '../engine'
 import { PerspectiveCamera } from '../engine/camera'
 import { Control } from '../tool/control'
 import { mat4, quat, vec4 } from 'gl-matrix'
+import { Texture } from '../engine/uniform'
 
 (async function() {
 
@@ -61,7 +62,8 @@ async function clickScene(evt: MouseEvent) {
             if (mat) {
                 obj.mat = mat
                 delete oldMats[id]
-            } else {
+            // FIXME: changing material broken
+            } else if (!obj.mat?.opts.texture) {
                 oldMats[id] = obj.mat
                 obj.mat = seleted
             }
@@ -71,6 +73,23 @@ async function clickScene(evt: MouseEvent) {
 
 const CLIP_PLANE = vec4.fromValues(1, 1, 0, 0)
 vec4.set(CLIP_PLANE, 0, 0, 0, 0)
+
+const tex = document.createElement('canvas'),
+    ctx = tex.getContext('2d')
+tex.width = tex.height = 256
+if (ctx) {
+    ctx.fillStyle = 'red'
+    ctx.fillRect(0, 0, 256, 256)
+    ctx.fillStyle = 'blue'
+    for (let i = 0; i < 10; i ++) {
+        ctx.fillRect(
+            Math.random() * 256,
+            Math.random() * 256,
+            Math.random() * 32,
+            Math.random() * 32)
+    }
+}
+const source = await createImageBitmap(tex)
 
 const camera = new PerspectiveCamera({
         fov: 5 / 180 * Math.PI,
@@ -95,9 +114,21 @@ const camera = new PerspectiveCamera({
     scene = new Scene([
         cube,
         handle,
-        new Mesh(
-            new BoxLines({ size: 400 }),
-            cube.mat),
+        new Mesh(new SpriteGeometry({
+            width: 300,
+            height: 200,
+            fixed: true
+        }), new BasicMaterial({
+            texture: new Texture({
+                size: { width: tex.width, height: tex.height },
+                format: 'rgba8unorm',
+                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+                source,
+            }),
+        }), {
+            position: [0, 0, 160],
+        }),
+        new Mesh(new BoxLines({ size: 400 }), cube.mat),
     ]),
     control = new Control(canvas, camera, {
         pivot: new Mesh(new SphereGeometry(), new BasicMaterial()),

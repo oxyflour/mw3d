@@ -2,7 +2,7 @@ import { mat4, vec3, vec4 } from "gl-matrix"
 
 import wrap from "../utils/worker"
 import Renderer from "../engine/webgpu/renderer"
-import Geometry, { PlaneXY } from "../engine/geometry"
+import Geometry, { GeometryPrimitive, PlaneXY } from "../engine/geometry"
 import Material, { BasicMaterial } from "../engine/material"
 import Obj3, { Scene } from "../engine/obj3"
 import Camera, { PerspectiveCamera } from "../engine/camera"
@@ -70,7 +70,7 @@ export interface PickMesh {
 }
 
 export interface PickGeo {
-    type: GPUPrimitiveTopology | 'fat-line-list'
+    type: GeometryPrimitive
     positions: Float32Array
     normals?: Float32Array
     indices?: Uint16Array | Uint32Array
