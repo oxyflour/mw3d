@@ -78,16 +78,10 @@ const tex = document.createElement('canvas'),
     ctx = tex.getContext('2d')
 tex.width = tex.height = 256
 if (ctx) {
-    ctx.fillStyle = 'red'
-    ctx.fillRect(0, 0, 256, 256)
-    ctx.fillStyle = 'blue'
-    for (let i = 0; i < 10; i ++) {
-        ctx.fillRect(
-            Math.random() * 256,
-            Math.random() * 256,
-            Math.random() * 32,
-            Math.random() * 32)
-    }
+    ctx.font = '50px Arial'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('Hello World', 128, 128)
 }
 const source = await createImageBitmap(tex)
 

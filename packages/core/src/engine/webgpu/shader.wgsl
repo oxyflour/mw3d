@@ -81,7 +81,7 @@ fn vertSpriteMain(input: VertexInput) -> VertexOutput {
   output.position.x += size.x * delta.x;
   output.position.y += size.y * delta.y;
   output.normal.x = delta.x + 0.5;
-  output.normal.y = delta.y + 0.5;
+  output.normal.y = 1. - delta.y - 0.5;
   return output;
 }
 
@@ -205,6 +205,9 @@ fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
   }
   var C = textureSample(imageTexture, materialSampler, input.normal.xy);
   checkClip(input);
+  if (C.a == 0.) {
+    discard;
+  }
   return vec4<f32>(C.xyz, material.color.a);
 }
 
