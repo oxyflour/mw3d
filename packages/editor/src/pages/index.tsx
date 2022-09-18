@@ -53,7 +53,7 @@ function MeshBound({ create, ...props }: EntityProps) {
     </Obj3>
 }
 
-const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0] })
+const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
     return geom?.faces || geom?.edges ? <>

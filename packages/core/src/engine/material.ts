@@ -18,10 +18,10 @@ export class MaterialProp extends MutableArray({
     a: 1,
     roughness: 0.1,
     metallic: 1.0,
-    x: 0,
-    y: 0,
+    lineWidth: 2.0,
+    emissive: 0,
 }) {
-    constructor(readonly data = new Float32Array(8)) {
+    constructor(readonly data = new Float32Array([1.0, 0.0, 0.0, 1.0, 0.1, 1.0, 2.0, 0])) {
         super(data)
     }
 }
@@ -81,15 +81,13 @@ export class BasicMaterial extends Material {
     constructor(opts = { } as {
         entry?: { vert?: ProgramEntry, frag?: ProgramEntry },
         color?: Float32Array | Uint8Array | number[]
-        roughness?: number
-        metallic?: number
         clipPlane?: vec4 | number[]
         texture?: Texture
         sampler?: Sampler
         depth?: {
             bias?: number
         }
-    }) {
+    } & Partial<MaterialProp>) {
         const entry = BasicMaterial.defaultEntry,
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }
         super({ ...opts, code, entry: { vert, frag } })
@@ -101,8 +99,7 @@ export class BasicMaterial extends Material {
             a = opts.color.length > 3 ? a / 255 : 1
         }
         Object.assign(this.prop, { r, g, b, a })
-        opts.roughness && (this.prop.roughness = opts.roughness)
-        opts.metallic && (this.prop.metallic = opts.metallic)
+        Object.assign(this.prop, opts)
         if (opts.clipPlane) {
             const [a = 0, b = 0, c = 0, d = 0] = opts.clipPlane
             vec4.set(this.clipPlane, a, b, c, d)

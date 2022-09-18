@@ -20,8 +20,8 @@ export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity
 
 const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
 export const MATERIAL_SET = {
-    default: new Engine.BasicMaterial({ color: [r, g, b, 1.0] }),
-    dimmed:  new Engine.BasicMaterial({ color: [r, g, b, 0.7] })
+    default: new Engine.BasicMaterial({ color: [r, g, b, 1.0], lineWidth: devicePixelRatio * 3, emissive: 0.2 }),
+    dimmed:  new Engine.BasicMaterial({ color: [r, g, b, 0.7], lineWidth: devicePixelRatio * 3 })
 }
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
@@ -38,7 +38,7 @@ async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     document.body.appendChild(image)
 }
 
-const pivot = new Engine.Mesh(
+const CAMERA_PIVOT = new Engine.Mesh(
     new Engine.SphereGeometry(),
     new Engine.BasicMaterial({
         color: [1, 0, 0]
@@ -53,7 +53,7 @@ async function pick(
     }
     const picker = await Tool.Picker.init(),
         { left, top } = canvas.getBoundingClientRect(),
-        list = new Set(Array.from(scene).filter(item => item !== pivot))
+        list = new Set(Array.from(scene).filter(item => item !== CAMERA_PIVOT))
     return await picker.pick(list, camera, {
         width: canvas.clientWidth,
         height: canvas.clientHeight,
@@ -70,9 +70,10 @@ async function updatePivot(
     }
     if (id > 0) {
         const [x = 0, y = 0, z = 0] = position
-        pivot.position.set(x, y, z)
+        CAMERA_PIVOT.position.set(x, y, z)
     }
 }
+
 export function MouseControl({ onSelect }: {
     onSelect?: (obj?: Engine.Obj3) => any
 }) {
@@ -83,8 +84,8 @@ export function MouseControl({ onSelect }: {
     select.current = onSelect
     useEffect(() => {
         if (scene) {
-            scene.add(pivot)
-            return () => { scene.delete(pivot) }
+            scene.add(CAMERA_PIVOT)
+            return () => { scene.delete(CAMERA_PIVOT) }
         } else {
             return () => { }
         }
@@ -92,10 +93,10 @@ export function MouseControl({ onSelect }: {
     useFrame(() => {
         if (camera) {
             const [cx, cy, cz] = camera.worldPosition as any as [number, number, number],
-                [px, py, pz] = pivot.worldPosition as any as [number, number, number],
+                [px, py, pz] = CAMERA_PIVOT.worldPosition as any as [number, number, number],
                 d = Math.sqrt((cx - px) ** 2 + (cy - py) ** 2 + (cz - pz) ** 2) || 10,
                 r = camera.fov * 0.01 * d
-            pivot.scaling.set(r, r, r)
+            CAMERA_PIVOT.scaling.set(r, r, r)
         }
     })
     async function align(
@@ -116,7 +117,7 @@ export function MouseControl({ onSelect }: {
             clickedAt.current = Date.now()
         }
     }
-    return <Control pivot={ pivot } hooks={{
+    return <Control pivot={ CAMERA_PIVOT } hooks={{
         mouse: align,
         wheel: align,
         click,
@@ -239,7 +240,7 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
                 canvas => {
                     // TODO: set context menu
                     canvas.oncontextmenu = () => false
-                    return ({ multisample: { count: 4 }, devicePixelRatio: 1 })
+                    return { }
                 }
             }>
         {

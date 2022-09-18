@@ -84,17 +84,6 @@ export interface PickCamera {
     worldMatrix: mat4
 }
 
-export function enqueue<F extends (...args: any) => Promise<any>>(func: F) {
-    let promise: undefined | Promise<any>
-    return ((...args: any) => {
-        if (!promise) {
-            promise = func(...args)
-            promise.finally(() => { promise = undefined })
-        }
-        return promise
-    }) as F
-}
-
 const textureCache = {
     width: 0,
     height: 0,

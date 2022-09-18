@@ -26,8 +26,8 @@ struct MaterialUniforms {
   color: vec4<f32>,
   roughness: f32,
   metallic: f32,
-  x: f32,
-  y: f32,
+  lineWidth: f32,
+  emissive: f32,
   clipPlane: vec4<f32>,
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
@@ -81,7 +81,7 @@ fn vertSpriteMain(input: VertexInput) -> VertexOutput {
   output.position.x += size.x * delta.x;
   output.position.y += size.y * delta.y;
   output.normal.x = delta.x + 0.5;
-  output.normal.y = 1. - delta.y - 0.5;
+  output.normal.y = 0.5 - delta.y;
   return output;
 }
 
@@ -95,7 +95,7 @@ fn vertLineMain(input: VertexInput) -> VertexOutput {
   var p1 = camera.viewProjection * mesh.modelMatrix * vec4<f32>(input.normal, 1.);
   var dir = normalize(p0 - p1);
   var idx = input.vertexID % 4u;
-  var thickness = 2. / canvasSize.x * p0.w;
+  var thickness = material.lineWidth / canvasSize.x * p0.w;
   if (idx == 0u || idx == 3u) {
     thickness *= -1.;
   }
@@ -177,7 +177,7 @@ fn checkClip(input: FragInput) {
 
 @fragment
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
-  var C = pbrRender(input);
+  var C = pbrRender(input) + material.color.rgb * material.emissive;
   if (WGSL_IGNORE_UNUSED) {
     var c = canvasSize;
   }

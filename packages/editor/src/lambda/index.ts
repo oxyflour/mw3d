@@ -1,4 +1,5 @@
 import path from "path"
+import os from 'os'
 import { mkdir, readFile, cp, writeFile } from "fs/promises"
 import { Entity } from "../utils/data/entity"
 import { fork } from "../utils/node/fork"
@@ -22,28 +23,27 @@ export default {
         },
     },
     async *open(files: File[]) {
-        const cwd = path.join(process.cwd(), 'tmp')
+        const cwd = path.join(os.tmpdir(), 'open', Math.random().toString(16).slice(2, 10))
         await mkdir(cwd, { recursive: true })
         const copy = (src: string, dir: string) => copyToAssets(path.join(cwd, src), path.join(dir, src))
         for (const file of files) {
+            yield { message: `opening ${file.name}` }
             await writeFile(path.join(cwd, file.name), Buffer.from(await file.arrayBuffer()))
-            const output = path.join(cwd, file.name + '.commit.json'),
+            const save = path.join(cwd, file.name + '.commit.json'),
                 command = [
-                    process.execPath,
-                    SCRIPT_PATH,
-                    'convert',
-                    path.join(cwd, file.name),
-                    '--save',
-                    output,
+                    process.execPath, SCRIPT_PATH,
+                    'convert', path.join(cwd, file.name),
+                    '--save', save,
                 ].map(item => `"${item}"`).join(' ')
-            yield { message: `parsing ${file.name}` }
             yield { command }
             for await (const item of fork(command, [], { cwd })) {
                 yield { ...item }
             }
-            const json = await readFile(output, 'utf-8'),
+
+            yield { message: `parsing ${file.name}` }
+            const json = await readFile(save, 'utf-8'),
                 { entities } = JSON.parse(json) as { entities: Entity[] }
-            for (const { geom, topo, data } of entities) {
+            await Promise.all(entities.map(async ({ topo, geom, data }) => {
                 const hash = data ?
                     sha256(await readFile(path.join(cwd, data))) :
                     Math.random().toString(16).slice(2, 10)
@@ -56,7 +56,7 @@ export default {
                 if (topo?.edges?.url) {
                     topo.edges.url = await copy(topo.edges.url, `topo/edges/${hash}`)
                 }
-            }
+            }))
             yield { entities }
         }
     },

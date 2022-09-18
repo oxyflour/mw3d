@@ -35,7 +35,7 @@ async function updatePivot({ x, y }: { x: number, y: number }) {
 }
 
 const picker = await Picker.init(),
-    seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1 }),
+    seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1, lineWidth: 10 }),
     oldMats = { } as Record<number, Material | undefined>
 async function showBuffer(buffer: ArrayBuffer) {
     const image = document.createElement('img')
@@ -62,8 +62,7 @@ async function clickScene(evt: MouseEvent) {
             if (mat) {
                 obj.mat = mat
                 delete oldMats[id]
-            // FIXME: changing material broken
-            } else if (!obj.mat?.opts.texture) {
+            } else {
                 oldMats[id] = obj.mat
                 obj.mat = seleted
             }

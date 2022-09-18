@@ -168,7 +168,13 @@ export default class Cache {
         if (cache[mat.id]) {
             return cache[mat.id]!
         }
-        const code = [mat.opts.code, mat.prop.a < 1, mat.opts.entry.frag, mat.opts.entry.vert].join('###')
+        const code = [
+            mat.opts.code,
+            mat.prop.a < 1,
+            mat.opts.entry.frag,
+            mat.opts.entry.vert,
+            mat.opts.texture ? 't' : '',
+        ].join('###')
         if (cache[code]) {
             return cache[mat.id] = cache[code]!
         }
@@ -222,7 +228,7 @@ export default class Cache {
                             alpha: {
                                 operation: 'add',
                                 srcFactor: 'src-alpha',
-                                dstFactor: 'zero',
+                                dstFactor: 'one',
                             }
                         } : undefined,
                         format: this.opts.fragmentFormat
