@@ -17,6 +17,12 @@ export interface ViewOpts {
             index: number,
         }[]
     }
+    mats?: {
+        [k: string]: {
+            metal?: boolean
+            rgb?: { r: number, g: number, b: number }
+        }
+    }
     config?: {
         keyMap?: KeyMap
     }

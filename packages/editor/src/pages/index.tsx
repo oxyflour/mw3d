@@ -13,6 +13,7 @@ import { unpack } from '../utils/common/pack'
 import lambda from '../lambda'
 import { ViewOpts } from '../utils/data/view'
 import { select } from '../utils/data/tree'
+import { LRU } from '../utils/common/lru'
 
 async function loadGeom(url?: string) {
     if (url) {
@@ -26,6 +27,25 @@ async function loadGeom(url?: string) {
         }
     }
     return undefined
+}
+
+const MATERIAL_CACHE = new LRU<{ default: Engine.Material, dimmed: Engine.Material }>()
+function loadMatSet(attrs: Entity['attrs'], mats: ViewOpts['mats']) {
+    const rgb = attrs?.$rgb || mats?.[attrs?.$m || 'default']?.rgb
+    if (rgb) {
+        const metal = mats?.[attrs?.$m || 'default']?.metal,
+            { r, g, b } = rgb,
+            metallic  = metal ? 1.0 : 0.1,
+            roughness = metal ? 0.2 : 0.8,
+            key = [r, g, b, metal].join(','),
+            { opts } = MATERIAL_SET.default
+        return MATERIAL_CACHE.get(key) || MATERIAL_CACHE.set(key, {
+            default: new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 1.0] }),
+            dimmed:  new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 0.4] }),
+        })
+    } else {
+        return MATERIAL_SET
+    }
 }
 
 const GEO_BOX = new Engine.BoxGeometry({ })
@@ -44,10 +64,11 @@ function MeshBound({ create, ...props }: EntityProps) {
         }
         return { position, scaling }
     }, [props.data.bound])
+    const mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return <Obj3 { ...props }>
         <Mesh create={ create }
             geo={ GEO_BOX }
-            mat={ props.active ? MATERIAL_SET.default : MATERIAL_SET.dimmed }
+            mat={ props.active ? mats.default : mats.dimmed }
             position={ position }
             scaling={ scaling } />
     </Obj3>
@@ -55,19 +76,30 @@ function MeshBound({ create, ...props }: EntityProps) {
 
 const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
 function EntityMesh(props: EntityProps) {
-    const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url])
+    const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url]),
+        mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return geom?.faces || geom?.edges ? <>
-        { geom.faces && <Mesh { ...props } geo={ geom.faces } /> }
+        { geom.faces && <Mesh { ...props }
+            mat={ props.active ? mats.default : mats.dimmed }
+            geo={ geom.faces } /> }
         { geom.edges && <Mesh
             isVisible={ props.active && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
 }
 
+const DEFAULT_VIEWOPTS = {
+    mats: {
+        PEC: {
+            metal: true
+        }
+    }
+} as ViewOpts
+
 export default function App() {
     const [ents, setEnts] = useState([] as Entity[]),
         [tree, setTree] = useState({ } as TreeEnts),
-        [view, setView] = useState({ } as ViewOpts)
+        [view, setView] = useState(DEFAULT_VIEWOPTS)
     useEffect(() => setTree(parse(ents)), [ents])
     return <div className="app flex flex-col h-full">
         <Toolbar { ...{ ents, setEnts, view, setView } } />

@@ -5,6 +5,7 @@ export interface Entity {
     attrs?: {
         $n?: string
         $m?: string
+        $rgb?: { r: number, g: number, b: number }
     } & Record<string, any>
     bound?: [number, number, number, number, number, number]
     geom?: { url?: string }

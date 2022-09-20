@@ -5,6 +5,7 @@ import {
 import { Edge, Face } from '@yff/ncc'
 import React, { useEffect, useRef, useState } from 'react'
 import lambda from '../../lambda'
+import { LRU } from '../../utils/common/lru'
 import { unpack } from '../../utils/common/pack'
 import { queue } from '../../utils/common/queue'
 import { Entity, TreeEnts } from '../../utils/data/entity'
@@ -20,6 +21,8 @@ export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity
 
 const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
 export const MATERIAL_SET = {
+    select:  new Engine.BasicMaterial({ color: [1, 0, 0, 0.1], lineWidth: devicePixelRatio * 3, entry: { frag: 'fragMainColor' } }),
+    hover:   new Engine.BasicMaterial({ color: [1, 0, 0, 0.9], lineWidth: devicePixelRatio * 3, entry: { frag: 'fragMainColor' } }),
     default: new Engine.BasicMaterial({ color: [r, g, b, 1.0], lineWidth: devicePixelRatio * 3, emissive: 0.2 }),
     dimmed:  new Engine.BasicMaterial({ color: [r, g, b, 0.7], lineWidth: devicePixelRatio * 3 })
 }
@@ -41,7 +44,7 @@ async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
 const CAMERA_PIVOT = new Engine.Mesh(
     new Engine.SphereGeometry(),
     new Engine.BasicMaterial({
-        color: [1, 0, 0]
+        color: [1, 0, 0, 0.5]
     }), {
         scaling: [0.1, 0.1, 0.1]
     })
@@ -157,11 +160,9 @@ function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: ViewOpt
 }
 
 type Obj3WithEntity = Engine.Obj3 & { entity?: Entity }
+const PICK_CACHE = new LRU<Record<number, Engine.Mesh>>(100)
 
-const pickEntity = queue(pick),
-    SELECT_MAT = new Engine.BasicMaterial({ color: [1, 0, 0, 0.1], depth: { bias: 1 }, entry: { frag: 'fragMainColor' } }),
-    HOVER_MAT = new Engine.BasicMaterial({ color: [1, 0, 0, 0.99], depth: { bias: 1 }, entry: { frag: 'fragMainColor' } }),
-    PICK_CACHE = { } as Record<string, Record<number, Engine.Mesh>>
+const pickEntity = queue(pick)
 function EntityPicker({ mode }: { mode: string }) {
     const { scene, canvas, ...rest } = useCanvas(),
         [hover, setHover] = useState({ clientX: -1, clientY: -1, entity: undefined as undefined | Entity }),
@@ -186,23 +187,22 @@ function EntityPicker({ mode }: { mode: string }) {
 }
 
 const pickTopo = queue(pick)
-async function loadTopo(mode: string, entity: Entity) {
-    const url = 
-        (mode === 'face' && entity.topo?.faces?.url) ||
-        (mode === 'edge' && entity.topo?.edges?.url) ||
-        ''
-    return PICK_CACHE[url] || (PICK_CACHE[url] = Object.fromEntries(
-        (url ? unpack(await lambda.assets.get(url)) as any[] : [])
-            .map(data => {
-                const geo =
-                    mode === 'face' ? new Engine.Geometry(data as Face) :
-                    mode === 'edge' ? new Engine.LineList({ lines: [(data as Edge).positions] }) :
-                    undefined
-                return new Engine.Mesh(geo, SELECT_MAT)
-            }).map(mesh => [mesh.id, mesh])))
+async function loadFaces(entity: Entity) {
+    const url = entity.topo?.faces?.url || ''
+    return PICK_CACHE.get(url) || PICK_CACHE.set(url,
+        Object.fromEntries((url ? unpack(await lambda.assets.get(url)) as Face[] : [])
+            .map(data => new Engine.Mesh(new Engine.Geometry(data), MATERIAL_SET.select))
+            .map(mesh => [mesh.id, mesh])))
+}
+async function loadEdges(entity: Entity) {
+    const url = entity.topo?.edges?.url || ''
+    return PICK_CACHE.get(url) || PICK_CACHE.set(url,
+        Object.fromEntries((url ? unpack(await lambda.assets.get(url)) as Edge[] : [])
+            .map(data => new Engine.Mesh(new Engine.LineList({ lines: [data.positions] }), MATERIAL_SET.select))
+            .map(mesh => [mesh.id, mesh])))
 }
 function TopoPicker({ mode, entity, hover }: { mode: string, entity: Entity, hover: { clientX: number, clientY: number } }) {
-    const [{ value = { } }] = useAsync(loadTopo, [mode, entity]),
+    const [{ value = { } }] = useAsync(() => (mode === 'edge' ? loadEdges : loadFaces)(entity), [mode, entity]),
         ctx = useCanvas(),
         [hoverTopo, setHoverTopo] = useState<Engine.Mesh>()
     async function updateHoverFace(meshes: Engine.Mesh[]) {
@@ -216,7 +216,7 @@ function TopoPicker({ mode, entity, hover }: { mode: string, entity: Entity, hov
     {
         Object.values(value).map(item => <Mesh key={ item.id } geo={ item.geo }
             mat={
-                item.id === hoverTopo?.id ? HOVER_MAT :
+                item.id === hoverTopo?.id ? MATERIAL_SET.hover :
                 mode === 'face' ? undefined :
                     item.mat
             } />)

@@ -32,12 +32,16 @@ async function saveSolid(solid: Shape, root: string, file: string) {
     await writeFile(path.join(root, hash, 'faces'), pack(faces))
     await writeFile(path.join(root, hash, 'edges'), pack(edges))
 
+    const meta = solid.meta,
+        rgb = (str: string) => Object.fromEntries(str.split(',').map((v, i) => [('rgb')[i], parseFloat(v)]))
     return {
         data: data,
         bound: [min.x, min.y, min.z, max.x, max.y, max.z],
         attrs: {
-            $n: solid.meta['ManifoldSolidBrep']?.replace(/\|/g, '/') ||
-                path.basename(file) + '/' + data
+            $n: meta['ManifoldSolidBrep']?.replace(/\|/g, '/') ||
+                path.basename(file) + '/' + data,
+            $m: meta['LayerDescription'] || meta['LayerName'],
+            $rgb: meta['ColorRGB'] && rgb(meta['ColorRGB']),
         },
         geom: { url: hash + '/geom' },
         topo: {
