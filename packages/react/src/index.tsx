@@ -3,7 +3,7 @@ import React, { createContext, CSSProperties, MutableRefObject, useContext, useE
 import { Engine, Tool } from '@ttk/core'
 import { mat4, quat } from 'gl-matrix'
 
-export { Engine, Tool } from '@ttk/core'
+export { Engine, Tool, Utils } from '@ttk/core'
 
 export interface CanvasContextValue {
     scene?: Engine.Scene

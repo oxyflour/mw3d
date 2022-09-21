@@ -1,11 +1,10 @@
 import {
     Canvas, Control, Engine, Mesh, useCanvas,
-    Tool, CanvasContextValue, useFrame, Obj3
+    Tool, CanvasContextValue, useFrame, Obj3, Utils
 } from '@ttk/react'
 import { Edge, Face } from '@yff/ncc'
 import React, { useEffect, useRef, useState } from 'react'
 import lambda from '../../lambda'
-import { LRU } from '../../utils/common/lru'
 import { unpack } from '../../utils/common/pack'
 import { queue } from '../../utils/common/queue'
 import { Entity, TreeEnts } from '../../utils/data/entity'
@@ -160,7 +159,7 @@ function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: ViewOpt
 }
 
 type Obj3WithEntity = Engine.Obj3 & { entity?: Entity }
-const PICK_CACHE = new LRU<Record<number, Engine.Mesh>>(100)
+const PICK_CACHE = new Utils.LRU<Record<number, Engine.Mesh>>(100)
 
 const pickEntity = queue(pick)
 function EntityPicker({ mode }: { mode: string }) {

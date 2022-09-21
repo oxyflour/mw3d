@@ -8,12 +8,11 @@ import './index.less'
 import Resize from '../comps/utils/resize'
 import { Entity, parse, TreeEnts } from '../utils/data/entity'
 import { useAsync } from '../utils/react/hooks'
-import { Engine, Mesh, Obj3 } from '@ttk/react'
+import { Engine, Mesh, Obj3, Utils } from '@ttk/react'
 import { unpack } from '../utils/common/pack'
 import lambda from '../lambda'
 import { ViewOpts } from '../utils/data/view'
 import { select } from '../utils/data/tree'
-import { LRU } from '../utils/common/lru'
 
 async function loadGeom(url?: string) {
     if (url) {
@@ -29,12 +28,13 @@ async function loadGeom(url?: string) {
     return undefined
 }
 
-const MATERIAL_CACHE = new LRU<{ default: Engine.Material, dimmed: Engine.Material }>()
+const MATERIAL_CACHE = new Utils.LRU<{ default: Engine.Material, dimmed: Engine.Material }>()
 function loadMatSet(attrs: Entity['attrs'], mats: ViewOpts['mats']) {
-    const rgb = attrs?.$rgb || mats?.[attrs?.$m || 'default']?.rgb
+    const mat = attrs?.$m || 'default',
+        rgb = attrs?.$rgb || mats?.[mat]?.rgb,
+        metal = mats?.[mat]?.metal
     if (rgb) {
-        const metal = mats?.[attrs?.$m || 'default']?.metal,
-            { r, g, b } = rgb,
+        const { r, g, b } = rgb,
             metallic  = metal ? 1.0 : 0.1,
             roughness = metal ? 0.2 : 0.8,
             key = [r, g, b, metal].join(','),
