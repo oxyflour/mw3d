@@ -8,12 +8,6 @@ import { pack } from '../utils/common/pack'
 import { Entity } from '../utils/data/entity'
 import { sha256 } from '../utils/node/common'
 
-const program = new Command()
-program
-.command('convert')
-.arguments('<files...>')
-.option('--save <path>')
-.action(async (files: string[], { save = './commit.json' }) => {
 async function saveSolid(solid: Shape, root: string, file: string) {
     console.log(solid.meta)
     const { faces, edges, geom } = mesh.topo(solid),
@@ -50,6 +44,13 @@ async function saveSolid(solid: Shape, root: string, file: string) {
         }
     } as Entity
 }
+
+const program = new Command()
+program
+.command('convert')
+.arguments('<files...>')
+.option('--save <path>')
+.action(async (files: string[], { save = './commit.json' }) => {
 try {
     for (const file of files) {
         if (file.toLowerCase().endsWith('.stp')) {

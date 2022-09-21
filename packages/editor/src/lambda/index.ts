@@ -1,6 +1,6 @@
 import path from "path"
 import os from 'os'
-import { mkdir, readFile, cp, writeFile } from "fs/promises"
+import { mkdir, readFile, cp, writeFile, rm } from "fs/promises"
 import { Entity } from "../utils/data/entity"
 import { fork } from "../utils/node/fork"
 import { sha256 } from "../utils/node/common"
@@ -44,6 +44,7 @@ export default {
             const json = await readFile(save, 'utf-8'),
                 { entities } = JSON.parse(json) as { entities: Entity[] }
             await Promise.all(entities.map(async ({ topo, geom, data }) => {
+                // TODO: storage backend
                 const hash = data ?
                     sha256(await readFile(path.join(cwd, data))) :
                     Math.random().toString(16).slice(2, 10)
@@ -59,5 +60,6 @@ export default {
             }))
             yield { entities }
         }
+        await rm(cwd, { recursive: true, force: true })
     },
 }

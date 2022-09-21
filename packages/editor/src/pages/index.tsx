@@ -1,23 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { Engine, Mesh, Obj3, Utils } from '@ttk/react'
+
+import './index.less'
 
 import Toolbar from '../comps/toolbar'
 import Nav from '../comps/nav'
 import View, { EntityProps, MATERIAL_SET } from '../comps/view'
-
-import './index.less'
 import Resize from '../comps/utils/resize'
+import worker from '../utils/data/worker'
 import { Entity, parse, TreeEnts } from '../utils/data/entity'
 import { useAsync } from '../utils/react/hooks'
-import { Engine, Mesh, Obj3, Utils } from '@ttk/react'
-import { unpack } from '../utils/common/pack'
-import lambda from '../lambda'
 import { ViewOpts } from '../utils/data/view'
 import { select } from '../utils/data/tree'
 
 async function loadGeom(url?: string) {
     if (url) {
-        const buf = await lambda.assets.get(url),
-            { faces, edges } = unpack(new Uint8Array(buf))
+        const { faces, edges } = await worker.assets.get(url)
         if (faces || edges) {
             return {
                 faces: faces && new Engine.Geometry(faces),

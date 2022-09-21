@@ -8,14 +8,19 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "sn": {
-    "port": 3000
+    "port": 3000,
+    "koa": {
+      "middlewares": [
+        "./dist/utils/koa/assets"
+      ]
+    }
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@yff/ncc": "^2.0.7",
-    "@yff/sn": "^1.0.13",
+    "@yff/ncc": "^2.0.8",
+    "@yff/sn": "^1.0.17",
     "autoprefixer": "^10.4.8",
     "commander": "^9.4.0",
     "less": "^4.1.2",
