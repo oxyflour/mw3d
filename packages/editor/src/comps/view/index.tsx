@@ -20,8 +20,8 @@ export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity
 
 const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
 export const MATERIAL_SET = {
-    select:  new Engine.BasicMaterial({ color: [1, 0, 0, 0.1], lineWidth: devicePixelRatio * 3, entry: { frag: 'fragMainColor' } }),
-    hover:   new Engine.BasicMaterial({ color: [1, 0, 0, 0.9], lineWidth: devicePixelRatio * 3, entry: { frag: 'fragMainColor' } }),
+    select:  new Engine.BasicMaterial({ color: [1, 0, 0, 0.1], lineWidth: devicePixelRatio * 5, entry: { frag: 'fragMainColor' } }),
+    hover:   new Engine.BasicMaterial({ color: [1, 0, 0, 1.0], lineWidth: devicePixelRatio * 5, entry: { frag: 'fragMainColor' } }),
     default: new Engine.BasicMaterial({ color: [r, g, b, 1.0], lineWidth: devicePixelRatio * 3, emissive: 0.2 }),
     dimmed:  new Engine.BasicMaterial({ color: [r, g, b, 0.7], lineWidth: devicePixelRatio * 3 })
 }
@@ -75,6 +75,7 @@ async function updatePivot(
         CAMERA_PIVOT.position.set(x, y, z)
     }
 }
+const updatePivotEnqueue = queue(updatePivot)
 
 export function MouseControl({ onSelect }: {
     onSelect?: (obj?: Engine.Obj3) => any
@@ -101,10 +102,12 @@ export function MouseControl({ onSelect }: {
             CAMERA_PIVOT.scaling.set(r, r, r)
         }
     })
-    async function align(
-            evt: MouseEvent | WheelEvent,
-            next: (evt: MouseEvent & WheelEvent) => Promise<any>) {
+    async function align(evt: MouseEvent | WheelEvent, next: (evt: MouseEvent & WheelEvent) => Promise<any>) {
         updatePivot(ctx, evt)
+        return await next(evt as any)
+    }
+    async function alignEnqueue(evt: MouseEvent | WheelEvent, next: (evt: MouseEvent & WheelEvent) => Promise<any>) {
+        updatePivotEnqueue(ctx, evt)
         return await next(evt as any)
     }
     async function click(evt: MouseEvent) {
@@ -121,7 +124,7 @@ export function MouseControl({ onSelect }: {
     }
     return <Control pivot={ CAMERA_PIVOT } hooks={{
         mouse: align,
-        wheel: align,
+        wheel: alignEnqueue,
         click,
     }} />
 }
@@ -213,7 +216,9 @@ function TopoPicker({ mode, entity, hover }: { mode: string, entity: Entity, hov
     }, [value, hover])
     return <Obj3 matrix={ entity.trans }>
     {
-        Object.values(value).map(item => <Mesh key={ item.id } geo={ item.geo }
+        Object.values(value).map(item => <Mesh key={ item.id }
+            renderOrder={ -1 }
+            geo={ item.geo }
             mat={
                 item.id === hoverTopo?.id ? MATERIAL_SET.hover :
                 mode === 'face' ? undefined :

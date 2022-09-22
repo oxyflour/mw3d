@@ -122,6 +122,18 @@ const camera = new PerspectiveCamera({
             position: [0, 0, 160],
         }),
         new Mesh(new BoxLines({ size: 400 }), cube.mat),
+        new Mesh(new BoxGeometry({ size: 200 }), new BasicMaterial({
+            color: [0, 1, 0],
+            renderOrder: 2,
+        }), {
+            position: [0, 200, 0],
+        }),
+        new Mesh(new BoxGeometry({ size: 200 }), new BasicMaterial({
+            color: [1, 0, 0],
+            renderOrder: 1,
+        }), {
+            position: [0, 200, 0],
+        }),
     ]),
     control = new Control(canvas, camera, {
         pivot: new Mesh(new SphereGeometry(), new BasicMaterial()),

@@ -26,6 +26,15 @@ export class MaterialProp extends MutableArray({
     }
 }
 
+export interface MatOpts {
+    renderOrder?: number
+    texture?: Texture
+    sampler?: Sampler
+    depth?: {
+        bias?: number
+    }
+}
+
 export default class Material extends AutoIndex {
     prop = new MaterialProp()
     readonly clipPlane = vec4.fromValues(0, 0, 0, 0)
@@ -44,21 +53,21 @@ export default class Material extends AutoIndex {
         // texture
     ] as Uniform[]
 
+    renderOrder = 0
+
     constructor(readonly opts: {
         code: string
         entry: { vert: ProgramEntry, frag: ProgramEntry }
-        texture?: Texture
-        sampler?: Sampler
-        depth?: {
-            bias?: number
-        }
-    }) {
+    } & MatOpts) {
         super()
         if (opts.texture) {
             this.uniforms.push(
                 opts.texture,
                 opts.sampler || Material.DEFAULT_SAMPLER
             )
+        }
+        if (opts.renderOrder !== undefined) {
+            this.renderOrder = opts.renderOrder
         }
     }
 
@@ -82,12 +91,7 @@ export class BasicMaterial extends Material {
         entry?: { vert?: ProgramEntry, frag?: ProgramEntry },
         color?: Float32Array | Uint8Array | number[]
         clipPlane?: vec4 | number[]
-        texture?: Texture
-        sampler?: Sampler
-        depth?: {
-            bias?: number
-        }
-    } & Partial<MaterialProp>) {
+    } & Partial<MaterialProp> & MatOpts) {
         const entry = BasicMaterial.defaultEntry,
             { vert = entry.vert, frag = entry.frag } = opts.entry || { }
         super({ ...opts, code, entry: { vert, frag } })

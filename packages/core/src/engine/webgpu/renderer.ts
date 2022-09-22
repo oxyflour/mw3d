@@ -237,6 +237,7 @@ export default class Renderer {
                 .sort((a, b) => 
                     (a.renderOrder - b.renderOrder) ||
                     (a.pipelineId - b.pipelineId) ||
+                    (a.mat.renderOrder - b.mat.renderOrder) ||
                     (a.mat.id - b.mat.id) ||
                     (a.geo.id - b.geo.id)) as RenderMesh[],
             transSorted = (translucent as (RenderMesh & { cameraDist: number })[])
