@@ -1,31 +1,28 @@
 import path from "path"
 import os from 'os'
-import { mkdir, readFile, cp, writeFile, rm } from "fs/promises"
+import { mkdir, readFile, writeFile, rm } from "fs/promises"
+
+import store from "../utils/node/store"
 import { Entity } from "../utils/data/entity"
 import { fork } from "../utils/node/fork"
 import { sha256 } from "../utils/node/common"
 
-const DIST_PATH = path.join(__dirname, '..', '..', 'dist'),
-    SCRIPT_PATH = path.join(DIST_PATH, 'cli', 'index.js'),
-    ASSETS_PATH = path.join(DIST_PATH, 'assets')
-
-async function copyToAssets(src: string, dst: string) {
-    const tmp = path.join(ASSETS_PATH, dst)
-    await mkdir(path.dirname(tmp), { recursive: true })
-    await cp(src, tmp)
-    return dst
-}
+const SCRIPT_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'index.js')
 
 export default {
     assets: {
-        async get(url: string) {
-            return readFile(path.join(ASSETS_PATH, url))
+        async get(key: string) {
+            return await store.get(key)
         },
     },
     async *open(files: File[]) {
         const cwd = path.join(os.tmpdir(), 'open', Math.random().toString(16).slice(2, 10))
         await mkdir(cwd, { recursive: true })
-        const copy = (src: string, dir: string) => copyToAssets(path.join(cwd, src), path.join(dir, src))
+        const copy = async (src: string, dir: string) => {
+            const buf = await readFile(path.join(cwd, src)),
+                key = path.join(dir, src).replace(/\\/g, '/')
+            return await store.set(key, buf)
+        }
         for (const file of files) {
             yield { message: `opening ${file.name}` }
             await writeFile(path.join(cwd, file.name), Buffer.from(await file.arrayBuffer()))
