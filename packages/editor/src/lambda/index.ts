@@ -5,24 +5,19 @@ import { mkdir, readFile, writeFile, rm } from "fs/promises"
 import store from "../utils/node/store"
 import { Entity } from "../utils/data/entity"
 import { fork } from "../utils/node/fork"
-import { sha256 } from "../utils/node/common"
 
 const SCRIPT_PATH = path.join(__dirname, '..', '..', 'dist', 'cli', 'index.js')
 
 export default {
     assets: {
         async get(key: string) {
-            return await store.get(key)
-        },
+            return await store.root.get(key)
+        }
     },
     async *open(files: File[]) {
         const cwd = path.join(os.tmpdir(), 'open', Math.random().toString(16).slice(2, 10))
         await mkdir(cwd, { recursive: true })
-        const copy = async (src: string, dir: string) => {
-            const buf = await readFile(path.join(cwd, src)),
-                key = path.join(dir, src).replace(/\\/g, '/')
-            return await store.set(key, buf)
-        }
+        const read = (src: string) => readFile(path.join(cwd, src))
         for (const file of files) {
             yield { message: `opening ${file.name}` }
             await writeFile(path.join(cwd, file.name), Buffer.from(await file.arrayBuffer()))
@@ -40,19 +35,19 @@ export default {
             yield { message: `parsing ${file.name}` }
             const json = await readFile(save, 'utf-8'),
                 { entities } = JSON.parse(json) as { entities: Entity[] }
-            await Promise.all(entities.map(async ({ topo, geom, data }) => {
-                // TODO: storage backend
-                const hash = data ?
-                    sha256(await readFile(path.join(cwd, data))) :
-                    Math.random().toString(16).slice(2, 10)
+            await Promise.all(entities.map(async entity => {
+                const { topo, geom, data } = entity
+                if (data) {
+                    entity.data = await store.data.save(await read(data))
+                }
                 if (geom?.url) {
-                    geom.url = await copy(geom.url, `geom/${hash}`)
+                    geom.url = await store.geom.cache(await read(geom.url), data || '')
                 }
                 if (topo?.faces?.url) {
-                    topo.faces.url = await copy(topo.faces.url, `topo/faces/${hash}`)
+                    topo.faces.url = await store.geom.cache(await read(topo.faces.url), data || '')
                 }
                 if (topo?.edges?.url) {
-                    topo.edges.url = await copy(topo.edges.url, `topo/edges/${hash}`)
+                    topo.edges.url = await store.geom.cache(await read(topo.edges.url), data || '')
                 }
             }))
             yield { entities }

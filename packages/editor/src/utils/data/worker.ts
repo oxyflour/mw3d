@@ -4,20 +4,26 @@ import { pool } from "../common/pool"
 
 import WorkerSelf from './worker?worker&inline'
 
-const list = Array(5).fill(0).map(() => pool(async (url: string) => {
-    const req = await fetch(`/static/assets/${url}`)
+async function load(url: string) {
+    const req = await fetch(`/static/geom/${url}`)
     return await req.arrayBuffer()
-}))
+}
+
+const list = Array(5).fill(0).map(() => pool(load))
 export default Utils.wrap({
     num: navigator.hardwareConcurrency,
     fork: () => new (WorkerSelf as any)(),
     api: {
         assets: {
             async get(url: string) {
-                const load = list[Math.floor(Math.random() * list.length)]!,
-                    buf = await load(url)
+                const buf = await list[Math.floor(Math.random() * list.length)]!(url)
                 return unpack(new Uint8Array(buf))
             }
+        },
+        async sha256(data: any) {
+            const buf = new TextEncoder().encode(JSON.stringify(data)).buffer,
+                arr = await crypto.subtle.digest('SHA-256', buf)
+            return Array.from(new Uint8Array(arr)).map(b => b.toString(16).padStart(2, '0')).join('')
         }
     }
 })
