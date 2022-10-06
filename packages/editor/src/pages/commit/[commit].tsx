@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Engine, Mesh, Obj3, Utils } from '@ttk/react'
 
 import Toolbar from '../../comps/toolbar'
@@ -11,7 +10,8 @@ import { Entity, parse, TreeEnts } from '../../utils/data/entity'
 import { useAsync } from '../../utils/react/hooks'
 import { ViewOpts } from '../../utils/data/view'
 import { select } from '../../utils/data/tree'
-import { RouteMatch } from 'react-router'
+import { useEntities } from '..'
+import { RouteMatch } from 'react-router-dom'
 
 async function loadGeom(url?: string) {
     if (url) {
@@ -95,26 +95,10 @@ const DEFAULT_VIEWOPTS = {
 } as ViewOpts
 
 export default ({ params }: RouteMatch<'commit'>) => {
-    const [ents, setEntsNow] = useState([] as Entity[]),
+    const [ents, setEnts] = useEntities(params.commit),
         [tree, setTree] = useState({ } as TreeEnts),
-        [view, setView] = useState(DEFAULT_VIEWOPTS),
-        nav = useNavigate()
-    function setEnts(ents: Entity[]) {
-        worker.sha256(ents).then(commit => {
-            localStorage.setItem(`/commit/${commit}`, JSON.stringify(ents))
-            nav(`/commit/${commit}`)
-        })
-    }
-    useEffect(() => {
-        const { commit } = params,
-            saved = commit && localStorage.getItem(`/commit/${commit}`)
-        if (saved) {
-            setEntsNow(JSON.parse(saved))
-        }
-    }, [params.commit])
-    useEffect(() => {
-        setTree(parse(ents))
-    }, [ents])
+        [view, setView] = useState(DEFAULT_VIEWOPTS)
+    useEffect(() => { setTree(parse(ents)) }, [ents])
     return <div className="app flex flex-col h-full">
         <Toolbar { ...{ ents, setEnts, view, setView } } />
         <Resize className="grow">
