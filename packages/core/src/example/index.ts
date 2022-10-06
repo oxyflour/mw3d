@@ -115,20 +115,20 @@ const camera = new PerspectiveCamera({
             texture: new Texture({
                 size: { width: tex.width, height: tex.height },
                 format: 'rgba8unorm',
-                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+                usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.RENDER_ATTACHMENT,
                 source,
             }),
         }), {
             position: [0, 0, 160],
         }),
         new Mesh(new BoxLines({ size: 400 }), cube.mat),
-        new Mesh(new BoxGeometry({ size: 200 }), new BasicMaterial({
+        new Mesh(new BoxGeometry({ size: 20 }), new BasicMaterial({
             color: [0, 1, 0],
             renderOrder: 2,
         }), {
             position: [0, 200, 0],
         }),
-        new Mesh(new BoxGeometry({ size: 200 }), new BasicMaterial({
+        new Mesh(new BoxGeometry({ size: 20 }), new BasicMaterial({
             color: [1, 0, 0],
             renderOrder: 1,
         }), {

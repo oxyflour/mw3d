@@ -149,7 +149,7 @@ const worker = wrap({
                     width, height,
                     texture: new Texture({
                         size: { width: renderer.width, height: renderer.height, depthOrArrayLayers: 1 },
-                        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+                        usage: Texture.Usage.RENDER_ATTACHMENT | Texture.Usage.TEXTURE_BINDING,
                         format: 'depth24plus-stencil8',
                     }, {
                         aspect: 'depth-only'

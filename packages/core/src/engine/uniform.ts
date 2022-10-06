@@ -1,6 +1,7 @@
 import { mat4, vec4 } from "gl-matrix"
 
 export class Texture {
+    static Usage = { ...(globalThis.GPUTextureUsage || { }) }
     constructor(readonly opts: GPUTextureDescriptor & { source?: ImageBitmap }, readonly view?: GPUTextureViewDescriptor) {
     }
 }
