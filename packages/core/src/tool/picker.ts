@@ -8,6 +8,7 @@ import Obj3, { Scene } from "../engine/obj3"
 import Camera, { PerspectiveCamera } from "../engine/camera"
 import { Mesh } from '../engine'
 import { Texture } from "../engine/uniform"
+import { LRU } from "../utils"
 
 import WorkerSelf from './picker?worker&inline'
 
@@ -23,11 +24,9 @@ interface WebGPUOffscreenCanvas extends
 const cache = {
     created: undefined as undefined | ReturnType<typeof initCache>,
     scene: new Scene(),
-    // TODO: LRU
-    geoMap: { } as Record<number, Geometry>,
-    matMap: { } as Record<number, Material>,
-    meshMap: { } as Record<string, Mesh>,
-    meshRev: { } as Record<string, number>,
+    geoMap: new LRU<Geometry>(10000),
+    matMap: new LRU<Material>(10000),
+    meshMap: new LRU<Mesh>(10000),
 }
 async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
     const renderer = await Renderer.create(canvas, opts),
@@ -63,7 +62,6 @@ async function readPixel({ x, y, w = 1, h = 1 }: { x: number, y: number, w?: num
 
 export interface PickMesh {
     id: number
-    rev: number
     geoId: number 
     worldMatrix: mat4
     clipPlane: vec4
@@ -103,6 +101,9 @@ const worker = wrap({
         async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
             await cache.created || (cache.created = initCache(canvas, pixels, opts))
         },
+        async query({ geometries }: { geometries: number[] }) {
+            return { geometries: geometries.filter(id => !cache.geoMap.get(id)) }
+        },
         async render(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
                      { fov, aspect, near, far, worldMatrix }: PickCamera,
@@ -113,25 +114,23 @@ const worker = wrap({
             renderLock = Date.now()
 
             const { renderer, camera, pixels } = await getCache(),
-                { scene, geoMap, matMap, meshMap, meshRev } = cache
+                { scene, geoMap, matMap, meshMap } = cache
             renderer.width = width
             renderer.height = height
 
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
-            for (const { worldMatrix, geoId, id, rev, clipPlane } of Object.values(meshes)) {
-                const item = geometries[geoId]
-                if (!item) {
+            for (const { worldMatrix, geoId, id, clipPlane } of Object.values(meshes)) {
+                if (!geometries[geoId] && !geoMap.get(geoId)) {
                     throw Error(`geometry ${geoId} is not found`)
                 }
-                const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(item)),
-                    mat = matMap[id] || (matMap[id] = new BasicMaterial({
+                const geo = geoMap.get(geoId) || geoMap.set(geoId, new Geometry(geometries[geoId]!)),
+                    mat = matMap.get(id) || matMap.set(id, new BasicMaterial({
                         entry: { frag: 'fragMainColor' },
                         color: new Uint8Array([id, id >> 8, 0]),
                     })),
-                    mesh = meshMap[id] && meshRev[id] === rev ? meshMap[id]! : (meshMap[id] = new Mesh(geo, mat))
-                meshRev[id] = rev
+                    mesh = meshMap.get(id) || meshMap.set(id, new Mesh(geo, mat))
                 if (clipPlane) {
                     vec4.copy(mat.clipPlane, clipPlane)
                 }
@@ -203,16 +202,18 @@ export default class Picker {
         for (const obj of scene) {
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.geo && obj.mat) {
-                    const { worldMatrix, geo, id, rev, mat } = obj
-                    meshes[obj.id] = { worldMatrix, id, rev, clipPlane: mat.clipPlane, geoId: geo.id }
+                    const { worldMatrix, geo, id, mat } = obj
+                    meshes[obj.id] = { worldMatrix, id, clipPlane: mat.clipPlane, geoId: geo.id }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }
             })
         }
         const { fov, aspect, near, far, worldMatrix } = camera,
-            view = { fov, aspect, near, far, worldMatrix }
-        return await worker.render(meshes, geometries, view, opts)
+            view = { fov, aspect, near, far, worldMatrix },
+            cached = await worker.query({ geometries: Object.keys(geometries).map(parseFloat) })
+        return await worker.render(meshes,
+            Object.fromEntries(cached.geometries.map(id => [id, geometries[id]!])), view, opts)
     }
 
     private static created: Promise<Picker>

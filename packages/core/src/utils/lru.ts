@@ -2,12 +2,12 @@ export class LRU<T> {
     map = { } as Record<string, { time: number, val: T }>
     constructor(readonly capacity = 100) {
     }
-    get(key: string) {
+    get(key: string | number) {
         const ret = this.map[key]
         ret && (ret.time = Date.now())
         return ret?.val
     }
-    set(key: string, val: T) {
+    set(key: string | number, val: T) {
         const ret = this.map[key] = { time: Date.now(), val }
         if (Object.keys(this.map).length > this.capacity) {
             const [item] = Object.entries(this.map).sort(([, a], [, b]) => a.time - b.time)
