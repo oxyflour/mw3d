@@ -12,7 +12,7 @@ import { ViewOpts } from '../../utils/data/view'
 import { select } from '../../utils/data/tree'
 import { useEntities } from '..'
 import { RouteMatch } from 'react-router-dom'
-import { MATERIAL_SET } from '../../comps/view/pick'
+import { MATERIAL_SET } from '../../comps/view/pick/utils'
 
 async function loadGeom(url?: string) {
     if (url) {

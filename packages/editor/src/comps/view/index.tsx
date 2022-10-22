@@ -6,9 +6,11 @@ import { TreeData, TreeNode } from '../../utils/data/tree'
 import { ViewOpts } from '../../utils/data/view'
 import { KeyControl } from './control/key'
 import { MouseControl } from './control/mouse'
-import { EntityPicker, MATERIAL_SET, Obj3WithEntity, TopoSelection } from './pick'
 
 import './index.less'
+import { EntityPicker } from './pick/entity'
+import { TopoPicked } from './pick/picked'
+import { MATERIAL_SET, Obj3WithEntity } from './pick/utils'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity, active: boolean }
@@ -80,7 +82,7 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
             } />
         }
         {
-            view.pick?.topos && view.pick.topos.map((item, idx) => <TopoSelection key={ idx } { ...item } />)
+            view.pick?.topos && view.pick.topos.map((item, idx) => <TopoPicked key={ idx } { ...item } />)
         }
         { children }
     </Canvas>

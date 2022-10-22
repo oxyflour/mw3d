@@ -1,7 +1,7 @@
 import { CanvasContextValue, Control, Engine, useCanvas, useFrame } from "@ttk/react"
 import { useEffect, useRef } from "react"
 import { queue } from "../../../utils/common/queue"
-import { CAMERA_PIVOT, pick } from "../pick"
+import { CAMERA_PIVOT, pick } from "../pick/utils"
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')
