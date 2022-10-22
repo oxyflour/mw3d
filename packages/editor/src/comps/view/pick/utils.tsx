@@ -2,29 +2,30 @@ import { CanvasContextValue, Engine, Tool, Utils } from "@ttk/react"
 import lambda from "../../../lambda"
 import { unpack } from "../../../utils/common/pack"
 import { Entity } from "../../../utils/data/entity"
-import { Edge, Face } from "../../../utils/data/topo"
+import { Edge, Face, Vert } from "../../../utils/data/topo"
+import { ViewPickMode } from "../../../utils/data/view"
 
 const FRAG_DASH = `
 fn fragMainColorDash(input: FragInput) -> @location(0) vec4<f32> {
-  if (WGSL_IGNORE_UNUSED) {
-    var a = lightNum;
-    var b = lights;
-    var c = canvasSize;
-  }
-  checkClip(input);
-  var n = material.metallic;
-  var v = material.roughness;
-  var s = input.position.xy - floor(input.position.xy / n) * n;
-  if (v > 0.) {
-    if (s.x > v || s.y > v) {
-      discard;
+    if (WGSL_IGNORE_UNUSED) {
+        var a = lightNum;
+        var b = lights;
+        var c = canvasSize;
     }
-  } else if (v < 0.) {
-    if (s.x < -v || s.y < -v) {
-      discard;
+    checkClip(input);
+    var n = material.metallic;
+    var v = material.roughness;
+    var s = input.position.xy - floor(input.position.xy / n) * n;
+    if (v > 0.) {
+        if (s.x > v || s.y > v) {
+            discard;
+        }
+    } else if (v < 0.) {
+        if (s.x < -v || s.y < -v) {
+            discard;
+        }
     }
-  }
-  return material.color;
+    return material.color;
 }
 `
 
@@ -65,15 +66,23 @@ export async function pick(
 export type Obj3WithEntity = Engine.Obj3 & { entity?: Entity }
 
 const PICK_CACHE = new Utils.LRU<Engine.Mesh[]>(100)
-export async function loadFaces(entity: Entity) {
-    const url = entity.topo?.faces?.url || ''
-    return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-        (url ? unpack(await lambda.assets.get(url)) as Face[] : [])
-            .map(data => new Engine.Mesh(new Engine.Geometry(data), MATERIAL_SET.select)))
-}
-export async function loadEdges(entity: Entity) {
-    const url = entity.topo?.edges?.url || ''
-    return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-        (url ? unpack(await lambda.assets.get(url)) as Edge[] : [])
-            .map(data => new Engine.Mesh(new Engine.LineList({ lines: [data.positions] }), MATERIAL_SET.select)))
+export async function loadTopo(type: ViewPickMode, entity: Entity) {
+    if (type === 'edge') {
+        const url = entity.topo?.edges?.url || ''
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url,
+            (url ? unpack(await lambda.assets.get(url)) as Edge[] : [])
+                .map(data => new Engine.Mesh(new Engine.LineList({ lines: [data.positions] }), MATERIAL_SET.select)))
+    } else if (type === 'face') {
+        const url = entity.topo?.faces?.url || ''
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url,
+            (url ? unpack(await lambda.assets.get(url)) as Face[] : [])
+                .map(data => new Engine.Mesh(new Engine.Geometry(data), MATERIAL_SET.select)))
+    } else if (type === 'vert') {
+        const url = entity.topo?.verts?.url || ''
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url,
+            (url ? unpack(await lambda.assets.get(url)) as Vert[] : [])
+                .map(data => new Engine.Mesh(new Engine.SpriteGeometry({ ...data, width: 50, height: 50, fixed: true }), MATERIAL_SET.select)))
+    } else {
+        throw Error(`loading ${type} not implemented yet`)
+    }
 }

@@ -148,14 +148,13 @@ export default ({ className, ents, view, setEnts, setView }: {
         <div title="Home">
             <Group title="Home">
                 <ImageButton title={
-                    view.pick?.mode ? `Picking ${view.pick.mode}` : 'Pick'
+                    view.pick?.mode ? `Picking ${view.pick.mode}` : 'Pick ...'
                 } menu={
                     <Menu>
                         <MenuGroup>
-                            <MenuItem onClick={ () => updateView('pick', { mode: 'solid' }) }>Solid</MenuItem>
                             <MenuItem onClick={ () => updateView('pick', { mode: 'face' }) }>Face</MenuItem>
                             <MenuItem onClick={ () => updateView('pick', { mode: 'edge' }) }>Edge</MenuItem>
-                            <MenuItem onClick={ () => updateView('pick', { mode: 'vertex' }) }>Vertex</MenuItem>
+                            <MenuItem onClick={ () => updateView('pick', { mode: 'vert' }) }>Vertex</MenuItem>
                             <MenuItem onClick={ () => updateView('pick', { mode: undefined }) }>None</MenuItem>
                         </MenuGroup>
                     </Menu>

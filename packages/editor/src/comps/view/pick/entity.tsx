@@ -6,7 +6,7 @@ import { Entity } from "../../../utils/data/entity"
 import { ViewPickMode } from "../../../utils/data/view"
 import { useAsync } from "../../../utils/react/hooks"
 import { TopoPicker } from "./topo"
-import { loadEdges, loadFaces, Obj3WithEntity, pick } from "./utils"
+import { loadTopo, Obj3WithEntity, pick } from "./utils"
 
 const pickEntity = queue(pick)
 export function EntityPicker({ mode, onSelect }: {
@@ -16,7 +16,7 @@ export function EntityPicker({ mode, onSelect }: {
     const { scene, canvas, ...ctx } = useCanvas(),
         [hover, setHover] = useState({ clientX: -1, clientY: -1 }),
         [entity, setEntity] = useState<Entity>(),
-        [{ value: topos = [] }] = useAsync(async () => entity ? await (mode === 'edge' ? loadEdges : loadFaces)(entity) : [], [mode, entity]),
+        [{ value: topos = [] }] = useAsync(async () => entity ? await loadTopo(mode, entity) : [], [mode, entity]),
         callback = useRef(onSelect),
         onMouseMove = useRef<(evt: MouseEvent) => any>()
     callback.current = onSelect

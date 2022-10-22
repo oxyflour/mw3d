@@ -67,7 +67,7 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
             <EntityPicker mode={ view.pick.mode } onSelect={
                 item => {
                     const topos = view.pick?.topos || [],
-                        type = view.pick?.mode || 'solid',
+                        type = view.pick?.mode!,
                         index = topos.findIndex(topo =>
                             topo.entity === item.entity &&
                             topo.type === type &&

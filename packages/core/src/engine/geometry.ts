@@ -72,14 +72,16 @@ export default class Geometry extends AutoIndex {
 }
 
 export class SpriteGeometry extends Geometry {
-    constructor({ width = 1, height = 1, fixed = false } = { } as {
+    constructor({ position = [0, 0, 0], width = 1, height = 1, fixed = false } = { } as {
         width?: number
         height?: number
         fixed?: boolean
+        position?: [number, number, number]
     }) {
+        const [x, y, z] = position
         super({
             type: 'point-sprite',
-            positions: new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            positions: new Float32Array([x, y, z, x, y, z, x, y, z, x, y, z]),
             indices: new Uint32Array([0, 1, 2, 1, 3, 2]),
             normals: new Float32Array([
                 width, height, fixed ? 1 : 0,

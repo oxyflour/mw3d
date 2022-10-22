@@ -12,6 +12,7 @@ export interface Entity {
     topo?: {
         faces?: { url?: string }
         edges?: { url?: string }
+        verts?: { url?: string }
     }
     trans?: number[]
     nodes?: string[]

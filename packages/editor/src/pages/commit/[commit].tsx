@@ -14,17 +14,12 @@ import { useEntities } from '..'
 import { RouteMatch } from 'react-router-dom'
 import { MATERIAL_SET } from '../../comps/view/pick/utils'
 
-async function loadGeom(url?: string) {
-    if (url) {
-        const { faces, edges } = await worker.assets.get(url)
-        if (faces || edges) {
-            return {
-                faces: faces && new Engine.Geometry(faces),
-                edges: edges && new Engine.LineList(edges),
-            }
-        }
-    }
-    return undefined
+const GEOMETRY_CACHE = new Utils.LRU<{ faces?: Engine.Geometry, edges?: Engine.LineList }>(10000)
+async function loadGeom(url: string) {
+    return GEOMETRY_CACHE.get(url) || GEOMETRY_CACHE.set(url, (({ faces, edges }) => ({
+        faces: faces && new Engine.Geometry(faces),
+        edges: edges && new Engine.LineList(edges),
+    }))(await worker.assets.get(url)))
 }
 
 const MATERIAL_CACHE = new Utils.LRU<{ default: Engine.Material, dimmed: Engine.Material }>()
@@ -75,7 +70,7 @@ function MeshBound({ create, ...props }: EntityProps) {
 
 const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
 function EntityMesh(props: EntityProps) {
-    const [{ value: geom }] = useAsync(loadGeom, [props.data.geom?.url]),
+    const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [props.data.geom?.url]),
         mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props }

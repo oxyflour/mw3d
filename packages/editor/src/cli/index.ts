@@ -9,8 +9,7 @@ import { Entity } from '../utils/data/entity'
 import { sha256 } from '../utils/node/common'
 
 async function saveSolid(solid: Shape, root: string, file: string) {
-    console.log(solid.meta)
-    const { faces, edges, geom } = mesh.topo(solid),
+    const { verts, faces, edges, geom } = mesh.topo(solid),
         { min, max } = solid.bound(),
         data = Math.random().toString(16).slice(2, 10)
 
@@ -25,6 +24,7 @@ async function saveSolid(solid: Shape, root: string, file: string) {
     }))
     await writeFile(path.join(root, hash, 'faces'), pack(faces))
     await writeFile(path.join(root, hash, 'edges'), pack(edges))
+    await writeFile(path.join(root, hash, 'verts'), pack((verts as any as any[]).map(item => ({ position: item.positions }))))
 
     const meta = solid.meta,
         rgb = (str: string) => Object.fromEntries(str.split(',').map((v, i) => [('rgb')[i], parseFloat(v)]))
@@ -40,7 +40,8 @@ async function saveSolid(solid: Shape, root: string, file: string) {
         geom: { url: hash + '/geom' },
         topo: {
             faces: { url: hash + '/faces' },
-            edges: { url: hash + '/edges' }
+            edges: { url: hash + '/edges' },
+            verts: { url: hash + '/verts' },
         }
     } as Entity
 }

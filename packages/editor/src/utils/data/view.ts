@@ -1,7 +1,7 @@
 import { KeyMap } from "../dom/keys"
 import { Entity } from "./entity"
 
-export type ViewPickMode = 'solid' | 'face' | 'edge' | 'vertex'
+export type ViewPickMode = 'face' | 'edge' | 'vert'
 
 export interface ViewOpts {
     pick?: {

@@ -6,3 +6,6 @@ export type Face = {
 export type Edge = {
     positions: Float32Array
 }
+export type Vert = {
+    position: [number, number, number]
+}

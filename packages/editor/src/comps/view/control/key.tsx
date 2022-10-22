@@ -17,6 +17,7 @@ export function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: 
         }
     }, [canvas])
     Object.assign(map.current, {
+        'p': down => !down && updatePick({ mode: 'vert' }),
         'f': down => !down && updatePick({ mode: 'face' }),
         'e': down => !down && updatePick({ mode: 'edge' }),
         'd': down => !down && updatePick({ topos: [] }),

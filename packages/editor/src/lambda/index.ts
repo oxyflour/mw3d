@@ -49,6 +49,9 @@ export default {
                 if (topo?.edges?.url) {
                     topo.edges.url = await store.geom.cache(await read(topo.edges.url), data || '')
                 }
+                if (topo?.verts?.url) {
+                    topo.verts.url = await store.geom.cache(await read(topo.verts.url), data || '')
+                }
             }))
             yield { entities }
         }
