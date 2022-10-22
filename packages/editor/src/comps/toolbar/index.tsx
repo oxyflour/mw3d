@@ -125,7 +125,7 @@ export default ({ className, ents, view, setEnts, setView }: {
                         () => upload(async files => {
                             const arr = files ? Array.from(files) : [],
                                 ret = ents.slice()
-                            for await (const msg of lambda.open(arr)) {
+                            for await (const msg of lambda.shape.open(arr)) {
                                 if (msg.entities) {
                                     ret.push(...msg.entities)
                                 }

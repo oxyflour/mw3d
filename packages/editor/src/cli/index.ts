@@ -1,52 +1,12 @@
 #!/usr/bin/env node
 
-import path from 'path'
 import { Command } from 'commander'
-import { mkdir, readFile, writeFile } from 'fs/promises'
-import { step, mesh, Shape } from '@yff/ncc'
-import { pack } from '../utils/common/pack'
-import { Entity } from '../utils/data/entity'
-import { sha256 } from '../utils/node/common'
-
-async function saveSolid(solid: Shape, root: string, file: string) {
-    const { verts, faces, edges, geom } = mesh.topo(solid),
-        { min, max } = solid.bound(),
-        data = Math.random().toString(16).slice(2, 10)
-
-    await mkdir(root, { recursive: true })
-    step.save(path.join(root, data), solid)
-    const hash = sha256(await readFile(path.join(root, data)))
-
-    await mkdir(path.join(root, hash), { recursive: true })
-    await writeFile(path.join(root, hash, 'geom'), pack({
-        faces: geom,
-        edges: { lines: edges.map(item => item.positions) }
-    }))
-    await writeFile(path.join(root, hash, 'faces'), pack(faces))
-    await writeFile(path.join(root, hash, 'edges'), pack(edges))
-    await writeFile(path.join(root, hash, 'verts'), pack((verts as any as any[]).map(item => ({ position: item.positions }))))
-
-    const meta = solid.meta,
-        rgb = (str: string) => Object.fromEntries(str.split(',').map((v, i) => [('rgb')[i], parseFloat(v)]))
-    return {
-        data: data,
-        bound: [min.x, min.y, min.z, max.x, max.y, max.z],
-        attrs: {
-            $n: meta['ManifoldSolidBrep']?.replace(/\|/g, '/') ||
-                path.basename(file) + '/' + data,
-            $m: meta['LayerDescription'] || meta['LayerName'],
-            $rgb: meta['ColorRGB'] && rgb(meta['ColorRGB']),
-        },
-        geom: { url: hash + '/geom' },
-        topo: {
-            faces: { url: hash + '/faces' },
-            edges: { url: hash + '/edges' },
-            verts: { url: hash + '/verts' },
-        }
-    } as Entity
-}
+import { BrowserWindow } from 'electron'
+import { writeFile } from 'fs/promises'
+import { parse } from './shape/occ'
 
 const program = new Command()
+
 program
 .command('convert')
 .arguments('<files...>')
@@ -55,17 +15,64 @@ program
 try {
     for (const file of files) {
         if (file.toLowerCase().endsWith('.stp')) {
-            const dir = path.dirname(save),
-                shapes = step.load(file),
-                entities = [ ] as Entity[]
-            for (const solid of shapes.find(Shape.types.SOLID)) {
-                entities.push(await saveSolid(solid, dir, file))
-            }
+            const entities = await parse(file, save)
             await writeFile(save, JSON.stringify({ entities }))
         } else {
             throw Error(`parsing file ${file} not supported`)
         }
     }
+} catch (err) {
+    console.error(err)
+    process.exit(-1)
+}
+})
+
+program
+.command('cast')
+.arguments('<url>')
+.action(async (url: string) => {
+try {
+    const { app, protocol, BrowserWindow, ipcMain, desktopCapturer } = await import('electron')
+
+    // https://github.com/electron/electron/issues/23254
+    app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100')
+
+    // https://forum.babylonjs.com/t/electron-babylonjs-webgpu-not-working-yet/23544/10
+    app.commandLine.appendSwitch('enable-unsafe-webgpu')
+
+    // https://github.com/electron/electron/issues/15448
+    protocol.registerSchemesAsPrivileged([{
+        scheme: 'http',
+        privileges: {
+            bypassCSP: true,
+            secure: true,
+            supportFetchAPI: true,
+            corsEnabled: true,
+        }
+    }])
+
+    let win: BrowserWindow
+    app.whenReady().then(() => {
+        win = new BrowserWindow({
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false,
+            }
+        })
+        win.setMenuBarVisibility(false)
+        win.webContents.openDevTools({ mode: 'detach' })
+        win.loadURL(url)
+    })
+
+    app.on('window-all-closed', () => {
+        if (process.platform !== 'darwin') {
+            app.quit()
+        }
+    })
+
+    ipcMain.handle('desktop-get-sources', async (_, opts) => {
+        return desktopCapturer.getSources(opts)
+    })
 } catch (err) {
     console.error(err)
     process.exit(-1)

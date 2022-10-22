@@ -13,7 +13,7 @@ export default async (ctx: { req: IncomingMessage, body?: any }, next: Function)
             const [data = ''] = key.split('/g/'),
                 buf = await store.root.get(data),
                 file = { name: data, arrayBuffer: () => Promise.resolve(buf) }
-            for await (const msg of lambda.open([file])) {
+            for await (const msg of lambda.shape.open([file])) {
                 console.log(msg)
             }
             ctx.body = await store.root.get(key)

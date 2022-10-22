@@ -8,7 +8,6 @@ import Cache, { BindingResource } from './cache'
 import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
 import { Sampler, Texture, UniformValue } from "../uniform"
-import ThreeRenderer from "../three/renderer"
 
 const MAX_LIGHTS = 4
 
@@ -67,7 +66,7 @@ export default class Renderer {
         return this
     }
     static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts?: Renderer['opts']) {
-        return navigator.gpu ? await new Renderer(canvas, opts).init() : new ThreeRenderer(canvas, opts)
+        return await new Renderer(canvas, opts).init()
     }
 
     width = 100

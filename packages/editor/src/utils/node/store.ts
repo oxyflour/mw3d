@@ -6,14 +6,45 @@ import { sha256 } from "./common"
 
 const unzip = promisify(unzipRaw),
     deflate = promisify(deflateRaw),
-    getRedis = asyncCache(async () => new Redis())
+    getRedis = asyncCache(async () => new Redis()),
+    getReceiver = asyncCache(async () => {
+        const redis = new Redis()
+        redis.on('message', (channel, message) => {
+            for (const cb of callbacks[channel] || []) {
+                cb(message)
+            }
+        })
+        return redis
+    }),
+    callbacks = { } as Record<string, ((message: string) => any)[]>
 
 class Store {
     constructor(public prefix = '') {
     }
+    async sub(channel: string, callback: (message: any) => any) {
+        const redis = await getReceiver()
+        callbacks[channel] = (callbacks[channel] || []).concat(data => callback(JSON.parse(data)))
+        await redis.subscribe(channel)
+        return async () => {
+            const cbs = callbacks[channel] = (callbacks[channel] || []).filter(item => item !== callback)
+            if (!cbs.length) {
+                await redis.unsubscribe(channel)
+                delete callbacks[channel]
+            }
+        }
+    }
+    async pub(channel: string, message: any) {
+        const redis = await getRedis()
+        await redis.publish(channel, JSON.stringify(message))
+    }
     async get(key: string, ex = 1000) {
         const zipped = await this.zipped(key, ex)
         return await unzip(zipped)
+    }
+    async set(key: string, buf: Buffer, ex = 1000) {
+        const redis = await getRedis(),
+            zipped = await deflate(buf)
+        await redis.set(key, zipped, 'EX', ex)
     }
     async zipped(key: string, ex = 1000) {
         const redis = await getRedis(),

@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Engine, Mesh, Obj3, Utils } from '@ttk/react'
-
-import Toolbar from '../../comps/toolbar'
-import Nav from '../../comps/nav'
-import View, { EntityProps } from '../../comps/view'
-import Resize from '../../comps/utils/resize'
-import worker from '../../utils/data/worker'
-import { Entity, parse, TreeEnts } from '../../utils/data/entity'
-import { useAsync } from '../../utils/react/hooks'
-import { ViewOpts } from '../../utils/data/view'
-import { select } from '../../utils/data/tree'
-import { useEntities } from '..'
 import { RouteMatch } from 'react-router-dom'
-import { MATERIAL_SET } from '../../comps/view/pick/utils'
+
+import Toolbar from '../../../../comps/toolbar'
+import Nav from '../../../../comps/nav'
+import View, { EntityProps } from '../../../../comps/view'
+import Resize from '../../../../comps/utils/resize'
+import worker from '../../../../utils/data/worker'
+import { Entity, parse, TreeEnts } from '../../../../utils/data/entity'
+import { useAsync } from '../../../../utils/react/hooks'
+import { ViewOpts } from '../../../../utils/data/view'
+import { select } from '../../../../utils/data/tree'
+import { MATERIAL_SET } from '../../../../comps/view/pick/utils'
+import { useEntities } from '..'
 
 const GEOMETRY_CACHE = new Utils.LRU<{ faces?: Engine.Geometry, edges?: Engine.LineList }>(10000)
 async function loadGeom(url: string) {

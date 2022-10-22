@@ -1,55 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-import lambda from '../lambda'
-import worker from '../utils/data/worker'
-import { Entity } from '../utils/data/entity'
-import { upload } from '../utils/dom/upload'
+import Receiver from '../comps/cast/receiver'
+import Sender from '../comps/cast/sender'
+import connect, { IO } from '../utils/cast/connect'
 
 import './index.less'
 
-export const loading = <div className="flex h-screen">
-    <div className="m-auto">
-        Loading...
-    </div>
-</div>
+const peerOpts = { iceServers: [{ urls: 'stun:172.24.197.158', username: 'abc', credential: 'abc', credentialType: 'password' as 'password' }] }
 
-const entityCache = new WeakMap<Entity[], string>()
-export function useEntities(current?: string) {
-    const [ents, saveEnts] = useState([] as Entity[]),
-        nav = useNavigate()
-    async function setEnts(ents: Entity[]) {
-        saveEnts(ents)
-        const commit = await worker.sha256(ents)
-        if (commit !== current) {
-            entityCache.set(ents, commit)
-            localStorage.setItem(commit, JSON.stringify(ents))
-            nav(`/commit/${commit}`)
-        }
-    }
+export function layout({ children }: { children: any }) {
+    const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || [],
+        nav = useNavigate(),
+        [api, setApi] = useState<IO>()
     useEffect(() => {
-        const commit = entityCache.get(ents)
-        if (commit !== current && current) {
-            const ents = JSON.parse(localStorage.getItem(current) || '[]')
-            entityCache.set(ents, current)
-            saveEnts(ents)
+        if (!sess) {
+            nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
+            return () => { }
+        } else {
+            const api = connect(sess)
+            setApi(api)
+            return () => { api.close() }
         }
-    }, [ents, current])
-    return [ents, setEnts] as [typeof ents, typeof setEnts]
+    }, [sess])
+    return api ?
+        ('gpu' in navigator ?
+            <Sender peerOpts={ peerOpts } api={ api }>{ children }</Sender> :
+            <Receiver peerOpts={ peerOpts } api={ api } />) :
+        'Loading...'
 }
 
-export default () => {
-    const [, setEnts] = useEntities()
-    return <button onClick={
-        () => upload(async files => {
-            const arr = files ? Array.from(files) : [],
-                ents = []
-            for await (const msg of lambda.open(arr)) {
-                if (msg.entities) {
-                    ents.push(...msg.entities)
-                }
-            }
-            setEnts(ents)
-        })
-    }>open</button>
-}
+export default () => 'Starting New Session...'
