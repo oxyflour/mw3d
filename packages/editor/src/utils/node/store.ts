@@ -52,15 +52,5 @@ export default {
         async cache(buf: Buffer, data: string) {
             return await root.cache(buf, data + '/g/')
         },
-        async get(key: string) {
-            try {
-                return await root.get(key)
-            } catch (err) {
-                const [data] = key.split('/g/')
-                // TODO: parse data
-                data
-                return await root.get(key)
-            }
-        },
     },
 }

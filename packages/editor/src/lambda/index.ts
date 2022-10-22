@@ -14,7 +14,7 @@ export default {
             return await store.root.get(key)
         }
     },
-    async *open(files: File[]) {
+    async *open(files: { name: string, arrayBuffer: () => Promise<ArrayBuffer> }[]) {
         const cwd = path.join(os.tmpdir(), 'open', Math.random().toString(16).slice(2, 10))
         await mkdir(cwd, { recursive: true })
         const read = (src: string) => readFile(path.join(cwd, src))
@@ -41,16 +41,16 @@ export default {
                     entity.data = await store.data.save(await read(data))
                 }
                 if (geom?.url) {
-                    geom.url = await store.geom.cache(await read(geom.url), data || '')
+                    geom.url = await store.geom.cache(await read(geom.url), entity.data || '')
                 }
                 if (topo?.faces?.url) {
-                    topo.faces.url = await store.geom.cache(await read(topo.faces.url), data || '')
+                    topo.faces.url = await store.geom.cache(await read(topo.faces.url), entity.data || '')
                 }
                 if (topo?.edges?.url) {
-                    topo.edges.url = await store.geom.cache(await read(topo.edges.url), data || '')
+                    topo.edges.url = await store.geom.cache(await read(topo.edges.url), entity.data || '')
                 }
                 if (topo?.verts?.url) {
-                    topo.verts.url = await store.geom.cache(await read(topo.verts.url), data || '')
+                    topo.verts.url = await store.geom.cache(await read(topo.verts.url), entity.data || '')
                 }
             }))
             yield { entities }

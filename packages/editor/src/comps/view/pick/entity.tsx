@@ -57,7 +57,9 @@ export function EntityPicker({ mode, pickable, onSelect }: {
     return entity && topos.length &&
         <Obj3 matrix={ entity.trans }>
         {
-            topos.map(item => <Mesh key={ item.id }
+            // hide other faces for performance
+            topos.map(item => (mode !== 'face' || hoverMesh?.id === item.id) &&
+            <Mesh key={ item.id }
                 renderOrder={ item.id === hoverMesh?.id ? -100 : -5 }
                 geo={ item.geo }
                 mat={ item.id === hoverMesh?.id ? MATERIAL_SET.hover : item.mat } />)
