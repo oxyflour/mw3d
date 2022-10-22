@@ -197,6 +197,29 @@ fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
 }
 
 @fragment
+fn fragMainColorDash(input: FragInput) -> @location(0) vec4<f32> {
+  if (WGSL_IGNORE_UNUSED) {
+    var a = lightNum;
+    var b = lights;
+    var c = canvasSize;
+  }
+  checkClip(input);
+  var n = material.metallic;
+  var v = material.roughness;
+  var s = input.position.xy - floor(input.position.xy / n) * n;
+  if (v > 0) {
+    if (s.x > v || s.y > v) {
+      discard;
+    }
+  } else if (v < 0) {
+    if (s.x < -v || s.y < -v) {
+      discard;
+    }
+  }
+  return material.color;
+}
+
+@fragment
 fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
   if (WGSL_IGNORE_UNUSED) {
     var a = lightNum;

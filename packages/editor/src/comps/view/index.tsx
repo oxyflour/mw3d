@@ -1,133 +1,17 @@
-import {
-    Canvas, Control, Engine, Mesh, useCanvas,
-    Tool, CanvasContextValue, useFrame, Obj3, Utils
-} from '@ttk/react'
-import { Edge, Face } from '@yff/ncc'
-import React, { useEffect, useRef, useState } from 'react'
-import lambda from '../../lambda'
-import { unpack } from '../../utils/common/pack'
-import { queue } from '../../utils/common/queue'
+import { Canvas, Engine, Mesh } from '@ttk/react'
+import React, {  } from 'react'
+
 import { Entity, TreeEnts } from '../../utils/data/entity'
 import { TreeData, TreeNode } from '../../utils/data/tree'
 import { ViewOpts } from '../../utils/data/view'
-import { KeyBinding, KeyMap } from '../../utils/dom/keys'
-import { useAsync } from '../../utils/react/hooks'
+import { KeyControl } from './control/key'
+import { MouseControl } from './control/mouse'
+import { EntityPicker, MATERIAL_SET, Obj3WithEntity, TopoSelection } from './pick'
 
 import './index.less'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity, active: boolean }
-
-const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
-export const MATERIAL_SET = {
-    select:  new Engine.BasicMaterial({ color: [1, 0, 0, 0.1], lineWidth: devicePixelRatio * 5, entry: { frag: 'fragMainColor' } }),
-    hover:   new Engine.BasicMaterial({ color: [1, 0, 0, 1.0], lineWidth: devicePixelRatio * 5, entry: { frag: 'fragMainColor' } }),
-    default: new Engine.BasicMaterial({ color: [r, g, b, 1.0], lineWidth: devicePixelRatio * 3, emissive: 0.2 }),
-    dimmed:  new Engine.BasicMaterial({ color: [r, g, b, 0.7], lineWidth: devicePixelRatio * 3 })
-}
-
-async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
-    const image = document.createElement('img')
-    image.src = URL.createObjectURL(new Blob([buffer]))
-    await image.decode()
-    image.style.position = 'absolute'
-    const { left, top, right, bottom } = canvas.getBoundingClientRect()
-    image.style.left = left + 'px'
-    image.style.top = top + 'px'
-    image.style.right = right + 'px'
-    image.style.bottom = bottom + 'px'
-    image.addEventListener('click', () => document.body.removeChild(image))
-    document.body.appendChild(image)
-}
-
-const CAMERA_PIVOT = new Engine.Mesh(
-    new Engine.SphereGeometry(),
-    new Engine.BasicMaterial({
-        color: [1, 0, 0, 0.5]
-    }), {
-        scaling: [0.1, 0.1, 0.1]
-    })
-async function pick(
-        { canvas, scene, camera }: CanvasContextValue,
-        { clientX, clientY }: { clientX: number, clientY: number }) {
-    if (!canvas || !scene || !camera) {
-        throw Error(`renderer not initialized`)
-    }
-    const picker = await Tool.Picker.init(),
-        { left, top } = canvas.getBoundingClientRect(),
-        list = new Set(Array.from(scene).filter(item => item !== CAMERA_PIVOT))
-    return await picker.pick(list, camera, {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
-        x: clientX - left,
-        y: clientY - top,
-    })
-}
-async function updatePivot(
-        ctx: CanvasContextValue,
-        evt: { clientX: number, clientY: number }) {
-    const { id, position, buffer } = await pick(ctx, evt)
-    if (ctx.canvas && (window as any).DEBUG_SHOW_PICK_BUFFER) {
-        await showBuffer(buffer, ctx.canvas)
-    }
-    if (id > 0) {
-        const [x = 0, y = 0, z = 0] = position
-        CAMERA_PIVOT.position.set(x, y, z)
-    }
-}
-const updatePivotEnqueue = queue(updatePivot)
-
-export function MouseControl({ onSelect }: {
-    onSelect?: (obj?: Engine.Obj3) => any
-}) {
-    const ctx = useCanvas(),
-        { scene, camera } = ctx,
-        clickedAt = useRef(0),
-        select = useRef(onSelect)
-    select.current = onSelect
-    useEffect(() => {
-        if (scene) {
-            scene.add(CAMERA_PIVOT)
-            return () => { scene.delete(CAMERA_PIVOT) }
-        } else {
-            return () => { }
-        }
-    }, [scene])
-    useFrame(() => {
-        if (camera) {
-            const [cx, cy, cz] = camera.worldPosition as any as [number, number, number],
-                [px, py, pz] = CAMERA_PIVOT.worldPosition as any as [number, number, number],
-                d = Math.sqrt((cx - px) ** 2 + (cy - py) ** 2 + (cz - pz) ** 2) || 10,
-                r = camera.fov * 0.01 * d
-            CAMERA_PIVOT.scaling.set(r, r, r)
-        }
-    })
-    async function align(evt: MouseEvent | WheelEvent, next: (evt: MouseEvent & WheelEvent) => Promise<any>) {
-        updatePivot(ctx, evt)
-        return await next(evt as any)
-    }
-    async function alignEnqueue(evt: MouseEvent | WheelEvent, next: (evt: MouseEvent & WheelEvent) => Promise<any>) {
-        updatePivotEnqueue(ctx, evt)
-        return await next(evt as any)
-    }
-    async function click(evt: MouseEvent) {
-        // double click
-        if (Date.now() - clickedAt.current < 500) {
-            const { id } = await pick(ctx, evt)
-            let found = undefined as undefined | Engine.Obj3
-            id && scene?.walk(obj => obj.id === id && (found = obj))
-            select.current?.(found)
-            clickedAt.current = 0
-        } else {
-            clickedAt.current = Date.now()
-        }
-    }
-    return <Control pivot={ CAMERA_PIVOT } hooks={{
-        mouse: align,
-        wheel: alignEnqueue,
-        click,
-    }} />
-}
 
 function checked(tree: TreeData, nodes: string[]) {
     const ret = { } as TreeNode
@@ -139,93 +23,6 @@ function checked(tree: TreeData, nodes: string[]) {
         }
     }
     return ret.checked
-}
-
-function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
-    const { canvas } = useCanvas(),
-        map = useRef({ } as KeyMap)
-    useEffect(() => {
-        if (canvas) {
-            const binding = new KeyBinding(canvas)
-            binding.load(map.current)
-            return () => binding.destroy()
-        } else {
-            return () => { }
-        }
-    }, [canvas])
-    Object.assign(map.current, {
-        'f': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'face' } }),
-        'e': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'edge' } }),
-        'Escape': down => !down && setView({ ...view, pick: { ...view.pick, mode: undefined } }),
-    } as KeyMap)
-    return null
-}
-
-type Obj3WithEntity = Engine.Obj3 & { entity?: Entity }
-const PICK_CACHE = new Utils.LRU<Record<number, Engine.Mesh>>(100)
-
-const pickEntity = queue(pick)
-function EntityPicker({ mode }: { mode: string }) {
-    const { scene, canvas, ...rest } = useCanvas(),
-        [hover, setHover] = useState({ clientX: -1, clientY: -1, entity: undefined as undefined | Entity }),
-        callback = useRef<(evt: MouseEvent) => any>()
-    callback.current = async function onMouseMove({ clientX, clientY }: MouseEvent) {
-        const meshes = (Array.from(scene || []) as Obj3WithEntity[]).filter(item => item.entity),
-            map = Object.fromEntries(meshes.map(mesh => [mesh.id, mesh.entity!])),
-            ret = await pickEntity({ scene: new Engine.Scene(meshes), canvas, ...rest }, { clientX, clientY })
-        setHover({ clientX, clientY, entity: map[ret.id] })
-    }
-    useEffect(() => {
-        if (canvas) {
-            const onMouseMove = (evt: MouseEvent) => callback.current?.(evt)
-            canvas.addEventListener('mousemove', onMouseMove)
-            return () => canvas.removeEventListener('mousemove', onMouseMove)
-        } else {
-            return () => { }
-        }
-    }, [canvas])
-    return hover.entity &&
-        <TopoPicker mode={ mode } entity={ hover.entity } hover={ hover } /> || null
-}
-
-const pickTopo = queue(pick)
-async function loadFaces(entity: Entity) {
-    const url = entity.topo?.faces?.url || ''
-    return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-        Object.fromEntries((url ? unpack(await lambda.assets.get(url)) as Face[] : [])
-            .map(data => new Engine.Mesh(new Engine.Geometry(data), MATERIAL_SET.select))
-            .map(mesh => [mesh.id, mesh])))
-}
-async function loadEdges(entity: Entity) {
-    const url = entity.topo?.edges?.url || ''
-    return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-        Object.fromEntries((url ? unpack(await lambda.assets.get(url)) as Edge[] : [])
-            .map(data => new Engine.Mesh(new Engine.LineList({ lines: [data.positions] }), MATERIAL_SET.select))
-            .map(mesh => [mesh.id, mesh])))
-}
-function TopoPicker({ mode, entity, hover }: { mode: string, entity: Entity, hover: { clientX: number, clientY: number } }) {
-    const [{ value = { } }] = useAsync(() => (mode === 'edge' ? loadEdges : loadFaces)(entity), [mode, entity]),
-        ctx = useCanvas(),
-        [hoverTopo, setHoverTopo] = useState<Engine.Mesh>()
-    async function updateHoverFace(meshes: Engine.Mesh[]) {
-        const ret = meshes.length && await pickTopo({ ...ctx, scene: new Engine.Scene(meshes) }, hover) || { id: 0 }
-        setHoverTopo(value[ret.id])
-    }
-    useEffect(() => {
-        updateHoverFace(Object.values(value))
-    }, [value, hover])
-    return <Obj3 matrix={ entity.trans }>
-    {
-        Object.values(value).map(item => <Mesh key={ item.id }
-            renderOrder={ -1 }
-            geo={ item.geo }
-            mat={
-                item.id === hoverTopo?.id ? MATERIAL_SET.hover :
-                mode === 'face' ? undefined :
-                    item.mat
-            } />)
-    }
-    </Obj3>
 }
 
 export default ({ tree, ents, view, setView, component, children, onSelect }: {
@@ -262,10 +59,29 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
             })
         }
         <KeyControl view={ view } setView={ setView } />
-        <MouseControl onSelect={
-            (obj?: Obj3WithEntity) => onSelect?.(obj?.entity?.nodes, obj)
-        } />
-        { view.pick?.mode && <EntityPicker mode={ view.pick.mode } /> }
+        <MouseControl onSelect={ (obj?: Obj3WithEntity) => !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj) } />
+        {
+            view.pick?.mode &&
+            <EntityPicker mode={ view.pick.mode } onSelect={
+                item => {
+                    const topos = view.pick?.topos || [],
+                        type = view.pick?.mode || 'solid',
+                        index = topos.findIndex(topo =>
+                            topo.entity === item.entity &&
+                            topo.type === type &&
+                            topo.index === item.index)
+                    if (index >= 0) {
+                        topos.splice(index, 1)
+                    } else {
+                        topos.push({ ...item, type })
+                    }
+                    setView({ ...view, pick: { ...view.pick, topos } })
+                }
+            } />
+        }
+        {
+            view.pick?.topos && view.pick.topos.map((item, idx) => <TopoSelection key={ idx } { ...item } />)
+        }
         { children }
     </Canvas>
 }

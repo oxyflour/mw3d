@@ -1,20 +1,15 @@
 import { KeyMap } from "../dom/keys"
 import { Entity } from "./entity"
 
+export type ViewPickMode = 'solid' | 'face' | 'edge' | 'vertex'
+
 export interface ViewOpts {
     pick?: {
-        mode?: 'solid' | 'face' | 'edge' | 'vertex'
-        faces?: {
-            entity: Entity,
-            index: number,
-        }[]
-        edges?: {
-            entity: Entity,
-            index: number,
-        }[]
-        vertices?: {
-            entity: Entity,
-            index: number,
+        mode?: ViewPickMode
+        topos?: {
+            entity: Entity
+            type: ViewPickMode
+            index: number
         }[]
     }
     mats?: {

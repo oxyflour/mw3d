@@ -215,9 +215,10 @@ export default class Cache {
                 fragment: {
                     module,
                     entryPoint:
-                        geo.primitive === 'fat-line-list' ? 'fragMainColor' :
-                        geo.primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
-                        typeof frag === 'string' ? frag : frag[geo.primitive],
+                        typeof frag === 'string' ? frag : frag[geo.primitive] || (
+                            geo.primitive === 'fat-line-list' ? 'fragMainColor' :
+                            geo.primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
+                                'fragMainColor'),
                     targets: [{
                         blend: mat.prop.a < 1 ? {
                             color: {
