@@ -11,6 +11,7 @@ import './index.less'
 import { EntityPicker } from './pick/entity'
 import { TopoPicked } from './pick/picked'
 import { MATERIAL_SET, Obj3WithEntity } from './pick/utils'
+import { Axies } from './tool/axies'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity, active: boolean }
@@ -56,8 +57,10 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
                 return React.createElement(component || Mesh, { key, view, active, data, mat, matrix, create } as EntityProps)
             })
         }
+        <Axies />
         <KeyControl view={ view } setView={ setView } />
-        <MouseControl onSelect={ (obj?: Obj3WithEntity) => !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj) } />
+        <MouseControl view={ view }
+            onSelect={ (obj?: Obj3WithEntity) => !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj) } />
         {
             view.pick?.mode &&
             <EntityPicker mode={ view.pick.mode }

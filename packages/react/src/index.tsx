@@ -130,11 +130,16 @@ export type CtrlOpts = ClassArgs<typeof Tool.Control>['2']
 export function Control({ ref, ...opts }: {
     ref?: MutableRefObject<Tool.Control>
 } & CtrlOpts) {
-    const { canvas, camera } = useCanvas()
+    const { canvas, camera } = useCanvas(),
+        [control, setControl] = useState<Tool.Control>()
+    if (control?.opts) {
+        control.opts.hooks = opts.hooks
+    }
     useEffect(() => {
         if (canvas && camera) {
             const control = new Tool.Control(canvas, camera, opts)
             ref && (ref.current = control)
+            setControl(control)
             return () => { control.detach() }
         } else {
             return () => { }

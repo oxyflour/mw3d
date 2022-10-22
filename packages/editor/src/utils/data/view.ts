@@ -18,6 +18,9 @@ export interface ViewOpts {
             rgb?: { r: number, g: number, b: number }
         }
     }
+    mouseControl?: {
+        mode?: 'zoom' | 'pan'
+    }
     config?: {
         keyMap?: KeyMap
     }

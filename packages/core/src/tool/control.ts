@@ -19,6 +19,7 @@ function withMouseDown(onMouseMove: (evt: MouseEvent) => any, onMouseUp?: (evt: 
 
 export class Control {
     readonly pivot: Obj3
+    mode = '' as '' | 'rot' | 'pan' | 'zoom'
     constructor(
         readonly canvas: HTMLCanvasElement,
         readonly camera: PerspectiveCamera,
@@ -35,8 +36,8 @@ export class Control {
                 }
             },
             hooks?: {
-                mouse?: (evt: MouseEvent, next: (evt: MouseEvent) => Promise<any>) => Promise<any>
-                wheel?: (evt: WheelEvent, next: (evt: WheelEvent) => Promise<any>) => Promise<any>
+                mouse?: (evt: MouseEvent, next: (evt: MouseEvent) => Promise<any>, ctrl: Control) => Promise<any>
+                wheel?: (evt: WheelEvent, next: (evt: WheelEvent) => Promise<any>, ctrl: Control) => Promise<any>
                 click?: (evt: MouseEvent) => any
             },
         }) {
@@ -46,7 +47,8 @@ export class Control {
     }
     bindMouseDown(evt: MouseEvent) {
         const hook = this.opts?.hooks?.mouse
-        hook ? hook(evt, evt => this.onMouseDown(evt)) : this.onMouseDown(evt)
+        this.mode = ['rot', 'pan'][evt.button] as typeof this.mode || ''
+        hook ? hook(evt, evt => this.onMouseDown(evt), this) : this.onMouseDown(evt)
     }
     async onMouseDown(evt: MouseEvent) {
         const { canvas, camera, pivot, opts } = this,
@@ -134,15 +136,16 @@ export class Control {
             start.clientX = evt.clientX
             start.clientY = evt.clientY
         }
-        if (evt.button === 0) {
+        if (this.mode === 'rot') {
             withMouseDown(onRotateAroundPivot, onMouseUp)
-        } else if (evt.button === 1) {
+        } else if (this.mode === 'pan') {
             withMouseDown(onDragWithPivot, onMouseUp)
         }
     }
     bindMouseWheel(evt: WheelEvent) {
         const hook = this.opts?.hooks?.wheel
-        hook ? hook(evt, evt => this.onMouseWheel(evt)) : this.onMouseWheel(evt)
+        this.mode === 'zoom'
+        hook ? hook(evt, evt => this.onMouseWheel(evt), this) : this.onMouseWheel(evt)
     }
     async onMouseWheel(evt: WheelEvent) {
         const { camera, pivot, opts } = this,

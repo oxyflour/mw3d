@@ -18,14 +18,15 @@ function randomPosition(size: number) {
     return Array.from(m)
 }
 
-export function ImageButton({ icon, title, onClick, menu }: {
+export function ImageButton({ active, icon, title, onClick, menu }: {
+    active?: boolean
     icon?: any
     title?: string | JSX.Element
     onClick?: () => void
     menu?: any
 }) {
     return menu ?
-    <div className="icon-button flex flex-col cursor-pointer">
+    <div className={ "icon-button flex flex-col cursor-pointer " + (active ? 'active' : '') }>
         <div className="button text-center">
             { icon || <GoAlert size={ 32 } style={{ margin: 4, display: 'inline' }} /> }
         </div>
@@ -33,7 +34,7 @@ export function ImageButton({ icon, title, onClick, menu }: {
             { title } ▼
         </Dropdown>
     </div> :
-    <div className="icon-button button flex flex-col cursor-pointer" onClick={ onClick }>
+    <div className={ "icon-button button flex flex-col cursor-pointer " + (active ? 'active' : '') } onClick={ onClick }>
         <div className="text-center">
             { icon || <GoAlert size={ 32 } style={{ margin: 4, display: 'inline' }} /> }
         </div>
@@ -43,14 +44,15 @@ export function ImageButton({ icon, title, onClick, menu }: {
     </div>
 }
 
-export function IconButton({ icon, title, onClick, menu }: {
+export function IconButton({ active, icon, title, onClick, menu }: {
+    active?: boolean
     icon?: any
     title?: string | JSX.Element
     onClick?: () => void
     menu?: any
 }) {
     return menu ?
-    <div className="icon-button flex cursor-pointer">
+    <div className={ "icon-button flex cursor-pointer " + (active ? 'active' : '') } style={{ marginLeft: -4 }}>
         <div className="button title px-1 py-1">
             { icon || <GoAlert style={{ display: 'inline' }} /> } { title } 
         </div>
@@ -58,7 +60,7 @@ export function IconButton({ icon, title, onClick, menu }: {
             ▼
         </Dropdown>
     </div> :
-    <div className="icon-button button flex cursor-pointer px-1 py-1" onClick={ onClick }>
+    <div className={ "icon-button button flex cursor-pointer px-1 py-1 " + (active ? 'active' : '') } onClick={ onClick }>
         <div className="button title">
             { icon || <GoAlert style={{ display: 'inline' }} /> } { title }
         </div>
@@ -183,6 +185,24 @@ export default ({ className, ents, view, setEnts, setView }: {
         <div title="Modeling">
             <Group title="Tool">
                 <ImageButton title="xx" />
+            </Group>
+        </div>
+        <div title="View">
+            <Group title="Mouse Control">
+                <ImageButton title="Zoom"
+                    active={ view.mouseControl?.mode === 'zoom' }
+                    onClick={ () => updateView('mouseControl', { mode: 'zoom' }) } />
+                <ImageButton title="Pan"
+                    active={ view.mouseControl?.mode === 'pan' }
+                    onClick={ () => updateView('mouseControl', { mode: 'pan' }) } />
+                <div>
+                    <IconButton title="Rotate"
+                        active={ !view.mouseControl?.mode }
+                        onClick={ () => updateView('mouseControl', { mode: undefined }) } />
+                </div>
+            </Group>
+            <Group title="Change View">
+                <ImageButton title={ <span>Reset<br />View</span> } />
             </Group>
         </div>
     </Tabs>

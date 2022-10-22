@@ -18,3 +18,4 @@ export {
 export * from './geometry'
 export * from './material'
 export * from './camera'
+export * from './uniform'
