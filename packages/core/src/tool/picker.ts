@@ -65,6 +65,7 @@ export interface PickMesh {
     geoId: number 
     worldMatrix: mat4
     clipPlane: vec4
+    lineWidth: number
 }
 
 export interface PickGeo {
@@ -82,10 +83,13 @@ export interface PickCamera {
     worldMatrix: mat4
 }
 
+const DEPTH_PLANE = new Mesh(new PlaneXY({ size: 1 })),
+    DEPTH_SCENE = new Scene([DEPTH_PLANE]),
+    DEPTH_CAMERA = new Camera()
 const textureCache = {
     width: 0,
     height: 0,
-    texture: undefined as undefined | Texture
+    texture: undefined as undefined | Texture,
 }
 
 let renderLock = 0
@@ -121,7 +125,7 @@ const worker = wrap({
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
-            for (const { worldMatrix, geoId, id, clipPlane } of Object.values(meshes)) {
+            for (const { worldMatrix, geoId, id, clipPlane, lineWidth } of Object.values(meshes)) {
                 if (!geometries[geoId] && !geoMap.get(geoId)) {
                     throw Error(`geometry ${geoId} is not found`)
                 }
@@ -131,6 +135,7 @@ const worker = wrap({
                         color: new Uint8Array([id, id >> 8, 0]),
                     })),
                     mesh = meshMap.get(id) || meshMap.set(id, new Mesh(geo, mat))
+                mat.prop.lineWidth = lineWidth
                 if (clipPlane) {
                     vec4.copy(mat.clipPlane, clipPlane)
                 }
@@ -143,7 +148,7 @@ const worker = wrap({
                 throw Error(`picker support ${0xffff} meshes at max`)
             }
 
-            const depthTexture = (textureCache.width === width && textureCache.height === height ?
+            const { texture: depthTexture } = (textureCache.width === width && textureCache.height === height ?
                 textureCache : Object.assign(textureCache, {
                     width, height,
                     texture: new Texture({
@@ -153,16 +158,11 @@ const worker = wrap({
                     }, {
                         aspect: 'depth-only'
                     })
-                })).texture!
+                }))
             renderer.render(scene, camera, { depthTexture })
-            const [id = 0] = await readPixel({ x, y }),
-                plane = new Mesh(
-                    new PlaneXY({ size: 1 }),
-                    new BasicMaterial({
-                        entry: { frag: 'fragMainDepth' },
-                        texture: depthTexture,
-                    }))
-            renderer.render(new Scene([plane]), new Camera())
+            const [id = 0] = await readPixel({ x, y })
+            DEPTH_PLANE.mat = new BasicMaterial({ entry: { frag: 'fragMainDepth' }, texture: depthTexture }),
+            renderer.render(DEPTH_SCENE, DEPTH_CAMERA)
             const [val = 0] = await readPixel({ x, y }),
                 d = val / 0xffffff,
                 // convert from webgpu range (0, 1) to opengl range(-1, 1)
@@ -203,7 +203,7 @@ export default class Picker {
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.geo && obj.mat) {
                     const { worldMatrix, geo, id, mat } = obj
-                    meshes[obj.id] = { worldMatrix, id, clipPlane: mat.clipPlane, geoId: geo.id }
+                    meshes[obj.id] = { worldMatrix, id, clipPlane: mat.clipPlane, geoId: geo.id, lineWidth: obj.mat.prop.lineWidth }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }

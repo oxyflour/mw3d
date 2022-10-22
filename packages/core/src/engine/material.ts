@@ -10,7 +10,7 @@ import wgsl from './webgpu/shader.wgsl?raw'
 // Note: wgsl global const not yet supported
 const code = (wgsl + '').replace(/\r\n/g, '\n').replace(/\/\/ @replace-let-with-const\nlet /g, 'const ')
 
-export type ProgramEntry = { [k in GeometryPrimitive]: string } | string
+export type ProgramEntry = Partial<{ [k in GeometryPrimitive]: string }> | string
 
 export class MaterialProp extends MutableArray({
     r: 1.0,

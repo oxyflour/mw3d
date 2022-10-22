@@ -183,18 +183,30 @@ export default class Cache {
     }
 
     private cachedModules = { } as Record<string, GPUShaderModule>
+    static parseShaderEntry(entry: string) {
+        const match = entry.trim().match(/^fn ([^\(]+)/)
+        return match ? { name: match[1]!, code: entry } : { name: entry, code: '' }
+    }
     buildPipeline = cache((geo: { primitive: GeometryPrimitive }, mat: Material) => {
-        const { code, entry: { vert, frag } } = mat.opts,
+        const { code: shader, entry: { vert, frag } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
+            vertEntry = Cache.parseShaderEntry(
+                geo.primitive === 'fat-line-list' ? 'vertLineMain' :
+                geo.primitive === 'point-sprite' ? 'vertSpriteMain' :
+                typeof vert === 'string' ? vert : (vert[geo.primitive] || 'vertMain')),
+            fragEntry = Cache.parseShaderEntry(
+                geo.primitive === 'fat-line-list' ? 'fragMainColor' :
+                geo.primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
+                typeof frag === 'string' ? frag : (frag[geo.primitive] || 'fragMainColor')),
+            code = shader
+                .replace('// @vert-extra-code', vertEntry.code ? `@vertex ` + vertEntry.code : '')
+                .replace('// @frag-extra-code', fragEntry.code ? `@fragment ` + fragEntry.code : ''),
             module = this.cachedModules[code] || (this.cachedModules[code] = this.device.createShaderModule({ code })),
             pipeline = this.device.createRenderPipeline({
                 layout: 'auto',
                 vertex: {
                     module,
-                    entryPoint:
-                        geo.primitive === 'fat-line-list' ? 'vertLineMain' :
-                        geo.primitive === 'point-sprite' ? 'vertSpriteMain' :
-                        typeof vert === 'string' ? vert : vert[geo.primitive],
+                    entryPoint: vertEntry.name,
                     // TODO
                     buffers: [{
                         arrayStride: 4 * 3,
@@ -214,11 +226,7 @@ export default class Cache {
                 },
                 fragment: {
                     module,
-                    entryPoint:
-                        typeof frag === 'string' ? frag : frag[geo.primitive] || (
-                            geo.primitive === 'fat-line-list' ? 'fragMainColor' :
-                            geo.primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
-                                'fragMainColor'),
+                    entryPoint: fragEntry.name,
                     targets: [{
                         blend: mat.prop.a < 1 ? {
                             color: {

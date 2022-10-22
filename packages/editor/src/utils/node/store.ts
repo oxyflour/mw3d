@@ -11,16 +11,17 @@ const unzip = promisify(unzipRaw),
 class Store {
     constructor(public prefix = '') {
     }
-    async get(key: string) {
-        const zipped = await this.zipped(key)
+    async get(key: string, ex = 1000) {
+        const zipped = await this.zipped(key, ex)
         return await unzip(zipped)
     }
-    async zipped(key: string) {
+    async zipped(key: string, ex = 1000) {
         const redis = await getRedis(),
             buf = await redis.getBuffer(this.prefix + key)
         if (!buf) {
             throw Error(`key ${key} not found`)
         }
+        await redis.expire(this.prefix + key, ex)
         return buf
     }
     async save(buf: Buffer, prefix = this.prefix) {
