@@ -31,7 +31,7 @@ fn fragMainColorDash(input: FragInput) -> @location(0) vec4<f32> {
 
 const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
 export const MATERIAL_SET = {
-    select:   new Engine.BasicMaterial({ color: [1, 0, 0, 1.0], lineWidth: devicePixelRatio * 9, entry: { frag: 'fragMainColor' } }),
+    select:   new Engine.BasicMaterial({ color: [1, .5, .5, 1], lineWidth: devicePixelRatio * 5, entry: { frag: 'fragMainColor' } }),
     selected: new Engine.BasicMaterial({ color: [0, 1, 1, 1.0], lineWidth: devicePixelRatio * 5, entry: { frag: FRAG_DASH }, metallic: 8, roughness: 6 }),
     hover:    new Engine.BasicMaterial({ color: [1, 1, 0, 1.0], lineWidth: devicePixelRatio * 3, entry: { frag: FRAG_DASH }, metallic: 8, roughness: -2 }),
     default:  new Engine.BasicMaterial({ color: [r, g, b, 1.0], lineWidth: devicePixelRatio * 3, emissive: 0.2 }),

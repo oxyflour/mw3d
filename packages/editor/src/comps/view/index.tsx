@@ -36,7 +36,8 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
     children?: any
     onSelect?: (nodes?: string[], obj?: Engine.Obj3) => any
 }) => {
-    const selected = Object.keys(tree.$selected?.children || { })
+    const selected = Object.keys(tree.$selected?.children || { }),
+        visible = ents.filter(item => item.nodes?.length && checked(tree, item.nodes))
     return <Canvas className="view"
             style={{ width: '100%', height: '100%' }}
             options={
@@ -47,39 +48,36 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
                 }
             }>
         {
-            ents.map((data, key) => {
-                const nodes = data.nodes || []
-                if (nodes.length > 0 && checked(tree, nodes)) {
-                    const active = !selected.length || nodes.some(id => tree[id]?.selected),
-                        mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
-                        matrix = data.trans,
-                        create = () => Object.assign(new Engine.Mesh(), { entity: data })
-                    return React.createElement(component || Mesh, { key, view, active, data, mat, matrix, create } as EntityProps)
-                } else {
-                    return null
-                }
+            visible.map((data, key) => {
+                const active = !selected.length || data.nodes?.some(id => tree[id]?.selected),
+                    mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
+                    matrix = data.trans,
+                    create = () => Object.assign(new Engine.Mesh(), { entity: data })
+                return React.createElement(component || Mesh, { key, view, active, data, mat, matrix, create } as EntityProps)
             })
         }
         <KeyControl view={ view } setView={ setView } />
         <MouseControl onSelect={ (obj?: Obj3WithEntity) => !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj) } />
         {
             view.pick?.mode &&
-            <EntityPicker mode={ view.pick.mode } onSelect={
-                item => {
-                    const topos = view.pick?.topos || [],
-                        type = view.pick?.mode!,
-                        index = topos.findIndex(topo =>
-                            topo.entity === item.entity &&
-                            topo.type === type &&
-                            topo.index === item.index)
-                    if (index >= 0) {
-                        topos.splice(index, 1)
-                    } else {
-                        topos.push({ ...item, type })
+            <EntityPicker mode={ view.pick.mode }
+                pickable={ selected.length ? tree.$selected?.children : undefined }
+                onSelect={
+                    item => {
+                        const topos = view.pick?.topos || [],
+                            type = view.pick?.mode!,
+                            index = topos.findIndex(topo =>
+                                topo.entity === item.entity &&
+                                topo.type === type &&
+                                topo.index === item.index)
+                        if (index >= 0) {
+                            topos.splice(index, 1)
+                        } else {
+                            topos.push({ ...item, type })
+                        }
+                        setView({ ...view, pick: { ...view.pick, topos } })
                     }
-                    setView({ ...view, pick: { ...view.pick, topos } })
-                }
-            } />
+                } />
         }
         {
             view.pick?.topos && view.pick.topos.map((item, idx) => <TopoPicked key={ idx } { ...item } />)
