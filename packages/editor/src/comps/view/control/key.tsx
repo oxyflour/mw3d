@@ -5,7 +5,8 @@ import { KeyBinding, KeyMap } from "../../../utils/dom/keys"
 
 export function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
     const { canvas } = useCanvas(),
-        map = useRef({ } as KeyMap)
+        map = useRef({ } as KeyMap),
+        updatePick = (pick: ViewOpts['pick']) => setView({ ...view, pick: { ...view.pick, ...pick } })
     useEffect(() => {
         if (canvas) {
             const binding = new KeyBinding(canvas)
@@ -16,9 +17,10 @@ export function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: 
         }
     }, [canvas])
     Object.assign(map.current, {
-        'f': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'face' } }),
-        'e': down => !down && setView({ ...view, pick: { ...view.pick, mode: 'edge' } }),
-        'Escape': down => !down && setView({ ...view, pick: { ...view.pick, mode: undefined } }),
+        'f': down => !down && updatePick({ mode: 'face' }),
+        'e': down => !down && updatePick({ mode: 'edge' }),
+        'd': down => !down && updatePick({ topos: [] }),
+        'Escape': down => !down && updatePick({ mode: undefined }),
     } as KeyMap)
     return null
 }
