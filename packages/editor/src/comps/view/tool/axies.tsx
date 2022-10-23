@@ -1,7 +1,8 @@
-import { useCanvas, Engine } from "@ttk/react"
+import { useCanvas, Engine, useFrame } from "@ttk/react"
 import { useEffect } from "react"
+import { vec3 } from 'gl-matrix'
 
-const AXIS_TEXT_SIZE = 64 * window.devicePixelRatio
+const AXIS_TEXT_SIZE = 48 * window.devicePixelRatio
 
 async function createTextTexture(text: string, style: string, width: number, height: number) {
     const tex = document.createElement('canvas'),
@@ -66,8 +67,22 @@ const VIEW_AXIES = new Engine.Obj3({
     ]
 })
 
+const pos = vec3.create()
 export function Axies() {
-    const { scene } = useCanvas()
+    const { scene, camera } = useCanvas()
+    useFrame(() => {
+        if (camera) {
+            const dist = 50
+            vec3.set(pos,
+                 0.8 * dist * Math.tan(camera.fov * camera.aspect / 2),
+                -0.8 * dist * Math.tan(camera.fov / 2),
+                -dist)
+            vec3.transformMat4(pos, pos, camera.worldMatrix)
+            const [x = 0, y = 0, z = 0] = pos
+            VIEW_AXIES.scaling.set(0.1, 0.1, 0.1)
+            VIEW_AXIES.position.set(x, y, z)
+        }
+    })
     useEffect(() => {
         if (scene) {
             scene.add(VIEW_AXIES)
