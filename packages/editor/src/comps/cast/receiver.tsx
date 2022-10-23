@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
 import lambda from "../../lambda"
 import { Api } from "../../utils/cast/connect"
 import recv from "../../utils/cast/recv"
@@ -36,16 +35,16 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     const [video, setVideo] = useState<HTMLVideoElement | null>(null),
         [restart, setRestart] = useState(0),
         [{ value: peer = { }, loading, error }] = useAsync(async video => video ? await start(video) : { }, [video, restart], { }),
-        { conn, channels = [], streams = [] } = peer,
-        nav = useNavigate()
+        { conn, channels = [], streams = [] } = peer
     async function start(video: HTMLVideoElement) {
         const width = video.width = video.scrollWidth,
             height = video.height = video.scrollHeight,
             { devicePixelRatio } = window,
             opts = { width, height, devicePixelRatio },
             id = Math.random().toString(16).slice(2, 10),
+            pathname = location.pathname,
             source = await query(api)
-        await api.send(source, { id, opts, href })
+        await api.send(source, { id, opts, href, pathname })
         const peer = await recv(id, peerOpts)
         video.srcObject = peer.streams[0]!
         video.play()
@@ -56,17 +55,12 @@ export default function Receiver({ api, children, peerOpts, href = location.href
         function onPong({ now, peer }: { now: number, peer: string }) {
             console.log('PERF: ping from', peer, Date.now() - now)
         }
-        function onRoute(pathname: string) {
-            nav(pathname)
-        }
         api.on('pong', onPong)
-        api.on('route', onRoute)
         const timer = setInterval(() => {
             api.send('ping', { now: Date.now() })
         }, 10000)
         return () => {
             api.removeListener('pong', onPong)
-            api.removeListener('route', onRoute)
             clearInterval(timer)
         }
     }, [api])

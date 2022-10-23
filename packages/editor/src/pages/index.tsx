@@ -15,10 +15,22 @@ export function layout({ children }: { children: any }) {
     useEffect(() => {
         if (!sess) {
             nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
+            return () => { }
         } else {
-            setApi(connect(sess))
+            const api = connect(sess),
+                onRoute = (pathname: string) => nav(pathname)
+            api.on('route', onRoute)
+            setApi(api)
+            return () => {
+                api.removeListener('route', onRoute)
+            }
         }
     }, [sess])
+
+    useEffect(() => {
+        api?.send('route', location.pathname)
+    }, [location.pathname, api])
+
     return api ?
         ('gpu' in navigator ?
             <Sender peerOpts={ peerOpts } api={ api }>{ children }</Sender> :

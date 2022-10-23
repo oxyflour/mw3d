@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Api } from "../../utils/cast/connect"
 import send from "../../utils/cast/send"
 
@@ -10,11 +11,13 @@ export default function Sender({ api, children, peerOpts }: {
     peerOpts?: RTCConfiguration
 }) {
     const [peer, setPeer] = useState({ } as Partial<Unwarp<ReturnType<typeof send>>>),
-        { data, conn, stream } = peer
+        { data, conn, stream } = peer,
+		nav = useNavigate()
 
     useEffect(() => {
-        async function onStart({ id, opts }: {
+        async function onStart({ id, opts, pathname }: {
 			id: string
+			pathname: string
 			opts: { width: number, height: number, devicePixelRatio: number }
 		}) {
             const title = document.title
@@ -22,6 +25,7 @@ export default function Sender({ api, children, peerOpts }: {
             const peer = await send(id, opts, peerOpts)
             document.title = title
             setPeer(peer)
+			nav(pathname)
 			// skip the "Stop Sharing" infobar animation
             setTimeout(() => {
                 const width = opts.width + (window.outerWidth - window.innerWidth),
@@ -74,11 +78,6 @@ export default function Sender({ api, children, peerOpts }: {
             conn?.close()
         }
     }, [peer])
-
-    useEffect(() => {
-        api.send('route', location.pathname)
-    }, [location.pathname])
-
     return children
 }
 

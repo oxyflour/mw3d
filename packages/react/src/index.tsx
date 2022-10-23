@@ -110,6 +110,11 @@ export function Canvas({ children, options, style, className }: {
         canvas && init(canvas, handle)
         return () => { handle.running = false }
     }, [cvRef.current])
+    useEffect(() => {
+        if (cvRef.current && state.camera) {
+            state.camera.aspect = cvRef.current.scrollWidth / cvRef.current.scrollHeight
+        }
+    }, [cvRef.current?.scrollWidth, cvRef.current?.scrollHeight])
     return <CanvasContext.Provider value={ state }>
         {
             error && <div style={{
