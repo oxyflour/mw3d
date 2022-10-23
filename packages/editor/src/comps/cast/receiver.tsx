@@ -72,6 +72,7 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     }, [api])
 
     useEffect(() => {
+        const pos = { clientX: 0, clientY: 0 }
         const cbs = [
             'pointerdown', 'pointermove', 'pointerup',
             'mousedown', 'mousemove', 'mouseup', 'click', 'dblclick',
@@ -82,9 +83,10 @@ export default function Receiver({ api, children, peerOpts, href = location.href
                 type.startsWith('pointer') ? 'pointer' :
                 type.startsWith('key') ? 'key' :
                     'mouse'
-            function func({ button, clientX, clientY, deltaX, deltaY, key }: any) {
+            function func({ button, deltaX, deltaY, key, clientX = pos.clientX, clientY = pos.clientY }: any) {
                 const [channel] = channels,
                     data = { type, button, clientX, clientY, deltaX, deltaY, key }
+                Object.assign(pos, data)
                 channel?.send(JSON.stringify({ evt, data }))
             }
             window.addEventListener(type as any, func)

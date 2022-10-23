@@ -61,7 +61,6 @@ export default function Sender({ api, children, peerOpts }: {
             } else if (evt === 'wheel') {
                 elem?.dispatchEvent(new WheelEvent(type, params))
             } else if (evt === 'key') {
-                // not yet working
                 elem?.dispatchEvent(new KeyboardEvent(type, params))
             }
         }
