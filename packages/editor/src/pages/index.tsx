@@ -15,17 +15,14 @@ export function layout({ children }: { children: any }) {
     useEffect(() => {
         if (!sess) {
             nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
-            return () => { }
         } else {
-            const api = connect(sess)
-            setApi(api)
-            return () => { api.close() }
+            setApi(connect(sess))
         }
     }, [sess])
     return api ?
         ('gpu' in navigator ?
             <Sender peerOpts={ peerOpts } api={ api }>{ children }</Sender> :
-            <Receiver peerOpts={ peerOpts } api={ api } style={{ width: '100%', height: '100%' }} />) :
+            <Receiver peerOpts={ peerOpts } api={ api } style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: '0 0' }} />) :
         'Loading...'
 }
 

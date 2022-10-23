@@ -12,9 +12,10 @@ export function useLocalStore<T>(key: string, init: T) {
 
 export function useAsync<D extends DependencyList, T>(func: (...args: any) => Promise<T>, deps: D, init?: T) {
     const [loading, setLoading] = useState(false),
-        [error, setError] = useState(null),
+        [error, setError] = useState<any>(null),
         [value, setValue] = useState(init),
-        ret = { loading, error, value }
+        ret = { loading, error, value },
+        set = { setLoading, setError, setValue }
     useEffect(() => {
         setError(null)
         setLoading(true)
@@ -23,5 +24,5 @@ export function useAsync<D extends DependencyList, T>(func: (...args: any) => Pr
             .catch(error => setError(error))
             .finally(() => setLoading(false))
     }, deps)
-    return [ret] as [typeof ret]
+    return [ret, set] as [typeof ret, typeof set]
 }

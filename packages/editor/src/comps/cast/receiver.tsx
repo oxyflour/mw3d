@@ -11,13 +11,12 @@ export type HtmlVideoProps = React.DetailedHTMLProps<React.VideoHTMLAttributes<H
 const query = queue(async (api: Api) => {
     const evt = Math.random().toString(16).slice(2, 10),
         timer = setInterval(() => api.send('ping', { evt }), 1000)
-    console.log(`waiting for ping event ${evt}`)
     let retry = 5
     while (retry -- > 0) {
         try {
             const { peer } = await new Promise<{ peer: string }>((resolve, reject) => {
                 api.wait(evt).then(resolve).catch(reject)
-                setTimeout(() => reject(new Error(`wait event ${evt} timeout`)), 20000)
+                setTimeout(() => reject(new Error(`wait event ${evt} timeout`)), 15000)
             })
             return clearInterval(timer), peer
         } catch (err: any) {
@@ -34,7 +33,8 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     href?: string
 } & HtmlVideoProps) {
     const [video, setVideo] = useState<HTMLVideoElement | null>(null),
-        [{ loading, error }] = useAsync(async video => video && await start(video), [video]),
+        [restart, setRestart] = useState(0),
+        [{ loading, error }] = useAsync(async video => video && await start(video), [video, restart]),
         [peer, setPeer] = useState({
             conn: null as null | RTCPeerConnection,
             streams: [] as MediaStream[],
@@ -56,8 +56,8 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     }
 
     useEffect(() => {
-        function onPong({ now }: { now: number }) {
-            console.log('GOT PONG', Date.now() - now)
+        function onPong({ now, peer }: { now: number, peer: string }) {
+            console.log('PERF: ping from', peer, Date.now() - now)
         }
         api.on('pong', onPong)
         const timer = setInterval(() => {
@@ -70,13 +70,14 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     }, [api])
 
     useEffect(() => {
+        const { conn, channels, streams } = peer
         const cbs = [
             'pointerdown', 'pointermove', 'pointerup',
             'mousedown', 'mousemove', 'mouseup', 'click', 'dblclick',
             'wheel',
         ].map((type => {
             function func({ button, clientX, clientY, deltaX, deltaY }: any) {
-                const [channel] = peer.channels,
+                const [channel] = channels,
                     evt = type === 'wheel' ? 'wheel' :
                         type.startsWith('pointer') ? 'pointer' :
                         'mouse',
@@ -86,15 +87,28 @@ export default function Receiver({ api, children, peerOpts, href = location.href
             window.addEventListener(type as any, func)
             return { type, func } as any
         }))
-        const onWindowResize = debounce(async () => video && start(video), 500)
+        const onWindowResize = debounce(async () => setRestart(restart + 1), 500)
         window.addEventListener('resize', onWindowResize)
-        const onStateChange = () => console.log(peer.conn?.connectionState)
-        peer.conn?.addEventListener('connectionstatechange', onStateChange)
+        const onStateChange = () => {
+            const state = conn?.connectionState
+            if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+                setRestart(restart + 1)
+            }
+        }
+        conn?.addEventListener('connectionstatechange', onStateChange)
         return () => {
             cbs.forEach(({ type, func }) => window.removeEventListener(type, func))
             window.removeEventListener('resize', onWindowResize)
-            peer.conn?.removeEventListener('connectionstatechange', onStateChange)
-            peer.conn?.close()
+            conn?.removeEventListener('connectionstatechange', onStateChange)
+            conn?.close()
+            for (const channel of channels) {
+                channel.close()
+            }
+            for (const stream of streams) {
+                for (const track of stream.getTracks()) {
+                    track.stop()
+                }
+            }
         }
     }, [peer])
 
@@ -112,9 +126,8 @@ export default function Receiver({ api, children, peerOpts, href = location.href
                 padding: 8,
             }}>
             {
-                error ? <div style={{ cursor: 'pointer' }}
-                        onClick={ () => video && start(video) }>
-                    Error: { `${error && (error as any).meessage || error}` }, click to retry
+                error ? <div style={{ cursor: 'pointer' }} onClick={ () => setRestart(restart + 1) }>
+                    Error: { `${error && error.meessage || error}` }, click to retry
                 </div> :
                 <div>
                     loading...
@@ -122,6 +135,6 @@ export default function Receiver({ api, children, peerOpts, href = location.href
             }
             </div>
         }
-        <video muted ref={ video => setVideo(video) } style={{ objectFit: 'cover' }} { ...rest } />
+        <video muted ref={ video => setVideo(video) } { ...rest } />
     </>
 }

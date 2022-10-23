@@ -29,8 +29,8 @@ export default function Sender({ api, children, peerOpts }: {
 			})
 
 			const width = opts.width + (window.outerWidth - window.innerWidth),
-				// TODO: remove the "Stop Sharing" infobar
-				height = opts.height + (window.outerHeight - window.innerHeight) + 56
+				// TODO: remove the "--enable-unsafe-webgpu" infobar
+				height = opts.height + (window.outerHeight - window.innerHeight) + 40
 			window.resizeTo(width, height)
 		}
 
