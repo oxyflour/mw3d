@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Receiver from '../comps/cast/receiver'
 import Sender from '../comps/cast/sender'
-import connect, { IO } from '../utils/cast/connect'
+import connect, { Api } from '../utils/cast/connect'
 
 import './index.less'
 
@@ -11,7 +11,7 @@ const peerOpts = { iceServers: [{ urls: 'stun:172.24.197.158', username: 'abc', 
 export function layout({ children }: { children: any }) {
     const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || [],
         nav = useNavigate(),
-        [api, setApi] = useState<IO>()
+        [api, setApi] = useState<Api>()
     useEffect(() => {
         if (!sess) {
             nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
@@ -25,7 +25,7 @@ export function layout({ children }: { children: any }) {
     return api ?
         ('gpu' in navigator ?
             <Sender peerOpts={ peerOpts } api={ api }>{ children }</Sender> :
-            <Receiver peerOpts={ peerOpts } api={ api } />) :
+            <Receiver peerOpts={ peerOpts } api={ api } style={{ width: '100%', height: '100%' }} />) :
         'Loading...'
 }
 

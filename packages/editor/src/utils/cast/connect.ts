@@ -3,19 +3,21 @@ import lambda from '../../lambda'
 
 export default function connect(sess: string) {
 	const ret = new EventEmitter(),
-        self = Math.random().toString(16).slice(2, 10)
+        peer = Math.random().toString(16).slice(2, 10)
+    console.log(`peer id ${peer} for sess ${sess}`)
     async function listen() {
         for await (const message of lambda.sess.sub(sess)) {
             const { evt, data, ...rest } = JSON.parse(message)
-            if (rest.self !== self) {
+            if (rest.peer !== peer) {
                 ret.emit(evt, data)
             }
         }
     }
-    listen()
+    listen().catch(() => { })
 	return Object.assign(ret, {
+        peer, sess,
 		async send(evt: string, data = { } as any) {
-            await lambda.sess.pub(sess, JSON.stringify({ self, evt, data }))
+            await lambda.sess.pub(sess, JSON.stringify({ evt, data, peer }))
 		},
 		wait(evt: string) {
 			return new Promise<any>(resolve => ret.once(evt, resolve))
@@ -26,4 +28,4 @@ export default function connect(sess: string) {
 	})
 }
 
-export type IO = ReturnType<typeof connect>
+export type Api = ReturnType<typeof connect>

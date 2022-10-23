@@ -1,17 +1,39 @@
 import { useEffect, useState } from "react"
-import connect, { IO } from "../../utils/cast/connect"
+import lambda from "../../lambda"
+import { Api } from "../../utils/cast/connect"
 import recv from "../../utils/cast/recv"
 import { debounce } from "../../utils/common/debounce"
+import { queue } from "../../utils/common/queue"
 import { useAsync } from "../../utils/react/hooks"
 
 export type HtmlVideoProps = React.DetailedHTMLProps<React.VideoHTMLAttributes<HTMLVideoElement>, HTMLVideoElement>
 
+const query = queue(async (api: Api) => {
+    const evt = Math.random().toString(16).slice(2, 10),
+        timer = setInterval(() => api.send('ping', { evt }), 1000)
+    console.log(`waiting for ping event ${evt}`)
+    let retry = 5
+    while (retry -- > 0) {
+        try {
+            const { peer } = await new Promise<{ peer: string }>((resolve, reject) => {
+                api.wait(evt).then(resolve).catch(reject)
+                setTimeout(() => reject(new Error(`wait event ${evt} timeout`)), 20000)
+            })
+            return clearInterval(timer), peer
+        } catch (err: any) {
+            await lambda.sess.fork(api.sess)
+        }
+    }
+    clearInterval(timer)
+    throw Error(`fork session ${api.sess} failed`)
+})
+
 export default function Receiver({ api, children, peerOpts, href = location.href, ...rest }: {
-    api: IO,
+    api: Api,
     peerOpts?: RTCConfiguration
     href?: string
 } & HtmlVideoProps) {
-    const [video, setVideo] = useState<HTMLVideoElement>(),
+    const [video, setVideo] = useState<HTMLVideoElement | null>(null),
         [{ loading, error }] = useAsync(async video => video && await start(video), [video]),
         [peer, setPeer] = useState({
             conn: null as null | RTCPeerConnection,
@@ -24,22 +46,27 @@ export default function Receiver({ api, children, peerOpts, href = location.href
             height = video.height = video.scrollHeight,
             { devicePixelRatio } = window,
             opts = { width, height, devicePixelRatio },
-            sess = Math.random().toString(16).slice(2, 10)
-        await api.send('start', { sess, opts, href })
-        const peer = await recv(connect(sess), peerOpts)
+            id = Math.random().toString(16).slice(2, 10),
+            source = await query(api)
+        await api.send(source, { id, opts, href })
+        const peer = await recv(id, peerOpts)
         video.srcObject = peer.streams[0]!
         video.play()
         setPeer(peer)
     }
 
     useEffect(() => {
-        api.on('pong', ({ now }) => {
-            console.log('ping', Date.now() - now)
-        })
+        function onPong({ now }: { now: number }) {
+            console.log('GOT PONG', Date.now() - now)
+        }
+        api.on('pong', onPong)
         const timer = setInterval(() => {
             api.send('ping', { now: Date.now() })
         }, 10000)
-        return () => clearInterval(timer)
+        return () => {
+            api.removeListener('pong', onPong)
+            clearInterval(timer)
+        }
     }, [api])
 
     useEffect(() => {
@@ -95,6 +122,6 @@ export default function Receiver({ api, children, peerOpts, href = location.href
             }
             </div>
         }
-        <video muted ref={ video => setVideo(video || undefined) } style={{ objectFit: 'cover' }} { ...rest } />
+        <video muted ref={ video => setVideo(video) } style={{ objectFit: 'cover' }} { ...rest } />
     </>
 }

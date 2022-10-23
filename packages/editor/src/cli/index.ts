@@ -70,6 +70,11 @@ try {
         }
     })
 
+    ipcMain.handle('web-get-media-source', async () => {
+        const content = win.webContents
+        return content.getMediaSourceId(content)
+    })
+
     ipcMain.handle('desktop-get-sources', async (_, opts) => {
         return desktopCapturer.getSources(opts)
     })

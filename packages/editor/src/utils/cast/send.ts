@@ -1,39 +1,10 @@
-import { IO } from './connect'
+import connect from './connect'
 
-async function getConstrain({ width, height, devicePixelRatio }: {
-    width: number
-    height: number
-    devicePixelRatio: number
-}) {
-    // Note: it's strange that you can only modify title once
-    if (!document.title.startsWith('-rtc-uuid-')) {
-        document.title = '-rtc-uuid-' + Math.random().toString(16).slice(2, 10)
-    }
-    const { ipcRenderer } = require('electron'),
-        sources = await ipcRenderer.invoke('desktop-get-sources', { types: ['window'] }) as any[],
-        source = sources.find(item => item.name.includes('App - Google Chrome'))
-    if (!source) {
-        throw Error(`source ${document.title} is not found`)
-    }
-    const w = (width || 1280) * (devicePixelRatio || 1),
-        h = (height || 720) * (devicePixelRatio || 1)
-    return {
-        audio: false,
-        video: {
-            mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: source.id,
-                minWidth: w,
-                maxWidth: w,
-                maxHeight: h,
-                minHeight: h,
-            }
-        }
-    }
-}
-
-export default async function send(api: IO, opts: any, peerOpts?: RTCConfiguration) {
-    const conn = new RTCPeerConnection(peerOpts)
+export default async function send(id: string,
+        castOpts: { width: number, height: number, devicePixelRatio: number },
+        peerOpts?: RTCConfiguration) {
+    const conn = new RTCPeerConnection(peerOpts),
+        api = connect(id)
     api.on('icecandidate', data => {
         data && conn.addIceCandidate(new RTCIceCandidate(data))
     })
@@ -46,10 +17,14 @@ export default async function send(api: IO, opts: any, peerOpts?: RTCConfigurati
             api.close()
         }
     })
-
     const data = conn.createDataChannel('cmd'),
-        constrain = await getConstrain(opts),
-        stream = await navigator.mediaDevices.getUserMedia(constrain as any)
+        stream = await navigator.mediaDevices.getDisplayMedia({
+            audio: false,
+            video: {
+                width: castOpts.width * castOpts.devicePixelRatio,
+                height: castOpts.height * castOpts.devicePixelRatio,
+            }
+        })
     for (const track of stream.getTracks()) {
         conn.addTrack(track)
     }

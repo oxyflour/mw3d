@@ -1,26 +1,40 @@
+import { spawn } from "node:child_process"
 import store from "../utils/node/store"
 import { open } from './shape'
 
 export default {
     sess: {
+        async fork(sess: string) {
+            spawn('C:\\Users\\oxyfl\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome', [
+                `--app=http://localhost:3000/sess/${sess}`,
+                '--enable-unsafe-webgpu',
+                '--auto-accept-this-tab-capture',
+                `--auto-select-tab-capture-source-by-title=${sess}`
+            ])
+        },
         async *sub(sess: string) {
             const queue = [] as { error: any, result: string }[],
                 callbacks = [] as { resolve: Function, reject: Function }[],
                 unsub = await store.root.sub(sess, ({ error, result }) => {
                     const cb = callbacks.shift()
-                    cb ? (error ? cb.reject(error) : cb.resolve(result)) : queue.push({ error, result })
+                    if (cb) {
+                        error ? cb.reject(error) : cb.resolve(result)
+                    } else {
+                        queue.push({ error, result })
+                    }
                 })
             try {
+                let item
                 while (true) {
-                    yield await new Promise<string>((resolve, reject) => callbacks.push({ resolve, reject }))
-                    for (const { error, result } of queue) {
+                    while (item = queue.shift()) {
+                        const { error, result } = item
                         if (error) {
-                            throw Error(error)
+                            throw Object.assign(new Error(), error)
                         } else {
                             yield result
                         }
                     }
-                    queue.length = 0
+                    yield await new Promise<string>((resolve, reject) => callbacks.push({ resolve, reject }))
                 }
             } catch (error) {
                 await unsub()
@@ -31,7 +45,7 @@ export default {
             await store.root.pub(sess, { result })
         },
         async stop(sess: string) {
-            await store.root.pub(sess, { error: { message: 'stopped' } })
+            await store.root.pub(sess, { error: { message: `session ${sess} stop` } })
         },
     },
     assets: {

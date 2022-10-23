@@ -1,7 +1,8 @@
-import { IO } from './connect'
+import connect from './connect'
 
-export default async function recv(api: IO, peerOpts?: RTCConfiguration) {
-	const conn = new RTCPeerConnection(peerOpts)
+export default async function recv(id: string, peerOpts?: RTCConfiguration) {
+	const conn = new RTCPeerConnection(peerOpts),
+		api = connect(id)
 	api.on('icecandidate', data => {
 		data && conn.addIceCandidate(new RTCIceCandidate(data))
 	})
