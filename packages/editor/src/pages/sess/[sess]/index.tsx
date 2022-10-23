@@ -16,7 +16,8 @@ export function useEntities(current?: string) {
         if (commit !== current) {
             entityCache.set(ents, commit)
             localStorage.setItem(commit, JSON.stringify(ents))
-            nav(`/sess/b0a86af0/commit/${commit}`)
+            const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || []
+            nav(`/sess/${sess}/commit/${commit}`)
         }
     }
     useEffect(() => {

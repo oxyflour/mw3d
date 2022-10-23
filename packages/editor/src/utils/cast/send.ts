@@ -34,5 +34,5 @@ export default async function send(id: string,
     await api.send('offer', offer)
     const answer = await api.wait('answer')
     await conn.setRemoteDescription(new RTCSessionDescription(answer))
-    return { conn, data }
+    return { conn, data, stream }
 }

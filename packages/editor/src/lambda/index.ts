@@ -4,9 +4,9 @@ import { open } from './shape'
 
 export default {
     sess: {
-        async fork(sess: string) {
+        async fork(sess: string, href: string) {
             spawn('C:\\Users\\oxyfl\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome', [
-                `--app=http://localhost:3000/sess/${sess}`,
+                `--app=${href}`,
                 '--enable-unsafe-webgpu',
                 '--auto-accept-this-tab-capture',
                 `--auto-select-tab-capture-source-by-title=${sess}`

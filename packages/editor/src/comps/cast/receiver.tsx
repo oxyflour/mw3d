@@ -10,7 +10,7 @@ export type HtmlVideoProps = React.DetailedHTMLProps<React.VideoHTMLAttributes<H
 
 const query = queue(async (api: Api) => {
     const evt = Math.random().toString(16).slice(2, 10),
-        timer = setInterval(() => api.send('ping', { evt }), 1000)
+        timer = setInterval(() => api.send('ping', { evt }), 500)
     let retry = 5
     while (retry -- > 0) {
         try {
@@ -20,7 +20,7 @@ const query = queue(async (api: Api) => {
             })
             return clearInterval(timer), peer
         } catch (err: any) {
-            await lambda.sess.fork(api.sess)
+            await lambda.sess.fork(api.sess, location.href)
         }
     }
     clearInterval(timer)
@@ -34,13 +34,8 @@ export default function Receiver({ api, children, peerOpts, href = location.href
 } & HtmlVideoProps) {
     const [video, setVideo] = useState<HTMLVideoElement | null>(null),
         [restart, setRestart] = useState(0),
-        [{ loading, error }] = useAsync(async video => video && await start(video), [video, restart]),
-        [peer, setPeer] = useState({
-            conn: null as null | RTCPeerConnection,
-            streams: [] as MediaStream[],
-            channels: [] as RTCDataChannel[]
-        })
-
+        [{ value: peer = { }, loading, error }] = useAsync(async video => video ? await start(video) : { }, [video, restart], { }),
+        { conn, channels = [], streams = [] } = peer
     async function start(video: HTMLVideoElement) {
         const width = video.width = video.scrollWidth,
             height = video.height = video.scrollHeight,
@@ -52,7 +47,7 @@ export default function Receiver({ api, children, peerOpts, href = location.href
         const peer = await recv(id, peerOpts)
         video.srcObject = peer.streams[0]!
         video.play()
-        setPeer(peer)
+        return peer as Partial<typeof peer>
     }
 
     useEffect(() => {
@@ -70,18 +65,19 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     }, [api])
 
     useEffect(() => {
-        const { conn, channels, streams } = peer
         const cbs = [
             'pointerdown', 'pointermove', 'pointerup',
             'mousedown', 'mousemove', 'mouseup', 'click', 'dblclick',
             'wheel',
+            'keydown', 'keyup',
         ].map((type => {
-            function func({ button, clientX, clientY, deltaX, deltaY }: any) {
+            const evt = type === 'wheel' ? 'wheel' :
+                type.startsWith('pointer') ? 'pointer' :
+                type.startsWith('key') ? 'key' :
+                    'mouse'
+            function func({ button, clientX, clientY, deltaX, deltaY, which }: any) {
                 const [channel] = channels,
-                    evt = type === 'wheel' ? 'wheel' :
-                        type.startsWith('pointer') ? 'pointer' :
-                        'mouse',
-                    data = { type, button, clientX, clientY, deltaX, deltaY }
+                    data = { type, button, clientX, clientY, deltaX, deltaY, which }
                 channel?.send(JSON.stringify({ evt, data }))
             }
             window.addEventListener(type as any, func)
@@ -112,6 +108,7 @@ export default function Receiver({ api, children, peerOpts, href = location.href
         }
     }, [peer])
 
+    console.log(error, loading)
     return <>
         {
             (error || loading) &&
