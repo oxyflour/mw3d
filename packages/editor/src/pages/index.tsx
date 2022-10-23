@@ -19,7 +19,6 @@ export function layout({ children }: { children: any }) {
             setApi(connect(sess))
         }
     }, [sess])
-    console.log('session', sess, location.pathname)
     return api ?
         ('gpu' in navigator ?
             <Sender peerOpts={ peerOpts } api={ api }>{ children }</Sender> :

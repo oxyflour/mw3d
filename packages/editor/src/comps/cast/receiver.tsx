@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import lambda from "../../lambda"
 import { Api } from "../../utils/cast/connect"
 import recv from "../../utils/cast/recv"
@@ -35,7 +36,8 @@ export default function Receiver({ api, children, peerOpts, href = location.href
     const [video, setVideo] = useState<HTMLVideoElement | null>(null),
         [restart, setRestart] = useState(0),
         [{ value: peer = { }, loading, error }] = useAsync(async video => video ? await start(video) : { }, [video, restart], { }),
-        { conn, channels = [], streams = [] } = peer
+        { conn, channels = [], streams = [] } = peer,
+        nav = useNavigate()
     async function start(video: HTMLVideoElement) {
         const width = video.width = video.scrollWidth,
             height = video.height = video.scrollHeight,
@@ -54,12 +56,17 @@ export default function Receiver({ api, children, peerOpts, href = location.href
         function onPong({ now, peer }: { now: number, peer: string }) {
             console.log('PERF: ping from', peer, Date.now() - now)
         }
+        function onRoute(pathname: string) {
+            nav(pathname)
+        }
         api.on('pong', onPong)
+        api.on('route', onRoute)
         const timer = setInterval(() => {
             api.send('ping', { now: Date.now() })
         }, 10000)
         return () => {
             api.removeListener('pong', onPong)
+            api.removeListener('route', onRoute)
             clearInterval(timer)
         }
     }, [api])
@@ -75,9 +82,9 @@ export default function Receiver({ api, children, peerOpts, href = location.href
                 type.startsWith('pointer') ? 'pointer' :
                 type.startsWith('key') ? 'key' :
                     'mouse'
-            function func({ button, clientX, clientY, deltaX, deltaY, which }: any) {
+            function func({ button, clientX, clientY, deltaX, deltaY, key }: any) {
                 const [channel] = channels,
-                    data = { type, button, clientX, clientY, deltaX, deltaY, which }
+                    data = { type, button, clientX, clientY, deltaX, deltaY, key }
                 channel?.send(JSON.stringify({ evt, data }))
             }
             window.addEventListener(type as any, func)

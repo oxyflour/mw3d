@@ -76,6 +76,10 @@ export default function Sender({ api, children, peerOpts }: {
         }
     }, [peer])
 
+    useEffect(() => {
+        api.send('route', location.pathname)
+    }, [location.pathname])
+
     return children
 }
 
