@@ -8,12 +8,13 @@ import { fork } from "../../utils/node/fork"
 
 const SCRIPT_PATH = path.join(__dirname, '..', '..', '..', 'dist', 'cli', 'index.js')
 export async function *open(files: { name: string, arrayBuffer: () => Promise<ArrayBuffer> }[]) {
-    const cwd = path.join(os.tmpdir(), 'open', Math.random().toString(16).slice(2, 10))
-    await mkdir(cwd, { recursive: true })
-    const read = (src: string) => readFile(path.join(cwd, src))
+    const cwd = path.join(os.tmpdir(), 'open', Math.random().toString(16).slice(2, 10)),
+        read = (src: string) => readFile(path.join(cwd, src))
     for (const file of files) {
         yield { message: `opening ${file.name}` }
-        await writeFile(path.join(cwd, file.name), Buffer.from(await file.arrayBuffer()))
+        const tmp = path.join(cwd, file.name)
+        await mkdir(path.dirname(tmp), { recursive: true })
+        await writeFile(tmp, Buffer.from(await file.arrayBuffer()))
         const save = path.join(cwd, file.name + '.commit.json'),
             command = [
                 process.execPath, SCRIPT_PATH,
