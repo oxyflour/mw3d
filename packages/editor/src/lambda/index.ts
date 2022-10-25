@@ -59,7 +59,9 @@ export default {
             } catch (err) {
                 const [data = ''] = key.split('/g/'),
                     buf = await store.library.get(data),
-                    file = { name: data, arrayBuffer: () => Promise.resolve(buf) }
+                    head = buf.toString().slice(0, 100),
+                    name = head.startsWith('ISO-10303-21') ? 'main.stp' : data,
+                    file = { name, arrayBuffer: () => Promise.resolve(buf) }
                 for await (const msg of open([file])) {
                     console.log(msg)
                 }
