@@ -4,3 +4,4 @@ deps/
 dist/
 node_modules/
 tmp/
+packages/editor/sn.config.js

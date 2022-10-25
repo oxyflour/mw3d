@@ -90,8 +90,8 @@ const DEFAULT_VIEWOPTS = {
     }
 } as ViewOpts
 
-export default ({ params }: RouteMatch<'commit'>) => {
-    const [ents, setEnts] = useEntities(params.commit),
+export default ({ params }: RouteMatch<'sess' | 'commit'>) => {
+    const [ents, setEnts] = useEntities(params.sess, params.commit),
         [tree, setTree] = useState({ } as TreeEnts),
         [view, setView] = useState(DEFAULT_VIEWOPTS)
     useEffect(() => { setTree(parse(ents)) }, [ents])

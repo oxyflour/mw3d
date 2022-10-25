@@ -1,48 +1,39 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { RouteMatch, useNavigate } from 'react-router-dom'
 
 import lambda from '../../../lambda'
-import worker from '../../../utils/data/worker'
 import { Entity } from '../../../utils/data/entity'
-import { upload } from '../../../utils/dom/upload'
+import { Utils } from '@ttk/core'
 
-const entityCache = new WeakMap<Entity[], string>()
-export function useEntities(current?: string) {
-    const [ents, saveEnts] = useState([] as Entity[]),
-        nav = useNavigate()
-    async function setEnts(ents: Entity[]) {
-        saveEnts(ents)
-        const commit = await worker.sha256(ents)
-        if (commit !== current) {
-            entityCache.set(ents, commit)
-            localStorage.setItem(commit, JSON.stringify(ents))
-            const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || []
+const entityCache = new WeakMap<Entity[], string>(),
+    commitCache = new Utils.LRU<Entity[]>()
+export function useEntities(sess = '', commit = '') {
+    const [entities, saveEntities] = useState([] as Entity[]),
+        nav = useNavigate(),
+        ref = useRef(commit)
+    ref.current = commit
+    async function setEntities(entities: Entity[]) {
+        saveEntities(entities)
+        const commit = entityCache.get(entities) || await lambda.commit.save({ entities })
+        if (commit !== ref.current) {
+            entityCache.set(entities, commit)
+            commitCache.set(commit, entities)
             nav(`/sess/${sess}/commit/${commit}`)
         }
     }
-    useEffect(() => {
-        const commit = entityCache.get(ents)
-        if (commit !== current && current) {
-            const ents = JSON.parse(localStorage.getItem(current) || '[]')
-            entityCache.set(ents, current)
-            saveEnts(ents)
+    async function loadCommit(commit: string) {
+        const entities = commitCache.get(commit) || (await lambda.commit.get(commit)).entities
+        if (commit === ref.current) {
+            entityCache.set(entities, commit)
+            commitCache.set(commit, entities)
+            saveEntities(entities)
         }
-    }, [ents, current])
-    return [ents, setEnts] as [typeof ents, typeof setEnts]
+    }
+    useEffect(() => { commit ? loadCommit(commit) : setEntities([]) }, [commit])
+    return [entities, setEntities] as [typeof entities, typeof setEntities]
 }
 
-export default () => {
-    const [, setEnts] = useEntities()
-    return <button onClick={
-        () => upload(async files => {
-            const arr = files ? Array.from(files) : [],
-                ents = []
-            for await (const msg of lambda.shape.open(arr)) {
-                if (msg.entities) {
-                    ents.push(...msg.entities)
-                }
-            }
-            setEnts(ents)
-        })
-    }>open</button>
+export default ({ params }: RouteMatch<'sess'>) => {
+    useEntities(params.sess)
+    return null
 }

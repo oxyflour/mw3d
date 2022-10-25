@@ -1,5 +1,11 @@
 const { app, protocol, BrowserWindow, ipcMain, desktopCapturer } = require('electron')
 
+// https://github.com/electron/electron/issues/4280
+process.setFdLimit(65535)
+
+// https://stackoverflow.com/questions/44658269/electron-how-to-allow-insecure-https
+app.commandLine.appendSwitch('ignore-certificate-errors')
+
 // https://github.com/electron/electron/issues/23254
 app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100')
 

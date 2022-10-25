@@ -20,7 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "@yff/ncc": "^2.0.8",
-    "@yff/sn": "^1.0.20",
+    "@yff/sn": "^1.0.22",
     "autoprefixer": "^10.4.8",
     "commander": "^9.4.0",
     "electron": "^21.2.0",

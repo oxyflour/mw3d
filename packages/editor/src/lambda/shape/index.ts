@@ -31,7 +31,7 @@ export async function *open(files: { name: string, arrayBuffer: () => Promise<Ar
         await Promise.all(entities.map(async entity => {
             const { topo, geom, data } = entity
             if (data) {
-                entity.data = await store.data.save(await read(data))
+                entity.data = await store.library.save(await read(data), 'data/')
             }
             if (geom?.url) {
                 geom.url = await store.geom.cache(await read(geom.url), entity.data || '')

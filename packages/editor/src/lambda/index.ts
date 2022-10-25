@@ -1,3 +1,5 @@
+import os from 'os'
+import path from 'path'
 import { spawn } from "node:child_process"
 import store from "../utils/node/store"
 import { open } from './shape'
@@ -5,17 +7,18 @@ import { open } from './shape'
 export default {
     sess: {
         async fork(sess: string, href: string) {
-            spawn('C:\\Users\\oxyfl\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome', [
+            spawn(path.join(os.homedir(), 'AppData\\Local\\Google\\Chrome SxS\\Application\\chrome'), [
                 `--app=${href}`,
                 '--enable-unsafe-webgpu',
                 '--auto-accept-this-tab-capture',
-                `--auto-select-tab-capture-source-by-title=${sess}`
+                `--auto-select-tab-capture-source-by-title=${sess}`,
+                '--ignore-certificate-errors',
             ])
         },
         async *sub(sess: string) {
             const queue = [] as { error: any, result: string }[],
                 callbacks = [] as { resolve: Function, reject: Function }[],
-                unsub = await store.root.sub(sess, ({ error, result }) => {
+                unsub = await store.cache.sub(sess, ({ error, result }) => {
                     const cb = callbacks.shift()
                     if (cb) {
                         error ? cb.reject(error) : cb.resolve(result)
@@ -42,18 +45,27 @@ export default {
             }
         },
         async pub(sess: string, result: string) {
-            await store.root.pub(sess, { result })
+            await store.cache.pub(sess, { result })
         },
         async stop(sess: string) {
-            await store.root.pub(sess, { error: { message: `session ${sess} stop` } })
+            await store.cache.pub(sess, { error: { message: `session ${sess} stop` } })
         },
     },
+    commit: store.commit,
     assets: {
         async get(key: string) {
-            return await store.root.get(key)
+            try {
+                return await store.cache.get(key)
+            } catch (err) {
+                const [data = ''] = key.split('/g/'),
+                    buf = await store.library.get(data),
+                    file = { name: data, arrayBuffer: () => Promise.resolve(buf) }
+                for await (const msg of open([file])) {
+                    console.log(msg)
+                }
+                return await store.cache.get(key)
+            }
         }
     },
-    shape: {
-        open
-    }
+    shape: { open }
 }

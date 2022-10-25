@@ -6,7 +6,16 @@ import connect, { Api } from '../utils/cast/connect'
 
 import './index.less'
 
-const peerOpts = { iceServers: [{ urls: 'stun:172.24.197.158', username: 'abc', credential: 'abc', credentialType: 'password' as 'password' }] }
+const peerOpts = {
+    iceServers: [{
+        urls: 'turn:172.24.197.158',
+        username: 'any',
+        credential: 'any',
+        credentialType: 'password'
+    }, {
+        urls: 'stun:172.24.197.158',
+    }]
+} as RTCConfiguration
 
 export function layout({ children }: { children: any }) {
     const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || [],

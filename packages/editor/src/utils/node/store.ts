@@ -1,8 +1,12 @@
 import Redis from "ioredis"
+import path from 'path'
+import os from 'os'
 import { deflate as deflateRaw, unzip as unzipRaw } from 'zlib'
 import { promisify } from 'node:util'
 import { asyncCache } from "../common/cache"
 import { sha256 } from "./common"
+import { mkdir, readFile, writeFile } from "fs/promises"
+import { Entity } from "../data/entity"
 
 const unzip = promisify(unzipRaw),
     deflate = promisify(deflateRaw),
@@ -19,10 +23,11 @@ const unzip = promisify(unzipRaw),
     callbacks = { } as Record<string, ((message: string) => any)[]>
 
 class Store {
-    constructor(public prefix = '') {
+    constructor(public prefix = '', public persistent = '', public ex = 10) {
     }
-    async sub(channel: string, callback: (message: any) => any) {
-        const redis = await getReceiver()
+    async sub(evt: string, callback: (message: any) => any) {
+        const redis = await getReceiver(),
+            channel = this.prefix + evt
         callbacks[channel] = (callbacks[channel] || []).concat(data => callback(JSON.parse(data)))
         await redis.subscribe(channel)
         return async () => {
@@ -33,55 +38,65 @@ class Store {
             }
         }
     }
-    async pub(channel: string, message: any) {
-        const redis = await getRedis()
+    async pub(evt: string, message: any) {
+        const redis = await getRedis(),
+            channel = this.prefix + evt
         await redis.publish(channel, JSON.stringify(message))
     }
-    async get(key: string, ex = 1000) {
+    async get(key: string, ex = this.ex) {
         const zipped = await this.zipped(key, ex)
         return await unzip(zipped)
     }
-    async set(key: string, buf: Buffer, ex = 1000) {
+    async set(key: string, buf: Buffer, ex = this.ex) {
         const redis = await getRedis(),
             zipped = await deflate(buf)
         await redis.set(key, zipped, 'EX', ex)
     }
-    async zipped(key: string, ex = 1000) {
-        const redis = await getRedis(),
-            buf = await redis.getBuffer(this.prefix + key)
+    async zipped(key: string, ex = this.ex) {
+        const redis = await getRedis()
+        let buf = await redis.getBuffer(this.prefix + key)
         if (!buf) {
-            throw Error(`key ${key} not found`)
+            if (this.persistent) {
+                buf = await readFile(path.join(this.persistent, this.prefix + key))
+            } else {
+                throw Error(`key ${key} not found`)
+            }
         }
         await redis.expire(this.prefix + key, ex)
         return buf
     }
-    async save(buf: Buffer, prefix = this.prefix) {
-        // TODO:
-        const key = prefix + sha256(buf)
-        return await this.cache(buf), key
-    }
-    async cache(buf: Buffer, prefix = this.prefix, ex = 1000) {
+    async save(buf: Buffer, prefix = '', ex = this.ex) {
         const redis = await getRedis(),
             zipped = await deflate(buf),
             key = prefix + sha256(buf)
-        return await redis.set(key, zipped, 'EX', ex), key
+        if (this.persistent) {
+            const dest = path.join(this.persistent, this.prefix + key)
+            mkdir(path.dirname(dest), { recursive: true })
+            await writeFile(dest, zipped)
+        }
+        return await redis.set(this.prefix + key, zipped, 'EX', ex), key
     }
 }
 
-const root = new Store()
+const library = new Store('library/', path.join(os.homedir(), '.ttk')),
+    cache = new Store('cache/')
 export default {
-    root,
-    data: {
-        async save(buf: Buffer) {
-            return await root.save(buf, 'data/')
+    library,
+    cache,
+    commit: {
+        async save(data: { entities: Entity[] }) {
+            const buf = Buffer.from(JSON.stringify(data)),
+                key = await library.save(buf, 'commit/')
+            return key.split('/').slice(1).join('/')
         },
-        async get(key: string) {
-            return await root.get(key)
+        async get(commit: string) {
+            const buf = await library.get(`commit/${commit}`)
+            return JSON.parse(buf.toString()) as { entities: Entity[] }
         },
     },
     geom: {
         async cache(buf: Buffer, data: string) {
-            return await root.cache(buf, data + '/g/')
+            return await cache.save(buf, data + '/g/')
         },
     },
 }
