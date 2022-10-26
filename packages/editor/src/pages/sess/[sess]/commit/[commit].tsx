@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Engine, Mesh, Obj3, Utils } from '@ttk/react'
+import { Engine, Mesh, Obj3, useObj3, Utils } from '@ttk/react'
 import { RouteMatch } from 'react-router-dom'
 
 import Toolbar from '../../../../comps/toolbar'
@@ -11,7 +11,7 @@ import { Entity, parse, TreeEnts } from '../../../../utils/data/entity'
 import { useAsync } from '../../../../utils/react/hooks'
 import { ViewOpts } from '../../../../utils/data/view'
 import { select } from '../../../../utils/data/tree'
-import { MATERIAL_SET } from '../../../../comps/view/pick/utils'
+import { MATERIAL_SET, Obj3WithEntity } from '../../../../comps/view/pick/utils'
 import { useEntities } from '..'
 
 const GEOMETRY_CACHE = new Utils.LRU<{ faces?: Engine.Geometry, edges?: Engine.LineList }>(10000)
@@ -42,8 +42,14 @@ function loadMatSet(attrs: Entity['attrs'], mats: ViewOpts['mats']) {
     }
 }
 
+function EntityMeshBind({ entity }: { entity: Entity }) {
+    const { obj } = useObj3() as { obj: Obj3WithEntity }
+    obj && (obj.entity = entity)
+    return null
+}
+
 const GEO_BOX = new Engine.BoxGeometry({ })
-function MeshBound({ create, ...props }: EntityProps) {
+function MeshBound(props: EntityProps) {
     const { position, scaling } = useMemo(() => {
         const position = [0, 0, 0] as [number, number, number],
             scaling = [1, 1, 1] as [number, number, number]
@@ -60,11 +66,12 @@ function MeshBound({ create, ...props }: EntityProps) {
     }, [props.data.bound])
     const mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return <Obj3 { ...props }>
-        <Mesh create={ create }
-            geo={ GEO_BOX }
+        <Mesh geo={ GEO_BOX }
             mat={ props.active ? mats.default : mats.dimmed }
             position={ position }
-            scaling={ scaling } />
+            scaling={ scaling }>
+            { props.children }
+        </Mesh>
     </Obj3>
 }
 
@@ -75,11 +82,15 @@ function EntityMesh(props: EntityProps) {
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props }
             mat={ props.active ? mats.default : mats.dimmed }
-            geo={ geom.faces } /> }
+            geo={ geom.faces }>
+            <EntityMeshBind entity={ props.data } />
+        </Mesh> }
         { geom.edges && <Mesh
             isVisible={ props.active && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
-    </> : <MeshBound { ...props } />
+    </> : <MeshBound { ...props }>
+        <EntityMeshBind entity={ props.data } />
+    </MeshBound>
 }
 
 const DEFAULT_VIEWOPTS = {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { queue } from "../../../utils/common/queue"
 import { ViewOpts } from "../../../utils/data/view"
 import { withMouseDown } from "../../../utils/dom/mouse"
-import { CAMERA_PIVOT, pick } from "../pick/utils"
+import { CAMERA_PIVOT, Obj3WithEntity, pick } from "../pick/utils"
 
 async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')
@@ -19,10 +19,15 @@ async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     document.body.appendChild(image)
 }
 
+async function pickEntity(ctx: CanvasContextValue, evt: { clientX: number, clientY: number }) {
+    const scene = new Engine.Scene(Array.from(ctx.scene || []).filter((item: Obj3WithEntity) => item.entity))
+    return await pick({ ...ctx, scene }, evt)
+}
+
 async function updatePivot(
         ctx: CanvasContextValue,
         evt: { clientX: number, clientY: number }) {
-    const { id, position, buffer } = await pick(ctx, evt)
+    const { id, position, buffer } = await pickEntity(ctx, evt)
     if (ctx.canvas && (window as any).DEBUG_SHOW_PICK_BUFFER) {
         await showBuffer(buffer, ctx.canvas)
     }
@@ -94,7 +99,8 @@ export function MouseControl({ view, onSelect }: {
     async function click(evt: MouseEvent) {
         // double click
         if (Date.now() - clickedAt.current < 500) {
-            const { id } = await pick(ctx, evt)
+            const scene = new Engine.Scene(Array.from(ctx.scene || []).filter((item: Obj3WithEntity) => item.entity)),
+                { id } = await pickEntity({ ...ctx, scene }, evt)
             let found = undefined as undefined | Engine.Obj3
             id && scene?.walk(obj => obj.id === id && (found = obj))
             select.current?.(found)

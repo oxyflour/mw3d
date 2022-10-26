@@ -52,9 +52,8 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
             visible.map((data, key) => {
                 const active = !selected.length || data.nodes?.some(id => tree[id]?.selected),
                     mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
-                    matrix = data.trans,
-                    create = () => Object.assign(new Engine.Mesh(), { entity: data })
-                return React.createElement(component || Mesh, { key, view, active, data, mat, matrix, create } as EntityProps)
+                    matrix = data.trans
+                return React.createElement(component || Mesh, { key, view, active, data, mat, matrix } as EntityProps)
             })
         }
         <Axies />

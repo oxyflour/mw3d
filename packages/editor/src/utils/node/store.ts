@@ -23,7 +23,7 @@ const unzip = promisify(unzipRaw),
     callbacks = { } as Record<string, ((message: string) => any)[]>
 
 class Store {
-    constructor(public prefix = '', public persistent = '', public ex = 10) {
+    constructor(public prefix = '', public persistent = '', public ex = 3600) {
     }
     async sub(evt: string, callback: (message: any) => any) {
         const redis = await getReceiver(),

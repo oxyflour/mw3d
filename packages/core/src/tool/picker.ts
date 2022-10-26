@@ -8,7 +8,6 @@ import Obj3, { Scene } from "../engine/obj3"
 import Camera, { PerspectiveCamera } from "../engine/camera"
 import { Mesh } from '../engine'
 import { Texture } from "../engine/uniform"
-import { LRU } from "../utils"
 
 import WorkerSelf from './picker?worker&inline'
 
@@ -24,9 +23,9 @@ interface WebGPUOffscreenCanvas extends
 const cache = {
     created: undefined as undefined | ReturnType<typeof initCache>,
     scene: new Scene(),
-    geoMap: new LRU<Geometry>(10000),
-    matMap: new LRU<Material>(10000),
-    meshMap: new LRU<Mesh>(10000),
+    geoMap: { } as Record<number, Geometry>,
+    matMap: [] as Material[],
+    meshMap: [] as Mesh[],
 }
 async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
     const renderer = await Renderer.create(canvas, opts),
@@ -106,7 +105,7 @@ const worker = wrap({
             await cache.created || (cache.created = initCache(canvas, pixels, opts))
         },
         async query({ geometries }: { geometries: number[] }) {
-            return { geometries: geometries.filter(id => !cache.geoMap.get(id)) }
+            return { geometries: geometries.filter(id => !cache.geoMap[id]) }
         },
         async render(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
@@ -125,16 +124,18 @@ const worker = wrap({
             scene.clear()
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
-            for (const { worldMatrix, geoId, id, clipPlane, lineWidth } of Object.values(meshes)) {
-                if (!geometries[geoId] && !geoMap.get(geoId)) {
+            const list = Object.values(meshes)
+            for (const [index, { worldMatrix, geoId, clipPlane, lineWidth }] of list.entries()) {
+                if (!geometries[geoId] && !geoMap[geoId]) {
                     throw Error(`geometry ${geoId} is not found`)
                 }
-                const geo = geoMap.get(geoId) || geoMap.set(geoId, new Geometry(geometries[geoId]!)),
-                    mat = matMap.get(id) || matMap.set(id, new BasicMaterial({
+                const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(geometries[geoId]!)),
+                    idx = index + 1,
+                    mat = matMap[idx] || (matMap[idx] = new BasicMaterial({
                         entry: { frag: 'fragMainColor' },
-                        color: new Uint8Array([id, id >> 8, 0]),
+                        color: new Uint8Array([idx, idx >> 8, idx >> 16]),
                     })),
-                    mesh = meshMap.get(id) || meshMap.set(id, new Mesh(geo, mat))
+                    mesh = meshMap[idx] || (meshMap[idx] = new Mesh())
                 mat.prop.lineWidth = lineWidth
                 if (clipPlane) {
                     vec4.copy(mat.clipPlane, clipPlane)
@@ -160,7 +161,9 @@ const worker = wrap({
                     })
                 }))
             renderer.render(scene, camera, { depthTexture })
-            const [id = 0] = await readPixel({ x, y })
+            const [idx = 0] = await readPixel({ x, y }),
+                { id } = list[idx - 1] || { id: 0 }
+
             DEPTH_PLANE.mat = new BasicMaterial({ entry: { frag: 'fragMainDepth' }, texture: depthTexture }),
             renderer.render(DEPTH_SCENE, DEPTH_CAMERA)
             const [val = 0] = await readPixel({ x, y }),
