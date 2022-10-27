@@ -66,11 +66,12 @@ function MeshBound(props: EntityProps) {
     }, [props.data.bound])
     const mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return <Obj3 { ...props }>
+        <EntityMeshBind entity={ props.data } />
         <Mesh geo={ GEO_BOX }
             mat={ props.active ? mats.default : mats.dimmed }
             position={ position }
             scaling={ scaling }>
-            { props.children }
+            <EntityMeshBind entity={ props.data } />
         </Mesh>
     </Obj3>
 }
@@ -88,9 +89,7 @@ function EntityMesh(props: EntityProps) {
         { geom.edges && <Mesh
             isVisible={ props.active && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
-    </> : <MeshBound { ...props }>
-        <EntityMeshBind entity={ props.data } />
-    </MeshBound>
+    </> : <MeshBound { ...props } />
 }
 
 const DEFAULT_VIEWOPTS = {
