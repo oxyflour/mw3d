@@ -202,26 +202,23 @@ export function Obj3({ children, create, matrix, position, rotation, scaling }: 
     </Obj3Context.Provider>
 }
 
-type Args<A> = A extends (...args: infer C) => any ? C : A
+type Arg0<A> = A extends (...args: infer C) => any ? C[0] : A
 
-function MeshSetter({ geo, mat, isVisible, renderOrder }: {
+function MeshSetter(props: {
     geo?: Engine.Geometry
     mat?: Engine.Material
     isVisible?: boolean
     renderOrder?: number
+    offset?: number
+    count?: number
 }) {
     const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
     useEffect(() => {
-        if (mesh) {
-            mesh.geo = geo
-            mesh.mat = mat
-            mesh.isVisible = isVisible === undefined || isVisible
-            renderOrder !== undefined && (mesh.renderOrder = renderOrder)
-        }
-    }, [mesh, geo, mat, isVisible, renderOrder])
+        mesh && Object.assign(mesh, props)
+    }, [mesh, props.geo, props.mat, props.isVisible, props.renderOrder, props.offset, props.offset])
     return null
 }
-export function Mesh({ children, ...props }: Args<typeof MeshSetter>['0'] & Args<typeof Obj3>['0']) {
+export function Mesh({ children, ...props }: Arg0<typeof MeshSetter> & Arg0<typeof Obj3>) {
     return <Obj3 create={ () => new Engine.Mesh() } { ...props }>
         <MeshSetter { ...props } />
         { children }

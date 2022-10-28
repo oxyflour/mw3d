@@ -115,7 +115,7 @@ export default class Renderer {
     }
 
     private cachedRenderPass = {
-        objs: [] as { mesh: Mesh, mat: Material, geo: Geometry }[],
+        objs: [] as { mesh: Mesh, mat: Material, geo: Geometry, offset: number, count: number }[],
         bundles: [] as GPURenderBundle[],
     }
     private runRenderPass(
@@ -284,9 +284,10 @@ export default class Renderer {
         if (this.cachedRenderPass.objs.length !== sorted.length ||
             this.cachedRenderPass.objs.some((item, idx) => {
                 const mesh = sorted[idx]
-                return item.mesh !== mesh || item.geo !== mesh.geo || item.mat !== mesh.mat
+                return item.mesh !== mesh || item.geo !== mesh.geo || item.mat !== mesh.mat ||
+                    item.offset !== mesh.offset || item.count !== mesh.count
             })) {
-            this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat }))
+            this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
             const encoder = this.device.createRenderBundleEncoder({
                 colorFormats: [this.cache.opts.fragmentFormat],
                 depthStencilFormat: this.cache.opts.depthFormat,
