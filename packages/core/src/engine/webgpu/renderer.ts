@@ -117,6 +117,13 @@ export default class Renderer {
     private cachedRenderPass = {
         objs: [] as { mesh: Mesh, mat: Material, geo: Geometry, offset: number, count: number }[],
         bundles: [] as GPURenderBundle[],
+        compare(sorted: Mesh[]) {
+            return this.objs.length !== sorted.length || this.objs.some((item, idx) => {
+                const mesh = sorted[idx]
+                return item.mesh !== mesh || item.geo !== mesh.geo || item.mat !== mesh.mat ||
+                    item.offset !== mesh.offset || item.count !== mesh.count
+            })
+        }
     }
     private runRenderPass(
             pass: GPURenderPassEncoder | GPURenderBundleEncoder,
@@ -196,6 +203,9 @@ export default class Renderer {
     render(scene: Scene, camera: Camera, opts = { } as {
         depthTexture?: Texture
         colorTexture?: Texture
+        keepFrame?: boolean
+        disableBundle?: boolean
+        depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
     }) {
         const start = performance.now()
         if (this.width * this.devicePixelRatio !== this.renderSize.width ||
@@ -252,51 +262,47 @@ export default class Renderer {
         }
 
         const cmd = this.device.createCommandEncoder(),
+            colorTexture = opts.colorTexture ? this.cache.texture(opts.colorTexture) : this.context.getCurrentTexture(),
+            depthTexture = opts.depthTexture ? this.cache.texture(opts.depthTexture) : this.cache.depthTexture,
             pass = cmd.beginRenderPass({
                 colorAttachments: [{
                     ...(this.opts.multisample?.count! > 1 ? {
                         view: this.cache.fragmentTexture.createView(),
-                        resolveTarget: opts.colorTexture ?
-                            this.cache.texture(opts.colorTexture).createView() :
-                            this.context.getCurrentTexture().createView(),
+                        resolveTarget: colorTexture.createView(),
                     } : {
-                        view: opts.colorTexture ?
-                            this.cache.texture(opts.colorTexture).createView() :
-                            this.context.getCurrentTexture().createView(),
+                        view: colorTexture.createView(),
                     }),
-                    loadOp: 'clear',
+                    loadOp: opts.keepFrame ? 'load' : 'clear',
                     storeOp: 'store',
                     clearValue: this.clearColor,
                 }],
                 depthStencilAttachment: {
-                    view: opts.depthTexture ?
-                        this.cache.texture(opts.depthTexture).createView() :
-                        this.cache.depthTexture.createView(),
-                    depthLoadOp: 'clear',
+                    view: depthTexture.createView(),
+                    depthLoadOp: opts.keepFrame ? 'load' : 'clear',
                     depthClearValue: 0,
                     depthStoreOp: 'store',
-                    stencilLoadOp: 'clear',
+                    stencilLoadOp: opts.keepFrame ? 'load' : 'clear',
                     stencilClearValue: 0,
                     stencilStoreOp: 'store',
+                    ...opts.depthStencilAttachment
                 }
             })
 
-        if (this.cachedRenderPass.objs.length !== sorted.length ||
-            this.cachedRenderPass.objs.some((item, idx) => {
-                const mesh = sorted[idx]
-                return item.mesh !== mesh || item.geo !== mesh.geo || item.mat !== mesh.mat ||
-                    item.offset !== mesh.offset || item.count !== mesh.count
-            })) {
-            this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
-            const encoder = this.device.createRenderBundleEncoder({
-                colorFormats: [this.cache.opts.fragmentFormat],
-                depthStencilFormat: this.cache.opts.depthFormat,
-                sampleCount: this.opts.multisample?.count
-            })
-            this.runRenderPass(encoder, sorted, camera)
-            this.cachedRenderPass.bundles = [encoder.finish()]
+        if (opts.disableBundle) {
+            this.runRenderPass(pass, sorted, camera)
+        } else {
+            if (this.cachedRenderPass.compare(sorted)) {
+                this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
+                const encoder = this.device.createRenderBundleEncoder({
+                    colorFormats: [this.cache.opts.fragmentFormat],
+                    depthStencilFormat: this.cache.opts.depthFormat,
+                    sampleCount: this.opts.multisample?.count
+                })
+                this.runRenderPass(encoder, sorted, camera)
+                this.cachedRenderPass.bundles = [encoder.finish()]
+            }
+            pass.executeBundles(this.cachedRenderPass.bundles)
         }
-        pass.executeBundles(this.cachedRenderPass.bundles)
 
         pass.end()
         this.device.queue.submit([cmd.finish()])
