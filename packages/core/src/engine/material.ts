@@ -31,9 +31,7 @@ export interface MatOpts {
     renderOrder?: number
     texture?: Texture
     sampler?: Sampler
-    depth?: {
-        bias?: number
-    }
+    multisample?: GPUMultisampleState
 }
 
 export default class Material extends AutoIndex {

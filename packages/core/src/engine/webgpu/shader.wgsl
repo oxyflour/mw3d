@@ -32,6 +32,7 @@ struct MaterialUniforms {
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
 @group(3) @binding(1) var depthTexture: texture_depth_2d;
+@group(3) @binding(1) var depthMultiTexture: texture_depth_multisampled_2d;
 @group(3) @binding(1) var imageTexture: texture_2d<f32>;
 @group(3) @binding(2) var materialSampler: sampler;
 
@@ -228,6 +229,23 @@ fn fragMainDepth(input: FragInput) -> @location(0) vec4<f32> {
   var g = (i & 0x00ff00u) >> 8u;
   var b = (i & 0xff0000u) >> 16u;
   return vec4<f32>(f32(r) / 255.0, f32(g) / 255.0, f32(b) / 255.0, 1.0);
+}
+
+fn textureMultiSample(t: texture_depth_multisampled_2d, s: sampler, p: vec2<f32>) -> f32 {
+  var z = textureDimensions(t);
+  return textureLoad(depthMultiTexture, vec2<i32>(p * vec2<f32>(z)), 1);
+}
+
+@fragment
+fn fragMainMultiDepth(input: FragInput) -> @location(0) vec4<f32> {
+  if (WGSL_IGNORE_UNUSED) {
+    var a = lightNum;
+    var b = lights;
+    var c = material.color;
+  }
+  var p = input.position.xy / canvasSize.xy;
+  var d = textureMultiSample(depthMultiTexture, materialSampler, p);
+  return vec4<f32>(d, d, d, 1.0);
 }
 
 // @frag-extra-code

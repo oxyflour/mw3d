@@ -5,7 +5,7 @@ import Light from '../engine/light'
 import Material, { BasicMaterial } from '../engine/material'
 import Picker from '../tool/picker'
 import { rand } from '../utils/math'
-import { BoxGeometry, BoxLines, SphereGeometry, SpriteGeometry } from '../engine'
+import { BoxGeometry, BoxLines, PlaneXY, SphereGeometry, SpriteGeometry } from '../engine'
 import { PerspectiveCamera } from '../engine/camera'
 import { Control } from '../tool/control'
 import { mat4, quat, vec4 } from 'gl-matrix'
@@ -84,6 +84,8 @@ if (ctx) {
 }
 const source = await createImageBitmap(tex)
 
+let depthMaterial: Material
+
 const camera = new PerspectiveCamera({
         fov: 5 / 180 * Math.PI,
         aspect: canvas.clientWidth / canvas.clientHeight,
@@ -120,6 +122,22 @@ const camera = new PerspectiveCamera({
             }),
         }), {
             position: [0, 0, 160],
+        }),
+        new Mesh(new PlaneXY({
+            size: 100,
+        }), depthMaterial = new BasicMaterial({
+            color: [1, 1, 1],
+            entry: { frag: 'fragMainMultiDepth' },
+            texture: new Texture({
+                size: { width: renderer.width, height: renderer.height },
+                format: 'depth24plus-stencil8',
+                usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.RENDER_ATTACHMENT,
+                sampleCount: renderer.opts.multisample?.count
+            }, {
+                aspect: 'depth-only',
+            }),
+        }), {
+            position: [0, 160, 160],
         }),
         new Mesh(new BoxLines({ size: 400 }), cube.mat),
         new Mesh(new BoxGeometry({ size: 20 }), new BasicMaterial({
@@ -175,10 +193,12 @@ window.addEventListener('resize', () => {
     renderer.height = canvas.clientHeight
 })
 
+const depthScene = new Scene(Array.from(scene).filter(item => (item as Mesh).mat !== depthMaterial))
 requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
+    renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, disableBundle: true })
     renderer.render(scene, camera)
 })
 

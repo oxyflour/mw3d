@@ -7,7 +7,7 @@ export class Texture {
 }
 
 export class Sampler {
-    constructor(readonly opts: GPUSamplerDescriptor) {
+    constructor(readonly opts = { } as GPUSamplerDescriptor) {
     }
 }
 
