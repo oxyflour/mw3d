@@ -3,17 +3,36 @@ import path from 'path'
 import { spawn } from "node:child_process"
 import store from "../utils/node/store"
 import { open } from './shape'
+import { mkdir, rm } from 'fs/promises'
 
 export default {
     sess: {
         async fork(sess: string, href: string) {
-            spawn(path.join(os.homedir(), 'AppData\\Local\\Google\\Chrome SxS\\Application\\chrome'), [
+            const tmp = path.join(os.tmpdir(), 'ttk-cast', sess)
+            await mkdir(tmp, { recursive: true })
+            const proc = spawn(path.join(os.homedir(), 'AppData\\Local\\Google\\Chrome SxS\\Application\\chrome'), [
                 `--app=${href}`,
                 '--enable-unsafe-webgpu',
                 '--auto-accept-this-tab-capture',
                 `--auto-select-tab-capture-source-by-title=${sess}`,
                 '--ignore-certificate-errors',
+                '--no-sandbox',
+                `--user-data-dir=${tmp}`
             ])
+            const unsub = await store.cache.sub(sess, async ({ result }) => {
+                if (result?.kill?.sess === sess) {
+                    try {
+                        proc.kill()
+                        await unsub()
+                        await rm(tmp, { recursive: true, force: true })
+                    } catch (err) {
+                        console.error(`try to kill sess ${sess} (pid: ${proc.pid}) failed`, err)
+                    }
+                }
+            })
+        },
+        async kill(sess: string) {
+            await store.cache.pub(sess, { result: { kill: { sess } } })
         },
         async *sub(sess: string) {
             const queue = [] as { error: any, result: string }[],
