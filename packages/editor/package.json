@@ -19,12 +19,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@yff/ncc": "^2.0.8",
+    "@yff/ncc": "^2.0.9",
     "@yff/sn": "^1.0.22",
     "autoprefixer": "^10.4.8",
     "commander": "^9.4.0",
     "electron": "^21.2.0",
     "ioredis": "^5.2.3",
+    "keyv": "^4.5.0",
     "less": "^4.1.2",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
@@ -33,8 +34,8 @@
     "tailwindcss": "^3.1.8"
   },
   "devDependencies": {
-    "@types/node": "^16.11.59",
-    "@types/react": "^18.0.19",
+    "@types/node": "^16.18.3",
+    "@types/react": "^18.0.24",
     "@types/react-router-dom": "^5.3.3",
     "tap": "~0.4.4"
   }

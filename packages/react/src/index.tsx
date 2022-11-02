@@ -204,7 +204,7 @@ export function Obj3({ children, create, matrix, position, rotation, scaling }: 
 
 type Arg0<A> = A extends (...args: infer C) => any ? C[0] : A
 
-function MeshSetter(props: {
+function MeshSetter({ geo, mat, isVisible, renderOrder, offset, count }: {
     geo?: Engine.Geometry
     mat?: Engine.Material
     isVisible?: boolean
@@ -214,8 +214,15 @@ function MeshSetter(props: {
 }) {
     const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
     useEffect(() => {
-        mesh && Object.assign(mesh, props)
-    }, [mesh, props.geo, props.mat, props.isVisible, props.renderOrder, props.offset, props.offset])
+        if (mesh) {
+            mesh.geo = geo
+            mesh.mat = mat
+            mesh.isVisible = isVisible !== undefined ? isVisible : true
+            mesh.renderOrder = renderOrder || 0
+            mesh.offset = offset || 0
+            mesh.count = count || -1
+        }
+    }, [mesh, geo, mat, isVisible, renderOrder, offset, count])
     return null
 }
 export function Mesh({ children, ...props }: Arg0<typeof MeshSetter> & Arg0<typeof Obj3>) {
