@@ -31,10 +31,11 @@ export function EntityPicker({ mode, pickable, onSelect }: {
             ret = await pickEntity({ scene: new Engine.Scene(meshes), ...ctx }, { clientX, clientY })
         setHoverEntity({ entity: map[ret.id], clientX, clientY })
     }
-    onDblClick.current = async evt => {
-        const ret = await pick({ ...ctx, scene: new Engine.Scene(topos) }, evt),
+    onDblClick.current = async ({ clientX, clientY }) => {
+        const ret = await pick({ ...ctx, scene: new Engine.Scene(topos) }, { clientX, clientY }),
             index = topos.findIndex(mesh => mesh.id === ret.id)
         entity && index >= 0 && onSelect?.({ entity, index })
+        setHoverEntity({ entity: undefined, clientX, clientY })
     }
     useEffect(() => {
         pickTopo({ scene: new Engine.Scene(topos), ...ctx }, position)
@@ -62,8 +63,27 @@ export function EntityPicker({ mode, pickable, onSelect }: {
             <Mesh key={ item.id }
                 renderOrder={ item.id === hoverMesh?.id ? -100 : -5 }
                 geo={ item.geo }
-                mat={ item.id === hoverMesh?.id ? MATERIAL_SET.hover : item.mat } />)
+                mat={ item.id === hoverMesh?.id ? MATERIAL_SET.hover : item.mat }
+                offset={ item.offset }
+                count={ item.count } />)
         }
         </Obj3> ||
+        null
+}
+
+export function TopoPicked({ entity, type, index }: {
+    entity: Entity
+    type: ViewPickMode
+    index: number
+}) {
+    const [{ value: meshes = [] }] = useAsync(() => loadTopo(type, entity), [entity, type]),
+        item = meshes[index]
+    return item &&
+        <Mesh
+            renderOrder={ -10 }
+            geo={ item.geo }
+            mat={ MATERIAL_SET.selected }
+            offset={ item.offset }
+            count={ item.count } /> ||
         null
 }

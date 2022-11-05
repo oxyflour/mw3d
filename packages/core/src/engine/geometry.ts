@@ -76,7 +76,7 @@ export class SpriteGeometry extends Geometry {
         width?: number
         height?: number
         fixed?: boolean
-        positions?: [number, number, number]
+        positions?: number[]
     }) {
         const pos = [] as number[],
             idx = [] as number[],

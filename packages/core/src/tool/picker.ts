@@ -65,6 +65,8 @@ export interface PickMesh {
     worldMatrix: mat4
     clipPlane: vec4
     lineWidth: number
+    offset: number
+    count: number
 }
 
 export interface PickGeo {
@@ -125,7 +127,7 @@ const worker = wrap({
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
             const list = Object.values(meshes)
-            for (const [index, { worldMatrix, geoId, clipPlane, lineWidth }] of list.entries()) {
+            for (const [index, { worldMatrix, geoId, offset, count, clipPlane, lineWidth }] of list.entries()) {
                 if (!geometries[geoId] && !geoMap[geoId]) {
                     throw Error(`geometry ${geoId} is not found`)
                 }
@@ -140,8 +142,7 @@ const worker = wrap({
                 if (clipPlane) {
                     vec4.copy(mat.clipPlane, clipPlane)
                 }
-                mesh.geo = geo
-                mesh.mat = mat
+                Object.assign(mesh, { geo, mat, offset, count })
                 mesh.setWorldMatrix(worldMatrix)
                 scene.add(mesh)
             }
@@ -205,8 +206,8 @@ export default class Picker {
         for (const obj of scene) {
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.geo && obj.mat) {
-                    const { worldMatrix, geo, id, mat } = obj
-                    meshes[obj.id] = { worldMatrix, id, clipPlane: mat.clipPlane, geoId: geo.id, lineWidth: obj.mat.prop.lineWidth }
+                    const { worldMatrix, geo, id, mat, offset, count } = obj
+                    meshes[obj.id] = { worldMatrix, id, offset, count, clipPlane: mat.clipPlane, geoId: geo.id, lineWidth: obj.mat.prop.lineWidth }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }

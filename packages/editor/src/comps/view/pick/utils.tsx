@@ -79,9 +79,13 @@ export async function loadTopo(type: ViewPickMode, entity: Entity) {
                 .map(data => new Engine.Mesh(new Engine.Geometry(data), MATERIAL_SET.select)))
     } else if (type === 'vert') {
         const url = entity.topo?.verts?.url || ''
-        return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-            (url ? unpack(await lambda.assets.get(url)) as Vert[] : [])
-                .map(data => new Engine.Mesh(new Engine.SpriteGeometry({ ...data, width: 50, height: 50, fixed: true }), MATERIAL_SET.select)))
+        async function loadVerts(url: string) {
+            const verts = url ? unpack(await lambda.assets.get(url)) as Vert[] : [],
+                positions = verts.map(item => item.position).flat(),
+                geo = new Engine.SpriteGeometry({ positions, width: 50, height: 50, fixed: true })
+            return verts.map((_, idx) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset: idx * 6, count: 6 }))
+        }
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadVerts(url))
     } else {
         throw Error(`loading ${type} not implemented yet`)
     }

@@ -8,8 +8,7 @@ import { KeyControl } from './control/key'
 import { MouseControl } from './control/mouse'
 
 import './index.less'
-import { EntityPicker } from './pick/entity'
-import { TopoPicked } from './pick/picked'
+import { EntityPicker, TopoPicked } from './pick/entity'
 import { MATERIAL_SET, Obj3WithEntity } from './pick/utils'
 import { Axies } from './tool/axies'
 
