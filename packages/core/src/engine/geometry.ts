@@ -72,23 +72,32 @@ export default class Geometry extends AutoIndex {
 }
 
 export class SpriteGeometry extends Geometry {
-    constructor({ position = [0, 0, 0], width = 1, height = 1, fixed = false } = { } as {
+    constructor({ positions = [0, 0, 0], width = 1, height = 1, fixed = false } = { } as {
         width?: number
         height?: number
         fixed?: boolean
-        position?: [number, number, number]
+        positions?: [number, number, number]
     }) {
-        const [x, y, z] = position
+        const pos = [] as number[],
+            idx = [] as number[],
+            norm = [] as number[]
+        for (let i = 0; i < positions.length; i += 3) {
+            const [x = 0, y = 0, z = 0] = positions.slice(i, i + 3),
+                start = pos.length
+            pos.push(x, y, z, x, y, z, x, y, z, x, y, z)
+            idx.push(...[0, 1, 2, 1, 3, 2].map(i => i + start))
+            norm.push(
+                width, height, fixed ? 1 : 0,
+                width, height, fixed ? 1 : 0,
+                width, height, fixed ? 1 : 0,
+                width, height, fixed ? 1 : 0,
+            )
+        }
         super({
             type: 'point-sprite',
-            positions: new Float32Array([x, y, z, x, y, z, x, y, z, x, y, z]),
-            indices: new Uint32Array([0, 1, 2, 1, 3, 2]),
-            normals: new Float32Array([
-                width, height, fixed ? 1 : 0,
-                width, height, fixed ? 1 : 0,
-                width, height, fixed ? 1 : 0,
-                width, height, fixed ? 1 : 0,
-            ]),
+            positions: new Float32Array(pos),
+            indices: new Uint32Array(idx),
+            normals: new Float32Array(norm),
         })
     }
 }

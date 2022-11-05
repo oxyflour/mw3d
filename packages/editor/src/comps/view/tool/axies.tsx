@@ -41,7 +41,7 @@ const VIEW_AXIES = new Engine.Obj3({
             color: [1, 0, 0]
         })),
         new Engine.Mesh(new Engine.SpriteGeometry({
-            position: [1.2, 0, 0],
+            positions: [1.2, 0, 0],
             width: AXIS_TEXT_SIZE, height: AXIS_TEXT_SIZE, fixed: true,
         })),
         new Engine.Mesh(new Engine.LineList({
@@ -51,7 +51,7 @@ const VIEW_AXIES = new Engine.Obj3({
             color: [0, 1, 0]
         })),
         new Engine.Mesh(new Engine.SpriteGeometry({
-            position: [0, 1.2, 0],
+            positions: [0, 1.2, 0],
             width: AXIS_TEXT_SIZE, height: AXIS_TEXT_SIZE, fixed: true,
         })),
         new Engine.Mesh(new Engine.LineList({
@@ -61,7 +61,7 @@ const VIEW_AXIES = new Engine.Obj3({
             color: [0, 0, 1]
         })),
         new Engine.Mesh(new Engine.SpriteGeometry({
-            position: [0, 0, 1.2],
+            positions: [0, 0, 1.2],
             width: AXIS_TEXT_SIZE, height: AXIS_TEXT_SIZE, fixed: true,
         })),
     ]

@@ -8,12 +8,12 @@ import './index.less'
 
 const peerOpts = {
     iceServers: [{
-        urls: 'turn:172.24.197.158',
+        urls: 'turn:172.19.188.114',
         username: 'any',
         credential: 'any',
         credentialType: 'password'
     }, {
-        urls: 'stun:172.24.197.158',
+        urls: 'stun:172.19.188.114',
     }]
 } as RTCConfiguration
 
