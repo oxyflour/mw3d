@@ -65,26 +65,57 @@ export async function pick(
 
 export type Obj3WithEntity = Engine.Obj3 & { entity?: Entity }
 
+async function loadEdges(url: string) {
+    const edges = url ? unpack(await lambda.assets.get(url)) as Edge[] : [],
+        slices = [] as { offset: number, count: number }[]
+    let offset = 0
+    for (const edge of edges) {
+        const count = edge.positions.length
+        slices.push({ offset, count })
+        offset += count
+    }
+    const geo = new Engine.LineList({ lines: edges.map(edge => edge.positions) })
+    return slices.map(({ offset, count }) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset, count }))
+}
+async function loadFaces(url: string) {
+    const faces = url ? unpack(await lambda.assets.get(url)) as Face[] : [],
+        positions = [] as number[],
+        indices = [] as number[],
+        normals = [] as number[],
+        slices = [] as { offset: number, count: number }[]
+    for (const face of faces) {
+        const start = positions.length / 3,
+            offset = indices.length,
+            count = face.indices.length
+        positions.push(...face.positions)
+        normals.push(...face.normals)
+        indices.push(...Array.from(face.indices).map(item => item + start))
+        slices.push({ offset, count })
+    }
+    const geo = new Engine.Geometry({
+        positions: new Float32Array(positions),
+        indices: new Uint32Array(indices),
+        normals: new Float32Array(positions),
+    })
+    return slices.map(({ offset, count }) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset, count }))
+}
+async function loadVerts(url: string) {
+    const verts = url ? unpack(await lambda.assets.get(url)) as Vert[] : [],
+        positions = verts.map(item => item.position).flat(),
+        geo = new Engine.SpriteGeometry({ positions, width: 50, height: 50, fixed: true })
+    return verts.map((_, idx) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset: idx * 6, count: 6 }))
+}
+
 const PICK_CACHE = new Utils.LRU<Engine.Mesh[]>(100)
 export async function loadTopo(type: ViewPickMode, entity: Entity) {
     if (type === 'edge') {
         const url = entity.topo?.edges?.url || ''
-        return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-            (url ? unpack(await lambda.assets.get(url)) as Edge[] : [])
-                .map(data => new Engine.Mesh(new Engine.LineList({ lines: [data.positions] }), MATERIAL_SET.select)))
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadEdges(url))
     } else if (type === 'face') {
         const url = entity.topo?.faces?.url || ''
-        return PICK_CACHE.get(url) || PICK_CACHE.set(url,
-            (url ? unpack(await lambda.assets.get(url)) as Face[] : [])
-                .map(data => new Engine.Mesh(new Engine.Geometry(data), MATERIAL_SET.select)))
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadFaces(url))
     } else if (type === 'vert') {
         const url = entity.topo?.verts?.url || ''
-        async function loadVerts(url: string) {
-            const verts = url ? unpack(await lambda.assets.get(url)) as Vert[] : [],
-                positions = verts.map(item => item.position).flat(),
-                geo = new Engine.SpriteGeometry({ positions, width: 50, height: 50, fixed: true })
-            return verts.map((_, idx) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset: idx * 6, count: 6 }))
-        }
         return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadVerts(url))
     } else {
         throw Error(`loading ${type} not implemented yet`)
