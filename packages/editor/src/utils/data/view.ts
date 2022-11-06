@@ -24,4 +24,8 @@ export interface ViewOpts {
     config?: {
         keyMap?: KeyMap
     }
+    clipPlane?: {
+        enabled?: boolean,
+        value?: [number, number, number, number]
+    }
 }

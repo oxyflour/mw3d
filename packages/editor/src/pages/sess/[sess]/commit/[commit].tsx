@@ -97,7 +97,11 @@ const DEFAULT_VIEWOPTS = {
         PEC: {
             metal: true
         }
-    }
+    },
+    clipPlane: {
+        enabled: true,
+        value: [1, 0, 0, 0],
+    },
 } as ViewOpts
 
 export default ({ params }: RouteMatch<'sess' | 'commit'>) => {

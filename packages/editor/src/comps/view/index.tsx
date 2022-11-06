@@ -11,6 +11,7 @@ import './index.less'
 import { EntityPicker, TopoPicked } from './pick/entity'
 import { MATERIAL_SET, Obj3WithEntity } from './pick/utils'
 import { Axies } from './tool/axies'
+import { Clip } from './tool/clip'
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity, active: boolean }
@@ -79,6 +80,10 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
                         setView({ ...view, pick: { ...view.pick, topos } })
                     }
                 } />
+        }
+        {
+            view.clipPlane?.enabled &&
+            <Clip view={ view } />
         }
         {
             view.pick?.topos && view.pick.topos.map((item, idx) => <TopoPicked key={ idx } { ...item } />)
