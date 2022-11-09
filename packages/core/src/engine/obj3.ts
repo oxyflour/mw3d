@@ -62,7 +62,10 @@ export default class Obj3 extends AutoIndex {
     }
     readonly worldMatrix = mat4.create()
     readonly worldPosition = vec4.create()
-    setWorldMatrix(mat: mat4) {
+
+    private static setWorldMatrixTmp = mat4.create()
+    setWorldMatrix(src: mat4) {
+        const mat = mat4.copy(Obj3.setWorldMatrixTmp, src)
         mat4.copy(this.worldMatrix, mat)
         if (this.parent) {
             this.parent.update()

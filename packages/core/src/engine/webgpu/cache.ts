@@ -245,12 +245,14 @@ export default class Cache {
                 },
                 primitive: {
                     topology: geo.primitive === 'fat-line-list' || geo.primitive === 'point-sprite' ? 'triangle-list' : geo.primitive,
-                    cullMode: 'back'
+                    cullMode: 'back',
+                    ...mat.opts.primitive,
                 },
                 depthStencil: {
                     depthWriteEnabled: mat.prop.a < 1 ? false : true,
                     depthCompare: 'greater',
                     format: this.opts.depthFormat,
+                    ...mat.opts.depthStencil,
                 },
                 multisample: mat.opts.multisample || this.opts.multisample
             })

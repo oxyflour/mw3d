@@ -32,6 +32,8 @@ export interface MatOpts {
     texture?: Texture
     sampler?: Sampler
     multisample?: GPUMultisampleState
+    primitive?: GPUPrimitiveState
+    depthStencil?: Omit<GPUDepthStencilState, 'format'>
 }
 
 export default class Material extends AutoIndex {

@@ -7,11 +7,6 @@ import { ViewPickMode } from "../../../utils/data/view"
 
 const FRAG_DASH = `
 fn fragMainColorDash(input: FragInput) -> @location(0) vec4<f32> {
-    if (WGSL_IGNORE_UNUSED) {
-        var a = lightNum;
-        var b = lights;
-        var c = canvasSize;
-    }
     checkClip(input);
     var n = material.metallic;
     var v = material.roughness;

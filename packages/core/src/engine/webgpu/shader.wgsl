@@ -1,7 +1,4 @@
 // @replace-let-with-const
-let WGSL_IGNORE_UNUSED = false;
-
-// @replace-let-with-const
 let MAX_LIGHTS = 4;
 struct Light {
   worldPosition: vec4<f32>,
@@ -168,7 +165,17 @@ fn pbrRender(input: FragInput) -> vec3<f32> {
   return C;
 }
 
+fn preventLayoutChange() {
+  if (false) {
+    var a = lightNum;
+    var b = lights;
+    var c = canvasSize;
+    var d = material;
+  }
+}
+
 fn checkClip(input: FragInput) {
+  preventLayoutChange();
   if (any(material.clipPlane != vec4<f32>())) {
     var c = material.clipPlane;
     var p = input.worldPosition;
@@ -181,31 +188,18 @@ fn checkClip(input: FragInput) {
 @fragment
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
   var C = pbrRender(input) + material.color.rgb * material.emissive;
-  if (WGSL_IGNORE_UNUSED) {
-    var c = canvasSize;
-  }
   checkClip(input);
   return vec4<f32>(C, material.color.a);
 }
 
 @fragment
 fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
-  if (WGSL_IGNORE_UNUSED) {
-    var a = lightNum;
-    var b = lights;
-    var c = canvasSize;
-  }
   checkClip(input);
   return material.color;
 }
 
 @fragment
 fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
-  if (WGSL_IGNORE_UNUSED) {
-    var a = lightNum;
-    var b = lights;
-    var c = canvasSize;
-  }
   var C = textureSample(imageTexture, materialSampler, input.normal.xy);
   checkClip(input);
   if (C.a == 0.) {
@@ -216,11 +210,7 @@ fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fragMainDepth(input: FragInput) -> @location(0) vec4<f32> {
-  if (WGSL_IGNORE_UNUSED) {
-    var a = lightNum;
-    var b = lights;
-    var c = material.color;
-  }
+  preventLayoutChange();
   var p = input.position.xy / canvasSize.xy;
   var d = textureSample(depthTexture, materialSampler, p);
   // https://github.com/gpuweb/gpuweb/discussions/2277
@@ -238,11 +228,7 @@ fn textureMultiSample(t: texture_depth_multisampled_2d, s: sampler, p: vec2<f32>
 
 @fragment
 fn fragMainMultiDepth(input: FragInput) -> @location(0) vec4<f32> {
-  if (WGSL_IGNORE_UNUSED) {
-    var a = lightNum;
-    var b = lights;
-    var c = material.color;
-  }
+  preventLayoutChange();
   var p = input.position.xy / canvasSize.xy;
   var d = textureMultiSample(depthMultiTexture, materialSampler, p);
   return vec4<f32>(d, d, d, 1.0);

@@ -8,6 +8,7 @@ import Cache, { BindingResource } from './cache'
 import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
 import { Sampler, Texture, UniformValue } from "../uniform"
+import { ClipMeshes } from "./clip"
 
 const MAX_LIGHTS = 4
 
@@ -191,13 +192,18 @@ export default class Renderer {
     private cachedRenderList = {
         revs: { } as Record<number, number>,
         list: [] as Obj3[],
-        updated: [] as (Mesh | Light | Material)[],
-        addToUpdated: (obj: Obj3 | Material) =>
-            (obj instanceof Mesh || obj instanceof Light || obj instanceof Material) &&
-            this.cachedRenderList.updated.push(obj),
+        updated: new Set<Mesh | Light | Material>(),
         opaque: [] as RenderMesh[],
         translucent: [] as RenderMesh[],
         lights: [] as Light[],
+        clips: new WeakMap<Mesh, ClipMeshes>(),
+        addToUpdated: (...objs: (Obj3 | Material)[]) => {
+            for (const obj of objs) {
+                if (obj instanceof Mesh || obj instanceof Light || obj instanceof Material) {
+                    this.cachedRenderList.updated.add(obj)
+                }
+            }
+        },
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
     render(scene: Scene, camera: Camera, opts = { } as {
@@ -214,7 +220,8 @@ export default class Renderer {
         }
 
         const { revs, list, updated, addToUpdated } = this.cachedRenderList
-        list.length = updated.length = 0
+        list.length = 0
+        updated.clear()
         camera.updateIfNecessary(revs, addToUpdated)
         // TODO: enable this
         // Obj3.update(objs)
@@ -253,7 +260,23 @@ export default class Renderer {
             transSorted = (translucent as (RenderMesh & { cameraDist: number })[])
                 .map(item => ((item.cameraDist = vec4.dist(item.center, camera.worldPosition)), item))
                 .sort((a, b) => b.cameraDist - a.cameraDist) as RenderMesh[],
-            sorted = opaqueSorted.concat(transSorted)
+            sorted = [] as typeof opaqueSorted
+
+        let hasClipPlane = false
+        for (const item of opaqueSorted.concat(transSorted)) {
+            if (item.mat.needsClip) {
+                hasClipPlane = true
+                let clip = this.cachedRenderList.clips.get(item)
+                if (!clip) {
+                    this.cachedRenderList.clips.set(item, clip = new ClipMeshes({ color: item.mat.prop }))
+                }
+                clip.update(item)
+                addToUpdated(clip.back.mat, clip.front.mat, clip.plane.mat)
+                addToUpdated(clip.back, clip.front, clip.plane)
+                sorted.push(clip.back, clip.front, clip.plane)
+            }
+            sorted.push(item)
+        }
 
         this.updateUniforms(this.buildRenderUnifroms(lights))
         this.updateUniforms(this.cache.bindings(camera))
@@ -288,6 +311,9 @@ export default class Renderer {
                 }
             })
 
+        if (hasClipPlane) {
+            pass.setStencilReference(1)
+        }
         if (opts.disableBundle) {
             this.runRenderPass(pass, sorted, camera)
         } else {
