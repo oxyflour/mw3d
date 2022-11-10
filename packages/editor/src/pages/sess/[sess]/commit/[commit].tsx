@@ -76,7 +76,7 @@ function MeshBound(props: EntityProps) {
     </Obj3>
 }
 
-const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
+export const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [props.data.geom?.url]),
         mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
@@ -100,7 +100,9 @@ const DEFAULT_VIEWOPTS = {
     },
     clipPlane: {
         enabled: true,
-        value: [1, 0, 0, 0],
+        dir: '+x',
+        pos: 0,
+        posText: '0',
     },
 } as ViewOpts
 

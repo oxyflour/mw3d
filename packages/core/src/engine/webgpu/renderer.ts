@@ -260,7 +260,8 @@ export default class Renderer {
             transSorted = (translucent as (RenderMesh & { cameraDist: number })[])
                 .map(item => ((item.cameraDist = vec4.dist(item.center, camera.worldPosition)), item))
                 .sort((a, b) => b.cameraDist - a.cameraDist) as RenderMesh[],
-            sorted = [] as typeof opaqueSorted
+            sorted = [] as typeof opaqueSorted,
+            clipCaps = [] as typeof opaqueSorted
 
         let hasClipPlane = false
         for (const item of opaqueSorted.concat(transSorted)) {
@@ -268,15 +269,18 @@ export default class Renderer {
                 hasClipPlane = true
                 let clip = this.cachedRenderList.clips.get(item)
                 if (!clip) {
-                    this.cachedRenderList.clips.set(item, clip = new ClipMeshes({ color: item.mat.prop }))
+                    const { r, g, b } = item.mat.prop,
+                        stride = item.mat.opts.entry.frag === 'fragMainColor' ? 0 : 5
+                    this.cachedRenderList.clips.set(item, clip = new ClipMeshes({ r, g, b }, stride))
                 }
                 clip.update(item)
                 addToUpdated(clip.back.mat, clip.front.mat, clip.plane.mat)
                 addToUpdated(clip.back, clip.front, clip.plane)
-                sorted.push(clip.back, clip.front, clip.plane)
+                clipCaps.push(clip.back, clip.front, clip.plane)
             }
             sorted.push(item)
         }
+        sorted.unshift(...clipCaps)
 
         this.updateUniforms(this.buildRenderUnifroms(lights))
         this.updateUniforms(this.cache.bindings(camera))

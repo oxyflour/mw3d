@@ -70,8 +70,7 @@ async function clickScene(evt: MouseEvent) {
     })
 }
 
-const CLIP_PLANE = vec4.fromValues(1, 1, 0, 0)
-vec4.set(CLIP_PLANE, 1, 1, 0, 0)
+const CLIP_PLANE = vec4.fromValues(-1, 0, 0, 0)
 
 const tex = document.createElement('canvas'),
     ctx = tex.getContext('2d')
@@ -174,12 +173,12 @@ const camera = new PerspectiveCamera({
         }
     })
 
-for (let i = 0; i < 500; i ++) {
+for (let i = 0; i < 2000; i ++) {
     const { geo } = cube,
-        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.7] }),
+        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
         mesh = new Mesh(geo, mat)
-    vec4.copy(mat.clipPlane, CLIP_PLANE)
-    mesh.scaling.set(rand(0.01, 0.1), rand(0.01, 0.1), rand(0.01, 0.1))
+    mat.clip.assign(CLIP_PLANE)
+    mesh.scaling.set(rand(0.03, 0.3), rand(0.03, 0.3), rand(0.03, 0.3))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
     mesh.rotation.rotX(rand(0, 10)).rotY(rand(0, 10))
     scene.add(mesh)
@@ -198,7 +197,8 @@ requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
-    renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, disableBundle: true })
+    depthScene
+    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, disableBundle: true })
     renderer.render(scene, camera)
 })
 

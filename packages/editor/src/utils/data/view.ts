@@ -25,7 +25,9 @@ export interface ViewOpts {
         keyMap?: KeyMap
     }
     clipPlane?: {
-        enabled?: boolean,
-        value?: [number, number, number, number]
+        enabled?: boolean
+        dir?: '+x' | '-x' | '+y' | '-y' | '+z' | '-z'
+        pos?: number
+        posText?: string
     }
 }

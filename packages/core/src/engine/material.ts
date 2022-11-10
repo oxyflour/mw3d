@@ -22,7 +22,18 @@ export class MaterialProp extends MutableArray({
     lineWidth: 2.0,
     emissive: 0,
 }) {
-    constructor(readonly data = new Float32Array([1.0, 0.0, 0.0, 1.0, 0.1, 1.0, 2.0, 0])) {
+    constructor(override readonly data = new Float32Array([1.0, 0.0, 0.0, 1.0, 0.1, 1.0, 2.0, 0])) {
+        super(data)
+    }
+}
+
+export class MaterialClip extends MutableArray({
+    x: 0,
+    y: 0,
+    z: 0,
+    w: 0,
+}) {
+    constructor(override readonly data = new Float32Array([0, 0, 0, 0])) {
         super(data)
     }
 }
@@ -37,11 +48,11 @@ export interface MatOpts {
 }
 
 export default class Material extends AutoIndex {
-    prop = new MaterialProp()
-    readonly clipPlane = vec4.fromValues(0, 0, 0, 0)
+    readonly prop = new MaterialProp()
+    readonly clip = new MaterialClip()
     get needsClip() {
-        const [a, b, c, d] = this.clipPlane
-        return a || b || c || d
+        const [a, b, c] = this.clip.data
+        return a || b || c
     }
 
     readonly bindingGroup = 3
@@ -49,7 +60,7 @@ export default class Material extends AutoIndex {
     readonly uniforms = [
         [
             this.prop.data,
-            this.clipPlane,
+            this.clip.data,
         ],
         // texture
     ] as Uniform[]
@@ -73,7 +84,7 @@ export default class Material extends AutoIndex {
     }
 
     get rev() {
-        return this.prop.rev
+        return this.prop.rev + this.clip.rev
     }
 }
 
@@ -106,8 +117,7 @@ export class BasicMaterial extends Material {
         Object.assign(this.prop, { r, g, b, a })
         Object.assign(this.prop, opts)
         if (opts.clipPlane) {
-            const [a = 0, b = 0, c = 0, d = 0] = opts.clipPlane
-            vec4.set(this.clipPlane, a, b, c, d)
+            this.clip.assign(opts.clipPlane)
         }
     }
 }

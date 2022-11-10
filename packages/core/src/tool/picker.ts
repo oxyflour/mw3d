@@ -140,7 +140,7 @@ const worker = wrap({
                     mesh = meshMap[idx] || (meshMap[idx] = new Mesh())
                 mat.prop.lineWidth = lineWidth
                 if (clipPlane) {
-                    vec4.copy(mat.clipPlane, clipPlane)
+                    mat.clip.assign(clipPlane)
                 }
                 Object.assign(mesh, { geo, mat, offset, count })
                 mesh.setWorldMatrix(worldMatrix)
@@ -164,6 +164,8 @@ const worker = wrap({
             renderer.render(scene, camera, { depthTexture })
             const [idx = 0] = await readPixel({ x, y }),
                 { id } = list[idx - 1] || { id: 0 }
+            const blob = await pixels.convertToBlob(),
+                buffer = await blob.arrayBuffer()
 
             DEPTH_PLANE.mat = new BasicMaterial({ entry: { frag: 'fragMainDepth' }, texture: depthTexture }),
             renderer.render(DEPTH_SCENE, DEPTH_CAMERA)
@@ -184,8 +186,6 @@ const worker = wrap({
             vec3.scale(position, position, distance)
             vec3.transformMat4(position, position, camera.worldMatrix)
 
-            const blob = await pixels.convertToBlob(),
-                buffer = await blob.arrayBuffer()
             renderLock = 0
             return { id, buffer, distance, position }
         }
@@ -207,7 +207,7 @@ export default class Picker {
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.geo && obj.mat) {
                     const { worldMatrix, geo, id, mat, offset, count } = obj
-                    meshes[obj.id] = { worldMatrix, id, offset, count, clipPlane: mat.clipPlane, geoId: geo.id, lineWidth: obj.mat.prop.lineWidth }
+                    meshes[obj.id] = { worldMatrix, id, offset, count, clipPlane: mat.clip.data, geoId: geo.id, lineWidth: obj.mat.prop.lineWidth }
                     const { type, positions, normals, indices } = geo
                     geometries[geo.id] = { type, positions, normals, indices }
                 }

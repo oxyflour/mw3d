@@ -15,7 +15,16 @@ export interface Array<T> {
 }
 export function MutableArray<T extends { [n: string]: number }>(dict: T) {
     class MutableArray extends Mutable {
-        constructor(readonly data = Object.values(dict)) {
+        copy(val: MutableArray) {
+            this.assign(val.data)
+        }
+        assign(data: typeof this.data) {
+            for (let i = 0; i < data.length; i ++) {
+                this.data[i] = data[i]!
+            }
+            this.rev ++
+        }
+        constructor(readonly data = Object.values(dict) as number[] | Float32Array) {
             super()
             for (const [idx, key] of Object.keys(dict).entries()) {
                 Object.defineProperty(this, key, {
@@ -31,7 +40,7 @@ export function MutableArray<T extends { [n: string]: number }>(dict: T) {
         }
     }
     // @ts-ignore
-    return MutableArray as new (data?: Array<number>) => Mutable & T
+    return MutableArray as new (data?: Array<number>) => MutableArray & T
 }
 
 export class Color4 extends MutableArray({
@@ -40,13 +49,13 @@ export class Color4 extends MutableArray({
     b: 0,
     a: 1,
 }) {
-    constructor(readonly data = vec4.create()) {
+    constructor(override readonly data = vec4.create()) {
         super(data)
     }
 }
 
 export class Vec3 extends MutableArray({ x: 0, y: 0, z: 0 }) {
-    constructor(readonly data = vec3.create()) {
+    constructor(override readonly data = vec3.create()) {
         super(data)
     }
     set(x: number, y: number, z: number, out = this) {
@@ -56,7 +65,7 @@ export class Vec3 extends MutableArray({ x: 0, y: 0, z: 0 }) {
 }
 
 export class Quat extends MutableArray({ x: 0, y: 0, z: 0, w: 1 }) {
-    constructor(readonly data = quat.create()) {
+    constructor(override readonly data = quat.create()) {
         super(data)
     }
     rotX(rad: number, out = this) {

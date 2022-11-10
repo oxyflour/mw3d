@@ -1,6 +1,5 @@
-import { vec4 } from "gl-matrix"
 import Geometry, { PlaneXY } from "../geometry"
-import Material, { BasicMaterial } from "../material"
+import Material, { BasicMaterial, MaterialProp } from "../material"
 import Mesh from "../mesh"
 
 type RenderMesh = Mesh & { geo: Geometry, mat: Material }
@@ -8,6 +7,7 @@ type RenderMesh = Mesh & { geo: Geometry, mat: Material }
 const CLIP_GEO = new PlaneXY({ size: 200 })
 const CLIP_MATS = {
     back: new BasicMaterial({
+        color: [1, 1, 1, 0],
         entry: {
             frag: `fn fragMainColorBack(input: FragInput) -> @location(0) vec4<f32> {
                 checkClip(input);
@@ -28,6 +28,7 @@ const CLIP_MATS = {
         },
     }),
     front: new BasicMaterial({
+        color: [1, 1, 1, 0],
         entry: {
             frag: `fn fragMainColorFront(input: FragInput) -> @location(0) vec4<f32> {
                 checkClip(input);
@@ -52,30 +53,32 @@ const CLIP_MATS = {
             // TODO: compute the right coords for a plane covering camera
             vert: `fn vertMainPlane(input: VertexInput) -> VertexOutput {
                 var output: VertexOutput;
-                output.position = camera.viewProjection * mesh.modelMatrix * input.position;
-                output.normal = (mesh.modelMatrix * vec4<f32>(input.normal, 0.0)).xyz;
-                output.worldPosition = mesh.modelMatrix * input.position;
-                //var idx = input.vertexID % 4u;
-                var idx = 99u;
+                var norm = normalize(material.clipPlane.xyz);
+                var dx = normalize(vec3<f32>(-norm.y, norm.x + norm.z, -norm.y));
+                var dy = cross(norm, dx);
+                var delta = vec3<f32>();
+                var idx = input.vertexID % 4u;
                 if (idx == 0u) {
-                    output.position.x = 0.;
-                    output.position.y = 0.;
+                    delta = - dx - dy;
                 } else if (idx == 1u) {
-                    output.position.x = 1.;
-                    output.position.y = 0.;
+                    delta = - dx + dy;
                 } else if (idx == 2u) {
-                    output.position.x = 0.;
-                    output.position.y = 1.;
+                    delta =   dx + dy;
                 } else if (idx == 3u) {
-                    output.position.x = 1.;
-                    output.position.y = 1.;
+                    delta =   dx - dy;
                 }
+
+                var size = 500.;
+                var pos = vec4<f32>(delta * size, 1.0);
+                output.position = camera.viewProjection * mesh.modelMatrix * pos;
+                output.normal = (mesh.modelMatrix * vec4<f32>(input.normal, 0.0)).xyz;
+                output.worldPosition = mesh.modelMatrix * pos;
                 return output;
             }`,
             frag: `fn fragMainColorPlane(input: FragInput) -> @location(0) vec4<f32> {
                 preventLayoutChange();
-                var n = 5.;
-                var v = 3.;
+                var n = material.metallic;
+                var v = material.roughness;
                 var k = input.position.x + input.position.y * 0.4;
                 var s = k - floor(k / n) * n;
                 if (s > v) {
@@ -84,13 +87,24 @@ const CLIP_MATS = {
                 return material.color;
             }`
         },
+        primitive: {
+            cullMode: 'none',
+        },
         depthStencil: {
+            /*
+            stencilFront: {
+                compare: 'equal',
+                failOp: 'zero',
+                passOp: 'zero',
+                depthFailOp: 'zero',
+            },
             stencilBack: {
                 compare: 'equal',
                 failOp: 'zero',
-                passOp: 'decrement-clamp',
+                passOp: 'zero',
                 depthFailOp: 'zero',
             },
+             */
         },
     })
 }
@@ -99,18 +113,20 @@ export class ClipMeshes {
     back = new Mesh(undefined, CLIP_MATS.back) as RenderMesh
     front = new Mesh(undefined, CLIP_MATS.front) as RenderMesh
     plane = new Mesh(CLIP_GEO, new BasicMaterial({ ...CLIP_MATS.plane.opts })) as RenderMesh
-    constructor({ color: { r, g, b } }: { color: { r: number, g: number, b: number } }) {
-        Object.assign(this.plane.mat.prop, { r, g, b })
+    constructor(prop: Partial<MaterialProp>, stride = 5) {
+        Object.assign(this.plane.mat.prop, prop)
+        this.plane.mat.prop.metallic = stride
+        this.plane.mat.prop.roughness = stride / 5 * 3
     }
     update(item: RenderMesh) {
         this.back.geo = item.geo
         this.back.setWorldMatrix(item.worldMatrix)
-        vec4.copy(this.back.mat.clipPlane, item.mat.clipPlane)
+        this.back.mat.clip.copy(item.mat.clip)
 
         this.front.geo = item.geo
         this.front.setWorldMatrix(item.worldMatrix)
-        vec4.copy(this.front.mat.clipPlane, item.mat.clipPlane)
+        this.front.mat.clip.copy(item.mat.clip)
 
-        vec4.copy(this.plane.mat.clipPlane, item.mat.clipPlane)
+        this.plane.mat.clip.copy(item.mat.clip)
     }
 }
