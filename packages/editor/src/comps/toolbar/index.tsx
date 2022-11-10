@@ -205,7 +205,9 @@ export default ({ className, ents, view, setEnts, setView }: {
                 <ImageButton title={ <span>Reset<br />View</span> } />
             </Group>
             <Group title="Sectional View">
-                <ImageButton title={ <span>Cutting<br />Plane</span> } />
+                <ImageButton title={ <span>Cutting<br />Plane</span> }
+                    active={ view.clipPlane?.enabled }
+                    onClick={ () => updateView('clipPlane', { enabled: !view.clipPlane?.enabled }) } />
                 <div>
                     <IconButton icon={ null } title={
                         <span>

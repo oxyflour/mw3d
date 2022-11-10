@@ -70,6 +70,14 @@ const CLIP_MATS = {
 
                 var size = 500.;
                 var pos = vec4<f32>(delta * size, 1.0);
+                if (norm.x != 0.) {
+                    pos.x -= material.clipPlane.w / norm.x;
+                } else if (norm.y != 0.) {
+                    pos.y -= material.clipPlane.w / norm.y;
+                } else if (norm.z != 0.) {
+                    pos.z -= material.clipPlane.w / norm.z;
+                }
+
                 output.position = camera.viewProjection * mesh.modelMatrix * pos;
                 output.normal = (mesh.modelMatrix * vec4<f32>(input.normal, 0.0)).xyz;
                 output.worldPosition = mesh.modelMatrix * pos;
@@ -91,7 +99,6 @@ const CLIP_MATS = {
             cullMode: 'none',
         },
         depthStencil: {
-            /*
             stencilFront: {
                 compare: 'equal',
                 failOp: 'zero',
@@ -104,7 +111,6 @@ const CLIP_MATS = {
                 passOp: 'zero',
                 depthFailOp: 'zero',
             },
-             */
         },
     })
 }

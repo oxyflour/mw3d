@@ -265,7 +265,7 @@ export default class Renderer {
 
         let hasClipPlane = false
         for (const item of opaqueSorted.concat(transSorted)) {
-            if (item.mat.needsClip) {
+            if (item.mat.needsClip && item.geo.type === 'triangle-list') {
                 hasClipPlane = true
                 let clip = this.cachedRenderList.clips.get(item)
                 if (!clip) {
