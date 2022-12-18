@@ -45,7 +45,7 @@ export function accept(ws: WebSocket, channel: string) {
         if (event === 'fork') {
             fork(data.href, data.channel)
         } else if (event === 'kill') {
-            procs[data.sess]?.kill()
+            procs[data.pid]?.kill()
         }
         for (const item of list.filter(item => item !== ws)) {
             item.send(buf)

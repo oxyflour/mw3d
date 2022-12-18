@@ -12,10 +12,10 @@ export default function Receiver({ channel = Math.random().toString(16).slice(2,
     const [elem, setElem] = useState<HTMLVideoElement | null>(null),
         caster = useMemo(() => new Caster(channel), [channel]),
         [restart, setRestart] = useState(0),
-        [{ value: peer = { }, loading, error }] = useAsync(async elem => elem ? await caster.recv({ elem: elem, href, peerOpts }) : { } as Caster['recving'], [elem, restart], { }),
-        { conn, channels = [] } = peer
+        [{ value: recving, loading, error }] = useAsync(async elem => elem ? await caster.recv({ elem, href, peerOpts }) : { } as Caster['recving'], [elem, restart], { })
     useEffect(() => {
-        const pos = { clientX: 0, clientY: 0 }
+        const { conn, channels: [channel] = [] } = recving || { },
+            pos = { clientX: 0, clientY: 0 }
         const cbs = [
             'pointerdown', 'pointermove', 'pointerup',
             'mousedown', 'mousemove', 'mouseup', 'click', 'dblclick',
@@ -27,8 +27,7 @@ export default function Receiver({ channel = Math.random().toString(16).slice(2,
                 type.startsWith('key') ? 'key' :
                     'mouse'
             function func({ button, deltaX, deltaY, key, clientX = pos.clientX, clientY = pos.clientY }: any) {
-                const [channel] = channels,
-                    data = { type, button, clientX, clientY, deltaX, deltaY, key }
+                const data = { type, button, clientX, clientY, deltaX, deltaY, key }
                 Object.assign(pos, data)
                 channel?.send(JSON.stringify({ evt, data }))
             }
@@ -49,7 +48,7 @@ export default function Receiver({ channel = Math.random().toString(16).slice(2,
             window.removeEventListener('resize', onWindowResize)
             conn?.removeEventListener('connectionstatechange', onStateChange)
         }
-    }, [peer])
+    }, [recving])
 
     return <>
         {

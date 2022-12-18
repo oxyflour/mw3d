@@ -1,18 +1,21 @@
-import { DependencyList, useEffect, useState } from "react"
+import { DependencyList, useEffect, useRef, useState } from "react"
 
 export function useAsync<D extends DependencyList, T>(func: (...args: any[]) => Promise<T>, deps: D, init?: T) {
     const [loading, setLoading] = useState(false),
         [error, setError] = useState<any>(null),
         [value, setValue] = useState(init),
         ret = { loading, error, value },
-        set = { setLoading, setError, setValue }
+        set = { setLoading, setError, setValue },
+        next = useRef(Promise.resolve())
     useEffect(() => {
-        setError(null)
-        setLoading(true)
-        func(...deps)
-            .then(value => setValue(value))
-            .catch(error => setError(error))
-            .finally(() => setLoading(false))
+        next.current = next.current.then(async () => {
+            setError(null)
+            setLoading(true)
+            return await func(...deps)
+                .then(value => setValue(value))
+                .catch(error => setError(error))
+                .finally(() => setLoading(false))
+        })
     }, deps)
     return [ret, set] as [typeof ret, typeof set]
 }

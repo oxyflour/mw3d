@@ -18,13 +18,10 @@ const peerOpts = {
 export function layout({ children }: { children: any }) {
     const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || [],
         nav = useNavigate()
-    useEffect(() => {
-        sess || nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
-    }, [sess])
-
+    useEffect(() => { sess || nav(`/sess/${Math.random().toString(16).slice(2, 10)}`) }, [sess])
     return navigator.gpu ?
-        <Sender channel='123' peerOpts={ peerOpts }>{ children }</Sender> :
-        <Receiver channel='123' peerOpts={ peerOpts } />
+        <Sender peerOpts={ peerOpts }>{ children }</Sender> :
+        <Receiver peerOpts={ peerOpts } channel={ sess } />
 }
 
 export function loading() {

@@ -6,7 +6,7 @@ export class Sock extends EventEmitter {
     constructor(channel: string, prefix = '/pub-sub/') {
         super()
         const url = new URL(location.href)
-        url.protocol = 'ws'
+        url.protocol = location.href.startsWith('https://') ? 'wss' : 'ws'
         url.pathname = prefix + channel
         const ws = this.ws = new WebSocket(url.toString())
         this.ready = new Promise<void>(resolve => {
@@ -150,7 +150,7 @@ export default class Caster {
     constructor(readonly channel: string) {
         this.ws = new Sock(channel)
     }
-    private recving = { } as Partial<UnPromise<ReturnType<typeof recv>>>
+    recving = { } as Partial<UnPromise<ReturnType<typeof recv>>>
     async recv({ elem, href, peerOpts = { } }: { elem: HTMLVideoElement, href: string, peerOpts?: RTCConfiguration }) {
         this.recving.destroy?.()
         const state = { count: 0 }
@@ -174,12 +174,12 @@ export default class Caster {
         const ping = () => {
             const [channel] = recving.channels
             channel?.send(JSON.stringify({ ping: Date.now() }))
-            channel && setTimeout(ping, 1000)
+            channel && setTimeout(ping, 2000)
         }
         ping()
         return recving
     }
-    private sending = { } as Partial<UnPromise<ReturnType<typeof send>>> & { lastActive?: number }
+    sending = { } as Partial<UnPromise<ReturnType<typeof send>>>
     async send({ sess, pid, castOpts, peerOpts }: any) {
         this.sending.destroy?.()
         // Note: for activating active tab
@@ -192,30 +192,26 @@ export default class Caster {
             window.resizeTo(width + left, height + top)
         }, 1000)
         const sending = this.sending = await send(sess, castOpts, peerOpts),
+            kill = () => this.ws.send('kill', { pid }),
+            state = { timeout: setTimeout(kill, 15000) },
             [channel] = sending.channels || []
         channel?.addEventListener('message', () => {
-            this.sending.lastActive = Date.now()
+            clearTimeout(state.timeout)
+            state.timeout = setTimeout(kill, 15000)
         })
         return sending
     }
-    async listen({ pid, peerOpts, callback } = { } as { pid?: string, peerOpts?: RTCConfiguration, callback?: (sending: Caster['sending']) => void }) {
+    listen({ pid, peerOpts, callback } = { } as { pid?: string, peerOpts?: RTCConfiguration, callback?: (sending: Caster['sending']) => void }) {
         const target = Math.random().toString(16).slice(2, 10)
         this.ws.on('req', async ({ sess }: { sess: string }) => {
             this.ws.send(`res-${sess}`, { target })
         })
         this.ws.on('ack', async (opts: any) => {
             if (opts.target === target) {
-                await this.send({ ...opts, pid, peerOpts: peerOpts || opts.peerOpts })
-                callback?.(this.sending)
+                const sending = await this.send({ ...opts, pid, peerOpts: peerOpts || opts.peerOpts })
+                callback?.(sending)
             }
         })
-        this.sending.lastActive = Date.now()
-        setInterval(() => {
-            if (this.sending.lastActive && Date.now() - this.sending.lastActive > 30000) {
-                console.warn(`quitting because inactive`)
-                pid && this.ws.send('kill', { pid })
-            }
-        }, 1000)
         return this
     }
 }

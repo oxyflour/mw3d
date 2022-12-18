@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo } from "react"
 import Caster from "./caster"
 
 const query = Object.fromEntries(location.search
@@ -10,13 +10,8 @@ export default function Sender({ pid = query.pid, channel = query.channel, child
     children?: any
     peerOpts?: RTCConfiguration
 }) {
-    const caster = useMemo(() => new Caster(channel), [channel]),
-        [sending, setSending] = useState({ } as Caster['sending'])
-    useEffect(() => {
-        caster.listen({ pid, peerOpts, callback: setSending })
-    }, [])
-    useEffect(() => {
-        const [channel] = sending.channels || []
+    const caster = useMemo(() => new Caster(channel), [channel])
+    function callback({ channels: [channel] = [] }: Caster['sending']) {
         function onMessage(event: MessageEvent<any>) {
             const { evt, data } = JSON.parse(event.data),
                 { type, clientX, clientY, ...rest } = data || { },
@@ -33,10 +28,10 @@ export default function Sender({ pid = query.pid, channel = query.channel, child
             }
         }
         channel?.addEventListener('message', onMessage)
-        return () => {
-            channel?.removeEventListener('message', onMessage)
-        }
-    }, [sending.channels?.[0]])
+    }
+    useEffect(() => {
+        caster.listen({ pid, peerOpts, callback })
+    }, [caster])
     return children
 }
 
