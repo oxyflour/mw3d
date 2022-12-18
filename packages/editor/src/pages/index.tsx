@@ -1,50 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Receiver from '../comps/cast/receiver'
-import Sender from '../comps/cast/sender'
-import connect, { Api } from '../utils/cast/connect'
+import { Sender, Receiver } from '@ttk/react'
 
 import './index.less'
 
 const peerOpts = {
     iceServers: [{
-        urls: 'turn:172.19.188.114',
+        urls: 'turn:172.31.60.216',
         username: 'any',
         credential: 'any',
         credentialType: 'password'
     }, {
-        urls: 'stun:172.19.188.114',
+        urls: 'stun:172.31.60.216',
     }]
 } as RTCConfiguration
 
 export function layout({ children }: { children: any }) {
     const [, sess = ''] = location.pathname.match(/\/sess\/(\w+)/) || [],
-        nav = useNavigate(),
-        [api, setApi] = useState<Api>()
+        nav = useNavigate()
     useEffect(() => {
-        if (!sess) {
-            nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
-            return () => { }
-        } else {
-            const api = connect(sess),
-                onRoute = (pathname: string) => nav(pathname)
-            api.on('route', onRoute)
-            setApi(api)
-            return () => {
-                api.removeListener('route', onRoute)
-            }
-        }
+        sess || nav(`/sess/${Math.random().toString(16).slice(2, 10)}`)
     }, [sess])
 
-    useEffect(() => {
-        api?.send('route', location.pathname)
-    }, [location.pathname, api])
+    return navigator.gpu ?
+        <Sender channel='123' peerOpts={ peerOpts }>{ children }</Sender> :
+        <Receiver channel='123' peerOpts={ peerOpts } />
+}
 
-    return api ?
-        ('gpu' in navigator ?
-            <Sender peerOpts={ peerOpts } api={ api }>{ children }</Sender> :
-            <Receiver peerOpts={ peerOpts } api={ api } style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: '0 0' }} />) :
-        'Loading...'
+export function loading() {
+    return <div>loading...</div>
 }
 
 export default () => 'Starting New Session...'

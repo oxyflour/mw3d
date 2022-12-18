@@ -21,7 +21,7 @@ export class Control {
     readonly pivot: Obj3
     mode = '' as '' | 'rot' | 'pan' | 'zoom'
     constructor(
-        readonly canvas: HTMLCanvasElement,
+        readonly canvas: HTMLElement,
         readonly camera: PerspectiveCamera,
         readonly opts?: {
             pivot?: Obj3

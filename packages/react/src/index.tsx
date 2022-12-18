@@ -5,6 +5,9 @@ import { mat4, quat } from 'gl-matrix'
 
 export { Engine, Tool, Utils } from '@ttk/core'
 
+import Sender from './cast/sender'
+import Receiver from './cast/receiver'
+
 export interface CanvasContextValue {
     scene?: Engine.Scene
     camera?: Engine.PerspectiveCamera
@@ -88,10 +91,10 @@ export function Canvas({ children, options, style, className }: {
             scene.add(light)
             requestAnimationFrame(function render(time: number) {
                 if (handle.running) {
+                    requestAnimationFrame(render)
                     for (const func of frame.before) {
                         func(time)
                     }
-                    requestAnimationFrame(render)
                     renderer.render(scene, camera)
                     for (const func of frame.after) {
                         func(time)
@@ -231,3 +234,5 @@ export function Mesh({ children, ...props }: Arg0<typeof MeshSetter> & Arg0<type
         { children }
     </Obj3>
 }
+
+export { Sender, Receiver }

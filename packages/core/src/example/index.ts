@@ -1,25 +1,24 @@
-import WebGPURenderer from '../engine/webgpu/renderer'
 import Obj3, { Scene } from '../engine/obj3'
 import Mesh from '../engine/mesh'
 import Light from '../engine/light'
 import Material, { BasicMaterial } from '../engine/material'
 import Picker from '../tool/picker'
 import { rand } from '../utils/math'
-import { BoxGeometry, BoxLines, PlaneXY, SphereGeometry, SpriteGeometry } from '../engine'
+import { BoxGeometry, BoxLines, PlaneXY, Renderer, SphereGeometry, SpriteGeometry } from '../engine'
 import { PerspectiveCamera } from '../engine/camera'
 import { Control } from '../tool/control'
 import { mat4, quat, vec4 } from 'gl-matrix'
 import { Texture } from '../engine/uniform'
 
-(async function() {
-
-const canvas = document.createElement('canvas')
-canvas.style.width = canvas.style.height = '100%'
-canvas.oncontextmenu = () => false
+const elem = document.createElement('canvas')
+elem.style.width = elem.style.height = '100%'
+elem.oncontextmenu = () => false
+document.body.appendChild(elem)
 document.body.style.margin = document.body.style.padding = '0'
-document.body.appendChild(canvas)
+document.body.style.background = 'linear-gradient(45deg, black, transparent)'
 
-const renderer = await WebGPURenderer.create(canvas, { multisample: { count: 4 }, devicePixelRatio: 1 })
+const renderer = await Renderer.create(elem, { multisample: { count: 4 }, devicePixelRatio: 1 })
+
 async function updatePivot({ x, y }: { x: number, y: number }) {
     const { id, position } = await picker.pick(scene, camera, {
         width: renderer.width,
@@ -48,8 +47,8 @@ async function showBuffer(buffer: ArrayBuffer) {
 }
 async function clickScene(evt: MouseEvent) {
     const { id, buffer } = await picker.pick(scene, camera, {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
+        width: elem.clientWidth,
+        height: elem.clientHeight,
         x: evt.clientX,
         y: evt.clientY,
     })
@@ -87,7 +86,7 @@ let depthMaterial: Material
 
 const camera = new PerspectiveCamera({
         fov: 5 / 180 * Math.PI,
-        aspect: canvas.clientWidth / canvas.clientHeight,
+        aspect: elem.clientWidth / elem.clientHeight,
         near: 1000,
         far: 20000,
         position: [0, 0, 5000]
@@ -152,7 +151,7 @@ const camera = new PerspectiveCamera({
             position: [0, 200, 0],
         }),
     ]),
-    control = new Control(canvas, camera, {
+    control = new Control(elem, camera, {
         pivot: new Mesh(new SphereGeometry(), new BasicMaterial()),
         zoom: {
             distance: {
@@ -184,12 +183,12 @@ for (let i = 0; i < 100; i ++) {
     scene.add(mesh)
 }
 
-renderer.width = canvas.clientWidth
-renderer.height = canvas.clientHeight
+renderer.width = elem.clientWidth
+renderer.height = elem.clientHeight
 window.addEventListener('resize', () => {
-    camera.aspect = canvas.clientWidth / canvas.clientHeight
-    renderer.width = canvas.clientWidth
-    renderer.height = canvas.clientHeight
+    camera.aspect = elem.clientWidth / elem.clientHeight
+    renderer.width = elem.clientWidth
+    renderer.height = elem.clientHeight
 })
 
 const depthScene = new Scene(Array.from(scene).filter(item => (item as Mesh).mat !== depthMaterial))
@@ -201,7 +200,3 @@ requestAnimationFrame(function render() {
     //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, disableBundle: true })
     renderer.render(scene, camera)
 })
-
-document.body.style.background = 'linear-gradient(45deg, black, transparent)'
-
-})()

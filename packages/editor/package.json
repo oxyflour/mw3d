@@ -19,8 +19,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@yff/ncc": "^2.0.9",
-    "@yff/sn": "^1.0.22",
+    "@yff/ncc": "^2.0.11",
+    "@yff/sn": "^1.0.23",
     "autoprefixer": "^10.4.8",
     "commander": "^9.4.0",
     "electron": "^21.2.0",

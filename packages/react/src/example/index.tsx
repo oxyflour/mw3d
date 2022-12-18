@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Canvas, Control, Mesh } from '..'
+import { Canvas, Control, Mesh, Sender, Receiver } from '..'
 import { Engine } from '@ttk/core'
 
 function rand(begin: number, end = 0) {
@@ -82,4 +82,8 @@ function App() {
 document.body.style.margin = document.body.style.padding = '0'
 const div = document.getElementById('root') as any,
     root = div.__root || (div.__root = createRoot(div))
-root.render(<App />)
+root.render(
+    navigator.gpu ?
+    <Sender><App /></Sender> :
+    <Receiver channel='123' />
+)

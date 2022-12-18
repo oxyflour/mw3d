@@ -1,30 +1,39 @@
 import { DependencyList, useEffect, useState } from "react"
 
-export function useAsync<F extends (...args: any) => Promise<T>, T>(
-    func: F, init: T, deps: DependencyList) {
-    const [value, setValue] = useState(init),
-        [loading, setLoading] = useState(false),
-        [error, setError] = useState(null)
-    async function load(state: { canceled: boolean }) {
-        try {
-            setLoading(true)
-            setError(null)
-            const value = await func(...deps)
-            if (!state.canceled) {
-                setValue(value)
-                setLoading(false)
-            }
-        } catch (err: any) {
-            if (!state.canceled) {
-                setError(err)
-                setLoading(false)
-            }
-        }
-    }
+export function useAsync<D extends DependencyList, T>(func: (...args: any[]) => Promise<T>, deps: D, init?: T) {
+    const [loading, setLoading] = useState(false),
+        [error, setError] = useState<any>(null),
+        [value, setValue] = useState(init),
+        ret = { loading, error, value },
+        set = { setLoading, setError, setValue }
     useEffect(() => {
-        const state = { canceled: false }
-        load(state)
-        return () => { state.canceled = true }
+        setError(null)
+        setLoading(true)
+        func(...deps)
+            .then(value => setValue(value))
+            .catch(error => setError(error))
+            .finally(() => setLoading(false))
     }, deps)
-    return [{ value, loading, error }, load]
+    return [ret, set] as [typeof ret, typeof set]
+}
+
+export function debounce<F extends (...args: any) => Promise<any>>(func: F, delay: number) {
+    let timeout = null as any
+    const queue = [] as { resolve: Function, reject: Function }[]
+    return ((...args: any) => {
+        if (timeout) {
+            clearTimeout(timeout)
+        }
+        timeout = setTimeout(() => {
+            timeout = null
+            func(...args).then(ret => {
+                queue.forEach(({ resolve }) => resolve(ret))
+            }).catch(err => {
+                queue.forEach(({ reject }) => reject(err))
+            }).finally(() => {
+                queue.length = 0
+            })
+        }, delay)
+        return new Promise((resolve, reject) => queue.push({ resolve, reject }))
+    }) as any as F
 }
