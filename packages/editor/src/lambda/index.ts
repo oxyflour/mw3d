@@ -6,7 +6,21 @@ import { open } from './shape'
 
 export const hooks = {
     init(httpServer: HttpServer) {
-        register(httpServer)
+        const source = Math.random().toString(16).slice(2, 10)
+        store.cache.sub('broadcast', ({ channel, event, data, source: from }) => {
+            if (from !== source) {
+                for (const ws of sockets[channel] || []) {
+                    ws.send(JSON.stringify({ event, data }))
+                }
+            }
+        })
+        const sockets = register(httpServer, (channel, event, data) => {
+            if (event === 'fork') {
+            } else if (event === 'kill') {
+            } else {
+                store.cache.pub('broadcast', { source, channel, event, data })
+            }
+        })
     }
 }
 

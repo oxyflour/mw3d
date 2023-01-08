@@ -1,12 +1,11 @@
 import { mat4, vec3, vec4 } from "gl-matrix"
 
 import wrap from "../utils/worker"
-import Renderer from "../engine/webgpu/renderer"
 import Geometry, { GeometryPrimitive, PlaneXY } from "../engine/geometry"
 import Material, { BasicMaterial } from "../engine/material"
 import Obj3, { Scene } from "../engine/obj3"
 import Camera, { PerspectiveCamera } from "../engine/camera"
-import { Mesh } from '../engine'
+import { Mesh, Renderer, RendererOptions } from '../engine'
 import { Texture } from "../engine/uniform"
 
 import WorkerSelf from './picker?worker&inline'
@@ -27,7 +26,7 @@ const cache = {
     matMap: [] as Material[],
     meshMap: [] as Mesh[],
 }
-async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
+async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: RendererOptions) {
     const renderer = await Renderer.create(canvas, opts),
         camera = new PerspectiveCamera(),
         ctx = pixels.getContext('2d')
@@ -103,7 +102,7 @@ const worker = wrap({
         return await next(args, transfer)
     },
     api: {
-        async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: Renderer['opts']) {
+        async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: RendererOptions) {
             await cache.created || (cache.created = initCache(canvas, pixels, opts))
         },
         async query({ geometries }: { geometries: number[] }) {
@@ -118,7 +117,7 @@ const worker = wrap({
             }
             renderLock = Date.now()
 
-            const { renderer, camera, pixels } = await getCache(),
+            const { renderer, camera, canvas } = await getCache(),
                 { scene, geoMap, matMap, meshMap } = cache
             renderer.width = width
             renderer.height = height
@@ -164,7 +163,7 @@ const worker = wrap({
             renderer.render(scene, camera, { depthTexture })
             const [idx = 0] = await readPixel({ x, y }),
                 { id } = list[idx - 1] || { id: 0 }
-            const blob = await pixels.convertToBlob(),
+            const blob = await canvas.convertToBlob(),
                 buffer = await blob.arrayBuffer()
 
             DEPTH_PLANE.mat = new BasicMaterial({ entry: { frag: 'fragMainDepth' }, texture: depthTexture }),

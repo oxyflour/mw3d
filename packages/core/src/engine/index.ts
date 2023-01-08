@@ -1,4 +1,5 @@
-import Renderer from "./webgpu/renderer"
+import WebGPURenderer from "./webgpu/renderer"
+import ThreeRenderer from "./three/renderer"
 import Obj3, { Scene } from "./obj3"
 import Mesh from "./mesh"
 import Geometry from "./geometry"
@@ -6,8 +7,15 @@ import Material from "./material"
 import Light from "./light"
 import Camera from "./camera"
 
+export type RendererOptions = WebGPURenderer['opts']
+export const Renderer = {
+    async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts?: RendererOptions) {
+        return navigator.gpu ?
+            await WebGPURenderer.create(canvas, opts) :
+            new ThreeRenderer(canvas, opts)
+    }
+}
 export {
-    Renderer,
     Obj3, Scene,
     Mesh,
     Geometry,

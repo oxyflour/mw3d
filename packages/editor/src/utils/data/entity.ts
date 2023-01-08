@@ -1,18 +1,25 @@
 import { TreeNode } from "./tree"
 
+export interface BufferData {
+    url?: string
+    offset?: number
+    size?: number
+}
+
 export interface Entity {
-    data?: string
+    data?: BufferData
     attrs?: {
         $n?: string
         $m?: string
         $rgb?: { r: number, g: number, b: number }
-    } & Record<string, any>
+        [k: string]: any
+    }
     bound?: [number, number, number, number, number, number]
-    geom?: { url?: string }
+    geom?: BufferData
     topo?: {
-        faces?: { url?: string }
-        edges?: { url?: string }
-        verts?: { url?: string }
+        faces?: BufferData
+        edges?: BufferData
+        verts?: BufferData
     }
     trans?: number[]
     nodes?: string[]

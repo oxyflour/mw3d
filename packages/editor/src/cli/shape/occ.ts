@@ -1,57 +1,76 @@
 import path from 'path'
-import { mkdir, readFile, writeFile } from 'fs/promises'
+import os from 'os'
+import { mkdir, readFile, unlink } from 'fs/promises'
 import type { Shape } from '@yff/ncc'
 
 import { pack } from '../../utils/common/pack'
 import { Entity } from '../../utils/data/entity'
-import { sha256 } from '../../utils/node/common'
 
-export async function saveSolid(solid: Shape, root: string, file: string) {
+export class BufferList {
+    constructor(readonly arr = [] as Uint8Array[]) {
+    }
+    private offset = 0
+    append(data: any) {
+        const buf = data instanceof Uint8Array ? data : pack(data),
+            ret = { offset: this.offset, size: buf.byteLength }
+        this.arr.push(buf)
+        this.offset += buf.byteLength
+        return ret
+    }
+}
+
+function rgb(str: string) {
+    return Object.fromEntries(str.split(',').map((v, i) => [('rgb')[i], parseFloat(v)]))
+}
+
+export async function saveSolid(solid: Shape, file: string) {
     const { step, mesh } = await import('@yff/ncc'),
         { verts, faces, edges, geom } = mesh.topo(solid),
         { min, max } = solid.bound(),
-        data = Math.random().toString(16).slice(2, 10)
-
+        root = os.tmpdir(),
+        rand = Math.random().toString(16).slice(2, 10)
     await mkdir(root, { recursive: true })
-    step.save(path.join(root, data), solid)
-    const hash = sha256(await readFile(path.join(root, data)))
+    step.save(path.join(root, rand), solid)
 
-    await mkdir(path.join(root, hash), { recursive: true })
-    await writeFile(path.join(root, hash, 'geom'), pack({
-        faces: geom,
-        edges: { lines: edges.map(item => item.positions) }
-    }))
-    await writeFile(path.join(root, hash, 'faces'), pack(faces))
-    await writeFile(path.join(root, hash, 'edges'), pack(edges))
-    await writeFile(path.join(root, hash, 'verts'), pack((verts as any as any[]).map(item => ({ position: item.positions }))))
-
-    const meta = solid.meta,
-        rgb = (str: string) => Object.fromEntries(str.split(',').map((v, i) => [('rgb')[i], parseFloat(v)]))
+    const data = await readFile(path.join(root, rand))
+    await unlink(path.join(root, rand))
     return {
-        data: data,
-        bound: [min.x, min.y, min.z, max.x, max.y, max.z],
+        data,
+        bound: [min.x, min.y, min.z, max.x, max.y, max.z] as Entity['bound'],
         attrs: {
-            $n: meta['ManifoldSolidBrep']?.replace(/\|/g, '/') ||
-                path.basename(file) + '/' + data,
-            $m: meta['LayerDescription'] || meta['LayerName'],
-            $rgb: meta['ColorRGB'] && rgb(meta['ColorRGB']),
+            ...solid.meta,
+            $n: solid.meta['ManifoldSolidBrep']?.replace(/\|/g, '/') || path.basename(file) + '/' + data,
+            $m: solid.meta['LayerDescription'] || solid.meta['LayerName'],
+            $rgb: solid.meta['ColorRGB'] && rgb(solid.meta['ColorRGB']),
         },
-        geom: { url: hash + '/geom' },
+        geom: {
+            faces: geom,
+            edges: { lines: edges.map(item => item.positions) }
+        },
         topo: {
-            faces: { url: hash + '/faces' },
-            edges: { url: hash + '/edges' },
-            verts: { url: hash + '/verts' },
+            faces,
+            edges,
+            verts: (verts as any as any[]).map(item => ({ position: item.positions })),
         }
-    } as Entity
+    }
 }
 
-export async function parse(file: string, save: string) {
+export async function parse(bufs: BufferList, file: string) {
     const { step, Shape } = await import('@yff/ncc'),
-        dir = path.dirname(save),
         shapes = step.load(file),
         entities = [ ] as Entity[]
     for (const solid of shapes.find(Shape.types.SOLID)) {
-        entities.push(await saveSolid(solid, dir, file))
+        const ent = await saveSolid(solid, file)
+        entities.push({
+            ...ent,
+            data: bufs.append(ent.data),
+            geom: bufs.append(ent.geom),
+            topo: {
+                faces: bufs.append(ent.topo.faces),
+                edges: bufs.append(ent.topo.edges),
+                verts: bufs.append(ent.topo.verts),
+            }
+        })
     }
     return entities
 }
