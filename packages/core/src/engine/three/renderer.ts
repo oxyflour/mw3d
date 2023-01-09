@@ -36,7 +36,9 @@ export default class ThreeRenderer {
     })
     private mat = cache((mat: Material) => {
         const { r, g, b, a, roughness, metallic } = mat.prop
-        const ret = new THREE.MeshPhysicalMaterial({
+        const ret = mat.opts.entry.frag === 'fragMainColor' ? new THREE.MeshBasicMaterial({
+            color: new THREE.Color(r, g, b),
+        }) : new THREE.MeshPhysicalMaterial({
             color: new THREE.Color(r, g, b),
             transparent: a < 1,
             opacity: a,
@@ -69,12 +71,19 @@ export default class ThreeRenderer {
     width = 0
     height = 0
     readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
+    private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
     render(scene: Scene, camera: Camera, opts = { } as {
         depthTexture?: Texture
         colorTexture?: Texture
     }) {
+        const { width, height } = this
+        if (width != this.sizeCache.width || height != this.sizeCache.height) {
+            this.renderer.setSize(width, height, false)
+            Object.assign(this.sizeCache, { width, height })
+        }
+
         this.threeClearColor.setRGB(this.clearColor.r, this.clearColor.g, this.clearColor.b)
         this.renderer.setClearColor(this.threeClearColor)
         this.renderer.setClearAlpha(this.clearColor.a)

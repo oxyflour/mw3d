@@ -117,7 +117,7 @@ const worker = wrap({
             }
             renderLock = Date.now()
 
-            const { renderer, camera, canvas } = await getCache(),
+            const { renderer, camera, pixels } = await getCache(),
                 { scene, geoMap, matMap, meshMap } = cache
             renderer.width = width
             renderer.height = height
@@ -163,7 +163,8 @@ const worker = wrap({
             renderer.render(scene, camera, { depthTexture })
             const [idx = 0] = await readPixel({ x, y }),
                 { id } = list[idx - 1] || { id: 0 }
-            const blob = await canvas.convertToBlob(),
+
+            const blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
 
             DEPTH_PLANE.mat = new BasicMaterial({ entry: { frag: 'fragMainDepth' }, texture: depthTexture }),
@@ -202,7 +203,9 @@ export default class Picker {
     }) {
         const meshes = { } as Record<number, PickMesh>,
             geometries = { } as Record<number, PickGeo>
+        camera.updateIfNecessary({ })
         for (const obj of scene) {
+            obj.updateIfNecessary({ })
             obj.walk(obj => {
                 if (obj instanceof Mesh && obj.geo && obj.mat) {
                     const { worldMatrix, geo, id, mat, offset, count } = obj
