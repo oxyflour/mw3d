@@ -69,7 +69,7 @@ export function useTick(func: (time: number) => void, interval = 100) {
 
 export function Canvas({ children, options, style, className }: {
     children: any
-    options?: (canvas: HTMLCanvasElement) => Engine.Renderer['opts']
+    options?: (canvas: HTMLCanvasElement) => Engine.RendererOptions
     style?: CSSProperties
     className?: string
 }) {

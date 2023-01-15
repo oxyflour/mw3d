@@ -7,14 +7,15 @@ import Material from "./material"
 import Light from "./light"
 import Camera from "./camera"
 
-export type RendererOptions = WebGPURenderer['opts']
-export const Renderer = {
-    async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts?: RendererOptions) {
+export type RendererOptions = WebGPURenderer['opts'] & ThreeRenderer['opts']
+export class Renderer {
+    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
         return navigator.gpu ?
             await WebGPURenderer.create(canvas, opts) :
             new ThreeRenderer(canvas, opts)
     }
 }
+
 export {
     Obj3, Scene,
     Mesh,

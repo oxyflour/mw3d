@@ -6,27 +6,38 @@ import Light from '../light'
 import Material from '../material'
 import Mesh from '../mesh'
 import Obj3, { Scene } from '../obj3'
+import Renderer from '../renderer'
 import { Texture } from '../uniform'
 
-export default class ThreeRenderer {
-    private readonly renderer: THREE.WebGLRenderer
-    constructor(
-        public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-        public readonly opts = { } as {
-            size?: { width: number, height: number }
-            devicePixelRatio?: number
-            adaptorOptions?: GPURequestAdapterOptions
-            deviceDescriptor?: GPUDeviceDescriptor
-            canvasConfig?: GPUCanvasConfiguration
-            multisample?: GPUMultisampleState
-        }) {
-        const cv = canvas as HTMLCanvasElement
-        if (cv.clientWidth && cv.clientHeight) {
-            cv.width = cv.clientWidth
-            cv.height = cv.clientHeight
-        }
-        this.renderer = new THREE.WebGLRenderer({ canvas: canvas as any, alpha: true })
+class ThreeDepthMaterial extends THREE.ShaderMaterial {
+    constructor(parameters?: THREE.ShaderMaterialParameters) {
+        super({
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                #include <packing>
+                varying vec2 vUv;
+                uniform sampler2D tDepth;
+                void main() {
+                    float fragCoordZ = texture2D(tDepth, vUv).x;
+                    gl_FragColor = vec4(fragCoordZ / 10., 0., 0., 1.);
+                }
+            `,
+            uniforms: {
+                tDepth: { value: null },
+            },
+            ...parameters
+        })
     }
+}
+
+export default class ThreeRenderer extends Renderer {
+    private readonly renderer = new THREE.WebGLRenderer({ canvas: this.canvas as any, alpha: true, antialias: true })
     private geo = cache((geo: Geometry) => {
         const ret = new THREE.BufferGeometry()
         ret.setAttribute('position', new THREE.Float32BufferAttribute(geo.positions, 3))
@@ -36,17 +47,34 @@ export default class ThreeRenderer {
     })
     private mat = cache((mat: Material) => {
         const { r, g, b, a, roughness, metallic } = mat.prop
-        const ret = mat.opts.entry.frag === 'fragMainColor' ? new THREE.MeshBasicMaterial({
-            color: new THREE.Color(r, g, b),
-        }) : new THREE.MeshPhysicalMaterial({
-            color: new THREE.Color(r, g, b),
-            transparent: a < 1,
-            opacity: a,
-            roughness: roughness,
-            metalness: metallic,
-            emissive: new THREE.Color(r, g, b).multiplyScalar(0.5),
-        })
+        const ret =
+            mat.opts.entry.frag === 'fragMainColor' ?
+                new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b) }) :
+            mat.opts.entry.frag === 'fragMainDepth' ?
+                new ThreeDepthMaterial() :
+                new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(r, g, b),
+                    transparent: a < 1,
+                    opacity: a,
+                    roughness: roughness,
+                    metalness: metallic,
+                    emissive: new THREE.Color(r, g, b).multiplyScalar(0.5),
+                })
         return ret
+    })
+    private ct = cache((tex: Texture) => {
+        const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict,
+            canvas = document.createElement('canvas'),
+            ctx = canvas.getContext('2d'),
+            image = tex.opts.source
+        canvas.width = width
+        canvas.height = height
+        if (ctx && image) {
+            ctx.drawImage(image,
+                0, 0, image.width, image.height,
+                0, 0, canvas.width, canvas.height)
+        }
+        return new THREE.CanvasTexture(canvas)
     })
     private dt = cache((tex: Texture) => {
         const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict
@@ -74,7 +102,7 @@ export default class ThreeRenderer {
     private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
-    render(scene: Scene, camera: Camera, opts = { } as {
+    override render(scene: Scene, camera: Camera, opts = { } as {
         depthTexture?: Texture
         colorTexture?: Texture
     }) {
@@ -99,9 +127,14 @@ export default class ThreeRenderer {
                 mesh.renderOrder = obj.renderOrder
                 obj.geo && (mesh.geometry = this.geo(obj.geo))
                 if (obj.mat) {
-                    const mat = mesh.material = this.mat(obj.mat)
-                    if (obj.mat.opts.texture) {
-                        mat.map = this.dt(obj.mat.opts.texture)
+                    const mat = mesh.material = this.mat(obj.mat),
+                        tex = obj.mat.opts.texture
+                    if (tex) {
+                        if (mat instanceof ThreeDepthMaterial) {
+                            mat.uniforms.tDepth!.value = this.dt(tex)
+                        } else if (mat instanceof THREE.MeshPhysicalMaterial) {
+                            mat.map = this.ct(tex)
+                        }
                     }
                 }
             }
@@ -125,8 +158,8 @@ export default class ThreeRenderer {
         if (opts.depthTexture) {
             this.renderer.setRenderTarget(this.rt(opts.depthTexture))
             this.renderer.render(this.scene, c)
+            this.renderer.setRenderTarget(null)
         }
-        this.renderer.setRenderTarget(null)
         this.renderer.render(this.scene, c)
     }
 }

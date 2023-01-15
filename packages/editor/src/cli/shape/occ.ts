@@ -3,21 +3,8 @@ import os from 'os'
 import { mkdir, readFile, unlink } from 'fs/promises'
 import type { Shape } from '@yff/ncc'
 
-import { pack } from '../../utils/common/pack'
 import { Entity } from '../../utils/data/entity'
-
-export class BufferList {
-    constructor(readonly arr = [] as Uint8Array[]) {
-    }
-    private offset = 0
-    append(data: any) {
-        const buf = data instanceof Uint8Array ? data : pack(data),
-            ret = { offset: this.offset, size: buf.byteLength }
-        this.arr.push(buf)
-        this.offset += buf.byteLength
-        return ret
-    }
-}
+import { Chunks } from '../../utils/node/chunks'
 
 function rgb(str: string) {
     return Object.fromEntries(str.split(',').map((v, i) => [('rgb')[i], parseFloat(v)]))
@@ -55,22 +42,26 @@ export async function saveSolid(solid: Shape, file: string) {
     }
 }
 
-export async function parse(bufs: BufferList, file: string) {
+export async function parse(chunks: Chunks, file: string) {
     const { step, Shape } = await import('@yff/ncc'),
         shapes = step.load(file),
-        entities = [ ] as Entity[]
-    for (const solid of shapes.find(Shape.types.SOLID)) {
-        const ent = await saveSolid(solid, file)
-        entities.push({
-            ...ent,
-            data: bufs.append(ent.data),
-            geom: bufs.append(ent.geom),
-            topo: {
-                faces: bufs.append(ent.topo.faces),
-                edges: bufs.append(ent.topo.edges),
-                verts: bufs.append(ent.topo.verts),
-            }
-        })
+        solids = shapes.find(Shape.types.SOLID),
+        entities = [ ] as Entity[],
+        batch = os.cpus().length
+    for (let i = 0; i < solids.length; i += batch) {
+        await Promise.all(solids.slice(i, i + batch).map(async solid => {
+            const ent = await saveSolid(solid, file)
+            entities.push({
+                ...ent,
+                data: chunks.append(ent.data),
+                geom: chunks.append(ent.geom),
+                topo: {
+                    faces: chunks.append(ent.topo.faces),
+                    edges: chunks.append(ent.topo.edges),
+                    verts: chunks.append(ent.topo.verts),
+                }
+            })
+        }))
     }
     return entities
 }

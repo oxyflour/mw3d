@@ -17,10 +17,13 @@ document.body.appendChild(elem)
 document.body.style.margin = document.body.style.padding = '0'
 document.body.style.background = 'linear-gradient(45deg, black, transparent)'
 
-const renderer = await Renderer.create(elem, { multisample: { count: 4 }, devicePixelRatio: 1 })
+const renderer = await Renderer.create(elem, {
+    devicePixelRatio: window.devicePixelRatio,
+    sampleCount: 4,
+})
 
 async function updatePivot({ x, y }: { x: number, y: number }) {
-    const { id, position } = await picker.pick(scene, camera, {
+    const { id, position } = await Picker.pick(scene, camera, {
         width: renderer.width,
         height: renderer.height,
         x, y,
@@ -33,8 +36,7 @@ async function updatePivot({ x, y }: { x: number, y: number }) {
     }
 }
 
-const picker = await Picker.init(),
-    seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1, lineWidth: 10 }),
+const seleted = new BasicMaterial({ color: [0, 1, 1], metallic: 0.1, roughness: 1, lineWidth: 10 }),
     oldMats = { } as Record<number, Material | undefined>
 async function showBuffer(buffer: ArrayBuffer) {
     const image = document.createElement('img')
@@ -46,7 +48,7 @@ async function showBuffer(buffer: ArrayBuffer) {
     document.body.appendChild(image)
 }
 async function clickScene(evt: MouseEvent) {
-    const { id, buffer } = await picker.pick(scene, camera, {
+    const { id, buffer } = await Picker.pick(scene, camera, {
         width: elem.clientWidth,
         height: elem.clientHeight,
         x: evt.clientX,
@@ -130,7 +132,7 @@ const camera = new PerspectiveCamera({
                 size: { width: renderer.width, height: renderer.height },
                 format: 'depth24plus-stencil8',
                 usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.RENDER_ATTACHMENT,
-                sampleCount: renderer.opts.multisample?.count
+                sampleCount: renderer.opts.sampleCount
             }, {
                 aspect: 'depth-only',
             }),

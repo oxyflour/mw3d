@@ -82,12 +82,13 @@ function EntityMesh(props: EntityProps) {
         mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props }
+            isVisible={ props.data.attrs?.$visible }
             mat={ props.active ? mats.default : mats.dimmed }
             geo={ geom.faces }>
             <EntityMeshBind entity={ props.data } />
         </Mesh> }
         { geom.edges && <Mesh
-            isVisible={ props.active && props.view.pick?.mode !== 'edge' }
+            isVisible={ props.active && props.data?.attrs?.$visible && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
 }
@@ -99,7 +100,7 @@ const DEFAULT_VIEWOPTS = {
         }
     },
     clipPlane: {
-        enabled: true,
+        enabled: false,
         dir: '+x',
         pos: 0,
         posText: '0',

@@ -9,29 +9,32 @@ import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
 import { Sampler, Texture, UniformValue } from "../uniform"
 import { ClipMeshes } from "./clip"
+import Renderer, { RendererOptions } from "../renderer"
 
 const MAX_LIGHTS = 4
 
 type RenderMesh = Mesh & { geo: Geometry, mat: Material }
 
-export default class Renderer {
+export default class WebGPURenderer extends Renderer {
+    constructor(
+        canvas: HTMLCanvasElement | OffscreenCanvas,
+        override readonly opts: RendererOptions & {
+            webgpu?: {
+                adaptorOptions?: GPURequestAdapterOptions
+                deviceDescriptor?: GPUDeviceDescriptor
+                canvasConfig?: GPUCanvasConfiguration
+            }
+        }
+    ) {
+        super(canvas, opts)
+    }
     private cache!: Cache
     private device!: GPUDevice
     private format!: GPUTextureFormat
     private context!: GPUCanvasContext
-    private constructor(
-        public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-        public readonly opts = { } as {
-            size?: { width: number, height: number }
-            devicePixelRatio?: number
-            adaptorOptions?: GPURequestAdapterOptions
-            deviceDescriptor?: GPUDeviceDescriptor
-            canvasConfig?: GPUCanvasConfiguration
-            multisample?: GPUMultisampleState
-        }) {
-    }
     private async init() {
-        const adaptor = await navigator.gpu.requestAdapter(this.opts.adaptorOptions)
+        const opts = this.opts.webgpu || { },
+            adaptor = await navigator.gpu.requestAdapter(opts.adaptorOptions)
         if (!adaptor) {
             throw Error(`get gpu device failed`)
         }
@@ -41,9 +44,9 @@ export default class Renderer {
             throw Error(`get context failed`)
         }
 
-        const device = this.device = this.opts.canvasConfig?.device ||
-                await adaptor.requestDevice(this.opts.deviceDescriptor)
-        this.format = this.opts.canvasConfig?.format || navigator.gpu.getPreferredCanvasFormat()
+        const device = this.device = opts.canvasConfig?.device ||
+                await adaptor.requestDevice(opts.deviceDescriptor)
+        this.format = opts.canvasConfig?.format || navigator.gpu.getPreferredCanvasFormat()
         this.width = this.opts.size?.width || (this.canvas as HTMLCanvasElement).clientWidth || 100
         this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight || 100
 
@@ -55,7 +58,7 @@ export default class Renderer {
             size: this.renderSize,
             fragmentFormat: this.format,
             depthFormat: 'depth24plus-stencil8',
-            multisample: this.opts.multisample,
+            multisample: { count: this.opts.sampleCount },
         })
         this.context.configure({
             size: this.renderSize,
@@ -66,8 +69,8 @@ export default class Renderer {
 
         return this
     }
-    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts?: Renderer['opts']) {
-        return await new Renderer(canvas, opts).init()
+    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
+        return await new WebGPURenderer(canvas, opts).init()
     }
 
     width = 100
@@ -206,12 +209,14 @@ export default class Renderer {
         },
     }
     private statics = { ticks: [] as number[], frameTime: 0 }
-    render(scene: Scene, camera: Camera, opts = { } as {
+    override render(scene: Scene, camera: Camera, opts = { } as {
         depthTexture?: Texture
         colorTexture?: Texture
-        keepFrame?: boolean
-        disableBundle?: boolean
-        depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
+        webgpu?: {
+            keepFrame?: boolean
+            disableBundle?: boolean
+            depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
+        }
     }) {
         const start = performance.now()
         if (this.width * this.devicePixelRatio !== this.renderSize.width ||
@@ -293,32 +298,32 @@ export default class Renderer {
             depthTexture = opts.depthTexture ? this.cache.texture(opts.depthTexture) : this.cache.depthTexture,
             pass = cmd.beginRenderPass({
                 colorAttachments: [{
-                    ...(this.opts.multisample?.count! > 1 ? {
+                    ...(this.opts.sampleCount! > 1 ? {
                         view: this.cache.fragmentTexture.createView(),
                         resolveTarget: colorTexture.createView(),
                     } : {
                         view: colorTexture.createView(),
                     }),
-                    loadOp: opts.keepFrame ? 'load' : 'clear',
+                    loadOp: opts.webgpu?.keepFrame ? 'load' : 'clear',
                     storeOp: 'store',
                     clearValue: this.clearColor,
                 }],
                 depthStencilAttachment: {
                     view: depthTexture.createView(),
-                    depthLoadOp: opts.keepFrame ? 'load' : 'clear',
+                    depthLoadOp: opts.webgpu?.keepFrame ? 'load' : 'clear',
                     depthClearValue: 0,
                     depthStoreOp: 'store',
-                    stencilLoadOp: opts.keepFrame ? 'load' : 'clear',
+                    stencilLoadOp: opts.webgpu?.keepFrame ? 'load' : 'clear',
                     stencilClearValue: 0,
                     stencilStoreOp: 'store',
-                    ...opts.depthStencilAttachment
+                    ...opts.webgpu?.depthStencilAttachment
                 }
             })
 
         if (hasClipPlane) {
             pass.setStencilReference(1)
         }
-        if (opts.disableBundle) {
+        if (opts.webgpu?.disableBundle) {
             this.runRenderPass(pass, sorted, camera)
         } else {
             if (this.cachedRenderPass.compare(sorted)) {
@@ -326,7 +331,7 @@ export default class Renderer {
                 const encoder = this.device.createRenderBundleEncoder({
                     colorFormats: [this.cache.opts.fragmentFormat],
                     depthStencilFormat: this.cache.opts.depthFormat,
-                    sampleCount: this.opts.multisample?.count
+                    sampleCount: this.opts.sampleCount
                 })
                 this.runRenderPass(encoder, sorted, camera)
                 this.cachedRenderPass.bundles = [encoder.finish()]

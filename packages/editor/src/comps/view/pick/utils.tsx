@@ -47,14 +47,25 @@ export async function pick(
     if (!canvas || !scene || !camera) {
         throw Error(`renderer not initialized`)
     }
-    const picker = await Tool.Picker.init(),
-        { left, top } = canvas.getBoundingClientRect(),
+    const { left, top } = canvas.getBoundingClientRect(),
         list = new Set(Array.from(scene).filter(item => item !== CAMERA_PIVOT))
-    return await picker.pick(list, camera, {
+    return await Tool.Picker.pick(list, camera, {
         width: canvas.clientWidth,
         height: canvas.clientHeight,
         x: clientX - left,
         y: clientY - top,
+    })
+}
+
+export async function query(
+        { canvas, scene, camera }: CanvasContextValue) {
+    if (!canvas || !scene || !camera) {
+        throw Error(`renderer not initialized`)
+    }
+    const list = new Set(Array.from(scene).filter(item => item !== CAMERA_PIVOT))
+    return await Tool.Picker.query(list, camera, {
+        width: canvas.clientWidth,
+        height: canvas.clientHeight,
     })
 }
 

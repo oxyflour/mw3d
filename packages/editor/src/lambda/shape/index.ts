@@ -3,8 +3,9 @@ import os from 'os'
 import { mkdir, readFile, writeFile, rm } from "fs/promises"
 
 import store from "../../utils/node/store"
-import { BufferData, Entity } from "../../utils/data/entity"
+import { Entity } from "../../utils/data/entity"
 import { fork } from "../../utils/node/fork"
+import { Chunks } from "../../utils/node/chunks"
 
 const SCRIPT_PATH = path.join(__dirname, '..', '..', '..', 'dist', 'cli', 'index.js')
 export async function *open(files: { name: string, arrayBuffer: () => Promise<ArrayBuffer> }[]) {
@@ -28,24 +29,24 @@ export async function *open(files: { name: string, arrayBuffer: () => Promise<Ar
         yield { message: `parsing ${file.name}` }
         const json = await readFile(save, 'utf-8'),
             { entities } = JSON.parse(json) as { entities: Entity[] },
-            bufs = await readFile(save + '.data'),
-            slice = (chunk: BufferData) => bufs.slice(chunk.offset || 0, chunk.offset! + chunk.size!)
+            chunks = await Chunks.read(save + '.data')
         await Promise.all(entities.map(async entity => {
             const { topo, geom, data } = entity
             if (data) {
-                entity.data = { url: await store.library.save(slice(data), 'data/') }
+                entity.data = { url: await store.library.save(chunks.slice(data), 'data/') }
             }
+            const dataUrl = entity.data?.url || ''
             if (geom) {
-                entity.geom = { url: await store.geom.cache(slice(geom), entity.data?.url || '') }
+                entity.geom = { url: await store.geom.cache(chunks.slice(geom), dataUrl) }
             }
             if (topo?.faces) {
-                topo.faces = { url: await store.geom.cache(slice(topo.faces), entity.data?.url || '') }
+                topo.faces = { url: await store.geom.cache(chunks.slice(topo.faces), dataUrl) }
             }
             if (topo?.edges) {
-                topo.edges = { url: await store.geom.cache(slice(topo.edges), entity.data?.url || '') }
+                topo.edges = { url: await store.geom.cache(chunks.slice(topo.edges), dataUrl) }
             }
             if (topo?.verts) {
-                topo.verts = { url: await store.geom.cache(slice(topo.verts), entity.data?.url || '') }
+                topo.verts = { url: await store.geom.cache(chunks.slice(topo.verts), dataUrl) }
             }
         }))
         yield { entities }
