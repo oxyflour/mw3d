@@ -4,34 +4,7 @@ import { unpack } from "../../../utils/common/pack"
 import { Entity } from "../../../utils/data/entity"
 import { Edge, Face, Vert } from "../../../utils/data/topo"
 import { ViewPickMode } from "../../../utils/data/view"
-
-const FRAG_DASH = `
-fn fragMainColorDash(input: FragInput) -> @location(0) vec4<f32> {
-    checkClip(input);
-    var n = material.metallic;
-    var v = material.roughness;
-    var s = input.position.xy - floor(input.position.xy / n) * n;
-    if (v > 0.) {
-        if (s.x > v || s.y > v) {
-            discard;
-        }
-    } else if (v < 0.) {
-        if (s.x < -v || s.y < -v) {
-            discard;
-        }
-    }
-    return material.color;
-}
-`
-
-const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
-export const MATERIAL_SET = {
-    select:   new Engine.BasicMaterial({ color: [1, .7, .7, 1], lineWidth: devicePixelRatio * 5, entry: { frag: 'fragMainColor' } }),
-    selected: new Engine.BasicMaterial({ color: [1, 0, 0, 1.0], lineWidth: devicePixelRatio * 5, entry: { frag: FRAG_DASH }, metallic: 8, roughness: 6 }),
-    hover:    new Engine.BasicMaterial({ color: [1, 1, 0, 1.0], lineWidth: devicePixelRatio * 3, entry: { frag: FRAG_DASH }, metallic: 8, roughness: -2 }),
-    default:  new Engine.BasicMaterial({ color: [r, g, b, 1.0], lineWidth: devicePixelRatio * 3, emissive: 0.2 }),
-    dimmed:   new Engine.BasicMaterial({ color: [r, g, b, 0.7], lineWidth: devicePixelRatio * 3 })
-}
+import { MATERIAL_SET } from "../loader/utils"
 
 export const CAMERA_PIVOT = new Engine.Mesh(
     new Engine.SphereGeometry(),

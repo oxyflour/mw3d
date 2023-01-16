@@ -5,7 +5,8 @@ import { queue } from "../../../utils/common/queue"
 import { Entity } from "../../../utils/data/entity"
 import { ViewPickMode } from "../../../utils/data/view"
 import { useAsync } from "../../../utils/react/hooks"
-import { loadTopo, MATERIAL_SET, Obj3WithEntity, pick } from "./utils"
+import { MATERIAL_SET } from "../loader/utils"
+import { loadTopo, Obj3WithEntity, pick } from "./utils"
 
 const pickEntity = queue(pick),
     pickTopo = debounce(pick, 100)

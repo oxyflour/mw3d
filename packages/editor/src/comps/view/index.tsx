@@ -1,16 +1,70 @@
-import { Canvas, Engine, Mesh, useCanvas, useTick } from '@ttk/react'
-import React, {  } from 'react'
+import { Canvas, Engine, Mesh, Obj3, useObj3 } from '@ttk/react'
+import React, { useMemo } from 'react'
 
 import { Entity, TreeEnts } from '../../utils/data/entity'
 import { TreeData, TreeNode } from '../../utils/data/tree'
 import { ViewOpts } from '../../utils/data/view'
+import { useAsync } from '../../utils/react/hooks'
 import { KeyControl } from './control/key'
 import { MouseControl } from './control/mouse'
 
 import './index.less'
+import { loadGeom, loadMatSet, MATERIAL_SET } from './loader/utils'
 import { EntityPicker, TopoPicked } from './pick/entity'
-import { MATERIAL_SET, Obj3WithEntity, query } from './pick/utils'
+import { Obj3WithEntity } from './pick/utils'
 import { Axies } from './tool/axies'
+import { Culling } from './tool/culling'
+
+function EntityMeshBind({ entity }: { entity: Entity }) {
+    const { obj } = useObj3() as { obj: Obj3WithEntity }
+    obj && (obj.entity = entity)
+    return null
+}
+
+const GEO_BOX = new Engine.BoxGeometry({ })
+function MeshBound(props: EntityProps) {
+    const { position, scaling } = useMemo(() => {
+        const position = [0, 0, 0] as [number, number, number],
+            scaling = [1, 1, 1] as [number, number, number]
+        if (props.data.bound) {
+            const [x0, y0, z0, x1, y1, z1] = props.data.bound
+            position[0] = (x0 + x1) / 2
+            position[1] = (y0 + y1) / 2
+            position[2] = (z0 + z1) / 2
+            scaling[0] = (x1 - x0)
+            scaling[1] = (y1 - y0)
+            scaling[2] = (z1 - z0)
+        }
+        return { position, scaling }
+    }, [props.data.bound])
+    const mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
+    return <Obj3 { ...props }>
+        <EntityMeshBind entity={ props.data } />
+        <Mesh geo={ GEO_BOX }
+            mat={ props.active ? mats.default : mats.dimmed }
+            position={ position }
+            scaling={ scaling }>
+            <EntityMeshBind entity={ props.data } />
+        </Mesh>
+    </Obj3>
+}
+
+export const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
+function EntityMesh(props: EntityProps) {
+    const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [props.data.geom?.url]),
+        mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
+    return geom?.faces || geom?.edges ? <>
+        { geom.faces && <Mesh { ...props }
+            isVisible={ props.data.attrs?.$visible }
+            mat={ props.active ? mats.default : mats.dimmed }
+            geo={ geom.faces }>
+            <EntityMeshBind entity={ props.data } />
+        </Mesh> }
+        { geom.edges && <Mesh
+            isVisible={ props.active && props.data?.attrs?.$visible && props.view.pick?.mode !== 'edge' }
+            geo={ geom.edges } mat={ EDGE_MAT } /> }
+    </> : <MeshBound { ...props } />
+}
 
 type CompProp<T> = T extends (...args: [infer A]) => any ? A : never
 export type EntityProps = CompProp<typeof Mesh> & { view: ViewOpts, data: Entity, active: boolean }
@@ -27,32 +81,11 @@ function checked(tree: TreeData, nodes: string[]) {
     return ret.checked
 }
 
-function ViewPortCulling({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
-    const ctx = useCanvas()
-    useTick(async () => {
-        const objs = { } as Record<number, Engine.Obj3>,
-            updateEntity = (entity: Entity, update: any) => Object.assign(entity.attrs || (entity.attrs = { }), update)
-        ctx.scene?.walk((obj: Obj3WithEntity) => {
-            objs[obj.id] = obj
-            obj.entity && updateEntity(obj.entity, { $visible: false })
-        })
-        const visibleMeshes = (await query(ctx)).sort()
-        for (const obj of visibleMeshes.map(id => objs[id] as Obj3WithEntity).filter(obj => obj)) {
-            obj.entity && updateEntity(obj.entity, { $visible: true })
-        }
-        if (visibleMeshes.join(',') !== view.viewPort?.visibleMeshes?.join(',')) {
-            setView({ ...view, viewPort: { ...view.viewPort, visibleMeshes } })
-        }
-    }, 1000)
-    return null
-}
-
-export default ({ tree, ents, view, setView, component, children, onSelect }: {
+export default ({ tree, ents, view, setView, children, onSelect }: {
     tree: TreeEnts
     ents: Entity[]
     view: ViewOpts
     setView: (view: ViewOpts) => void
-    component?: (props: EntityProps) => JSX.Element
     children?: any
     onSelect?: (nodes?: string[], obj?: Engine.Obj3) => any
 }) => {
@@ -69,14 +102,14 @@ export default ({ tree, ents, view, setView, component, children, onSelect }: {
             }>
         {
             visible.map((data, key) => {
-                const active = !selected.length || data.nodes?.some(id => tree[id]?.selected),
+                const active = !selected.length || !!data.nodes?.some(id => tree[id]?.selected),
                     mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                     matrix = data.trans
-                return React.createElement(component || Mesh, { key, view, active, data, mat, matrix } as EntityProps)
+                return <EntityMesh { ...{ key, view, active, data, mat, matrix } } />
             })
         }
         <Axies />
-        <ViewPortCulling view={ view } setView={ setView } />
+        <Culling view={ view } setView={ setView } />
         <KeyControl view={ view } setView={ setView } />
         <MouseControl view={ view }
             onSelect={ (obj?: Obj3WithEntity) => !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj) } />
