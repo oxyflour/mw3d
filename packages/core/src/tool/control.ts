@@ -84,7 +84,7 @@ export class Control {
             vec3.normalize(axis, axis)
             if (vec3.length(axis)) {
                 mat4.identity(rotation)
-                mat4.rotate(rotation, rotation, (opts?.rotate?.speed || 0.03) * ds, axis)
+                mat4.rotate(rotation, rotation, (opts?.rotate?.speed || 0.005) * ds, axis)
                 vec3.sub(delta, origin, target)
                 vec3.transformMat4(delta, delta, rotation)
                 vec3.add(target, target, delta)

@@ -7,16 +7,21 @@ function arrayEqual(a: number[], b: number[]) {
     return a.length === b.length && a.every((v, i) => v === b[i])
 }
 
+const scene = new Engine.Scene()
 export function Culling({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
     const ctx = useCanvas()
     useTick(async () => {
         const objs = { } as Record<number, Engine.Obj3>,
             updateEntity = (entity: Entity, update: any) => Object.assign(entity.attrs || (entity.attrs = { }), update)
-        ctx.scene?.walk((obj: Obj3WithEntity) => {
-            objs[obj.id] = obj
-            obj.entity && updateEntity(obj.entity, { $visible: false })
-        })
-        const visibleMeshes = (await query(ctx)).sort()
+        scene.clear()
+        for (const obj of ctx.scene || []) {
+            const { entity, id } = obj as Obj3WithEntity
+            if (entity) {
+                scene.add(objs[id] = obj)
+                updateEntity(entity, { $visible: false })
+            }
+        }
+        const visibleMeshes = (await query({ ...ctx, scene })).sort()
         for (const obj of visibleMeshes.map(id => objs[id] as Obj3WithEntity).filter(obj => obj)) {
             obj.entity && updateEntity(obj.entity, { $visible: true })
         }

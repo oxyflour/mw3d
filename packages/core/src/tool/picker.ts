@@ -246,6 +246,7 @@ const Picker = {
         height: number
     }) {
         const { meshes, geoms, view } = await prepare(scene, camera)
+        view.fov *= 1.5
         return await worker.query(meshes, geoms, view, opts)
     },
     async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
