@@ -37,7 +37,7 @@ export default {
                     name = head.startsWith('ISO-10303-21') ? 'main.stp' : data,
                     file = { name, arrayBuffer: () => Promise.resolve(buf) }
                 for await (const msg of open([file])) {
-                    console.log(msg)
+                    msg
                 }
                 return await store.cache.get(key)
             }

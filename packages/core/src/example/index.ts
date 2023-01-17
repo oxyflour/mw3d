@@ -200,5 +200,6 @@ requestAnimationFrame(function render() {
     handle.rotation.rotX(0.005)
     depthScene
     //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, disableBundle: true })
+    control.update()
     renderer.render(scene, camera)
 })

@@ -17,6 +17,20 @@ function withMouseDown(onMouseMove: (evt: MouseEvent) => any, onMouseUp?: (evt: 
     })
 }
 
+function lerp(from: number, to: number, factor: number) {
+    return from * (1 - factor) + to * factor
+}
+
+type Pos = { clientX: number, clientY: number }
+const axis = vec3.create(),
+    origin = vec3.create(),
+    from = vec3.create(),
+    target = vec3.create(),
+    delta = vec3.create(),
+    tran = mat4.create(),
+    rotation = mat4.create(),
+    rot = quat.create()
+
 export class Control {
     readonly pivot: Obj3
     mode = '' as '' | 'rot' | 'pan' | 'zoom'
@@ -50,36 +64,19 @@ export class Control {
         this.mode = ['rot', 'pan'][evt.button] as typeof this.mode || ''
         hook ? hook(evt, evt => this.onMouseDown(evt), this) : this.onMouseDown(evt)
     }
-    async onMouseDown(evt: MouseEvent) {
+    private readonly state = { hasMoved: false, isDown: false }
+    private readonly source = { clientX: 0, clientY: 0 }
+    private readonly target = { clientX: 0, clientY: 0 }
+    update() {
         const { canvas, camera, pivot, opts } = this,
             { left, top } = canvas.getBoundingClientRect(),
-            start = { clientX: evt.clientX, clientY: evt.clientY, hasMoved: false }
-        function onMouseUp(evt: MouseEvent) {
-            if (Math.abs(start.clientX - evt.clientX) > 2 ||
-                Math.abs(start.clientY - evt.clientY) > 2) {
-                start.hasMoved = true
-            }
-            if (!start.hasMoved) {
-                opts?.hooks?.click?.(evt)
-            }
-        }
-        const axis = vec3.create(),
-            origin = vec3.create(),
-            from = vec3.create(),
-            target = vec3.create(),
-            delta = vec3.create(),
-            tran = mat4.create(),
-            rotation = mat4.create(),
-            rot = quat.create()
-        function onRotateAroundPivot(evt: MouseEvent) {
-            if (Math.abs(start.clientX - evt.clientX) > 2 ||
-                Math.abs(start.clientY - evt.clientY) > 2) {
-                start.hasMoved = true
-            }
+            [hw, hh, hf] = [canvas.clientWidth / 2, canvas.clientHeight / 2, camera.fov / 2],
+            [tx, ty] = [Math.tan(hf * camera.aspect), Math.tan(hf)]
+        function onRotateAroundPivot(p0: Pos, p1: Pos) {
             vec3FromObj(origin, camera)
             vec3FromObj(target, pivot)
-            const dx = start.clientX - evt.clientX,
-                dy = start.clientY - evt.clientY,
+            const dx = p0.clientX - p1.clientX,
+                dy = p0.clientY - p1.clientY,
                 ds = Math.sqrt(dx * dx + dy * dy)
             vec3.set(axis, dy, dx, 0)
             vec3.transformMat4(axis, axis, camera.worldMatrix)
@@ -87,7 +84,7 @@ export class Control {
             vec3.normalize(axis, axis)
             if (vec3.length(axis)) {
                 mat4.identity(rotation)
-                mat4.rotate(rotation, rotation, (opts?.rotate?.speed || 0.05) * ds, axis)
+                mat4.rotate(rotation, rotation, (opts?.rotate?.speed || 0.03) * ds, axis)
                 vec3.sub(delta, origin, target)
                 vec3.transformMat4(delta, delta, rotation)
                 vec3.add(target, target, delta)
@@ -100,25 +97,17 @@ export class Control {
 
                 camera.setWorldMatrix(tran)
             }
-            start.clientX = evt.clientX
-            start.clientY = evt.clientY
         }
-        const [hw, hh, hf] = [canvas.clientWidth / 2, canvas.clientHeight / 2, camera.fov / 2],
-            [tx, ty] = [Math.tan(hf * camera.aspect), Math.tan(hf)]
         function getWorldDirFromScreen(out: vec3, x: number, y: number) {
             vec3.set(out, tx * (x - hw) / hw, ty * (y - hh) / -hh, -1)
             vec3.transformMat4(out, out, camera.worldMatrix)
             vec3.sub(out, out, origin)
             vec3.normalize(out, out)
         }
-        function onDragWithPivot(evt: MouseEvent) {
-            if (Math.abs(start.clientX - evt.clientX) > 2 ||
-                Math.abs(start.clientY - evt.clientY) > 2) {
-                start.hasMoved = true
-            }
+        function onDragWithPivot(p0: Pos, p1: Pos) {
             vec3FromObj(origin, camera)
-            getWorldDirFromScreen(from, start.clientX - left, start.clientY - top)
-            getWorldDirFromScreen(target, evt.clientX - left, evt.clientY - top)
+            getWorldDirFromScreen(from, p0.clientX - left, p0.clientY - top)
+            getWorldDirFromScreen(target, p1.clientX - left, p1.clientY - top)
             vec3.cross(axis, from, target)
             vec3.normalize(axis, axis)
             const rad = vec3.angle(from, target)
@@ -132,15 +121,43 @@ export class Control {
             mat4.multiply(tran, rotation, tran)
 
             camera.setWorldMatrix(tran)
-
-            start.clientX = evt.clientX
-            start.clientY = evt.clientY
         }
-        if (this.mode === 'rot') {
-            withMouseDown(onRotateAroundPivot, onMouseUp)
-        } else if (this.mode === 'pan') {
-            withMouseDown(onDragWithPivot, onMouseUp)
+        if (this.state.isDown) {
+            let factor = 1
+            if (this.mode === 'rot') {
+                onRotateAroundPivot(this.source, this.target)
+                factor = 0.3
+            } else if (this.mode === 'pan') {
+                onDragWithPivot(this.source, this.target)
+            }
+            this.source.clientX = lerp(this.source.clientX, this.target.clientX, factor)
+            this.source.clientY = lerp(this.source.clientY, this.target.clientY, factor)
         }
+    }
+    async onMouseDown(evt: MouseEvent) {
+        const { opts, source, target, state } = this,
+            { clientX, clientY } = evt
+        Object.assign(source, { clientX, clientY })
+        Object.assign(target, { clientX, clientY })
+        state.hasMoved = false
+        state.isDown = true
+        withMouseDown(evt => {
+            if (Math.abs(source.clientX - evt.clientX) > 2 ||
+                Math.abs(source.clientY - evt.clientY) > 2) {
+                state.hasMoved = true
+            }
+            target.clientX = evt.clientX
+            target.clientY = evt.clientY
+        }, evt => {
+            if (Math.abs(source.clientX - evt.clientX) > 2 ||
+                Math.abs(source.clientY - evt.clientY) > 2) {
+                state.hasMoved = true
+            }
+            if (!state.hasMoved) {
+                opts?.hooks?.click?.(evt)
+            }
+            state.isDown = false
+        })
     }
     bindMouseWheel(evt: WheelEvent) {
         const hook = this.opts?.hooks?.wheel

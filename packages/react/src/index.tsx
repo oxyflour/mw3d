@@ -143,6 +143,7 @@ export function Control({ ref, ...opts }: {
     if (control?.opts) {
         control.opts.hooks = opts.hooks
     }
+    useFrame(() => control?.update(), false)
     useEffect(() => {
         if (canvas && camera) {
             const control = new Tool.Control(canvas, camera, opts)

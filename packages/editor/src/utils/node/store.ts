@@ -50,7 +50,8 @@ class Store {
     async set(key: string, buf: Buffer, ex = this.ex) {
         const redis = await getRedis(),
             zipped = await deflate(buf)
-        await redis.set(key, zipped, 'EX', ex)
+        await redis.set(this.prefix + key, zipped, 'EX', ex)
+        return key
     }
     async zipped(key: string, ex = this.ex) {
         const redis = await getRedis()
@@ -92,11 +93,6 @@ export default {
         async get(commit: string) {
             const buf = await library.get(`commit/${commit}`)
             return JSON.parse(buf.toString()) as { entities: Entity[] }
-        },
-    },
-    geom: {
-        async cache(buf: Buffer, data: string) {
-            return await cache.save(buf, data + '/g/')
         },
     },
 }

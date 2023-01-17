@@ -37,16 +37,16 @@ export async function *open(files: { name: string, arrayBuffer: () => Promise<Ar
             }
             const dataUrl = entity.data?.url || ''
             if (geom) {
-                entity.geom = { url: await store.geom.cache(chunks.slice(geom), dataUrl) }
+                entity.geom = { url: await store.cache.set(dataUrl + '/g/geom', chunks.slice(geom)) }
             }
             if (topo?.faces) {
-                topo.faces = { url: await store.geom.cache(chunks.slice(topo.faces), dataUrl) }
+                topo.faces = { url: await store.cache.set(dataUrl + '/g/topo/faces', chunks.slice(topo.faces)) }
             }
             if (topo?.edges) {
-                topo.edges = { url: await store.geom.cache(chunks.slice(topo.edges), dataUrl) }
+                topo.edges = { url: await store.cache.set(dataUrl + '/g/topo/edges', chunks.slice(topo.edges)) }
             }
             if (topo?.verts) {
-                topo.verts = { url: await store.geom.cache(chunks.slice(topo.verts), dataUrl) }
+                topo.verts = { url: await store.cache.set(dataUrl + '/g/topo/verts', chunks.slice(topo.verts)) }
             }
         }))
         yield { entities }
