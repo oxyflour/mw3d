@@ -83,6 +83,8 @@ document.body.style.margin = document.body.style.padding = '0'
 const div = document.getElementById('root') as any,
     root = div.__root || (div.__root = createRoot(div))
 root.render(
+    true ?
+    <App /> :
     navigator.gpu ?
     <Sender><App /></Sender> :
     <Receiver channel='123' />
