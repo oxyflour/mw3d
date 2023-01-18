@@ -9,6 +9,7 @@ import { upload } from '../../utils/dom/upload'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
 import { ViewOpts } from '../../utils/data/view'
+import { Modal } from '../utils/Modal'
 
 const m = mat4.create(),
     v = vec3.create()
@@ -107,6 +108,41 @@ function Tabs({ initActive, style, className, children = [] }: {
     </div>
 }
 
+export function OpenFile({ ents, setEnts }: { ents: Entity[], setEnts: (ents: Entity[]) => void }) {
+    const [opening, setOpening] = useState(''),
+        [logs, setLogs] = useState([] as string[])
+    return <>
+        {
+            opening && <Modal title={ `Opening ${opening}` }>
+                <pre style={{ maxHeight: 300, overflow: 'hidden' }}>{ logs.join('\n') }</pre>
+            </Modal>
+        }
+        <ImageButton title="open"
+            onClick={
+                () => upload(async files => {
+                    setOpening(Array.from(files || []).map(item => item.name).join(', '))
+                    try {
+                        const arr = files ? Array.from(files) : [],
+                            ret = ents.slice(),
+                            logs = [] as string[]
+                        for await (const { entities, message } of lambda.shape.open(arr)) {
+                            entities && ret.push(...entities)
+                            if (message) {
+                                logs.push(message)
+                                setLogs(logs.slice())
+                            }
+                        }
+                        setEnts(ret)
+                    } catch (err) {
+                        // TODO
+                        console.error(err)
+                    }
+                    setOpening('')
+                })
+            } />
+    </>
+}
+
 export default ({ className, ents, view, setEnts, setView }: {
     className?: string
     ents: Entity[]
@@ -120,19 +156,7 @@ export default ({ className, ents, view, setEnts, setView }: {
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
         <div title="File">
             <Group title="Home">
-                <ImageButton title="open"
-                    onClick={
-                        () => upload(async files => {
-                            const arr = files ? Array.from(files) : [],
-                                ret = ents.slice()
-                            for await (const msg of lambda.shape.open(arr)) {
-                                if (msg.entities) {
-                                    ret.push(...msg.entities)
-                                }
-                            }
-                            setEnts(ret)
-                        })
-                    } />
+                <OpenFile { ...{ ents, setEnts } } />
                 <ImageButton title="generate"
                     onClick={
                         () => {
