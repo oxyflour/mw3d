@@ -201,7 +201,7 @@ requestAnimationFrame(function render() {
     cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
     depthScene
-    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
     control.update()
-    renderer.render(scene, camera)
+    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
+    renderer.render(scene, camera, { renderClips: true })
 })

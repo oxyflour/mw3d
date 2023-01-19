@@ -16,6 +16,7 @@ export class RendererOptions {
 export class RenderOptions {
     depthTexture?: Texture
     colorTexture?: Texture
+    keepFrame?: boolean
     renderClips?: boolean
 }
 

@@ -199,10 +199,11 @@ export default class WebGPURenderer extends Renderer {
                 clip.update(item)
                 this.addToUpdated(clip.back.mat, clip.front.mat, clip.plane.mat)
                 this.addToUpdated(clip.back, clip.front, clip.plane)
-                clipCaps.push(clip.back, clip.front, clip.plane)
+                //clipCaps.push(clip.back, clip.front, clip.plane)
             }
         }
-        return { lights, updated, sorted: clipCaps }
+        sorted.unshift(...clipCaps)
+        return { lights, updated, sorted }
     }
 
     override getOrderFor(mesh: RenderMesh) {
@@ -210,7 +211,6 @@ export default class WebGPURenderer extends Renderer {
     }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
-            keepFrame?: boolean
             disableBundle?: boolean
             depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
         }
@@ -240,16 +240,16 @@ export default class WebGPURenderer extends Renderer {
                     } : {
                         view: colorTexture.createView(),
                     }),
-                    loadOp: opts.webgpu?.keepFrame ? 'load' : 'clear',
+                    loadOp: opts.keepFrame ? 'load' : 'clear',
                     storeOp: 'store',
                     clearValue: this.clearColor,
                 }],
                 depthStencilAttachment: {
                     view: depthTexture.createView(),
-                    depthLoadOp: opts.webgpu?.keepFrame ? 'load' : 'clear',
+                    depthLoadOp: opts.keepFrame ? 'load' : 'clear',
                     depthClearValue: 0,
                     depthStoreOp: 'store',
-                    stencilLoadOp: opts.webgpu?.keepFrame ? 'load' : 'clear',
+                    stencilLoadOp: opts.keepFrame ? 'load' : 'clear',
                     stencilClearValue: 0,
                     stencilStoreOp: 'store',
                     ...opts.webgpu?.depthStencilAttachment

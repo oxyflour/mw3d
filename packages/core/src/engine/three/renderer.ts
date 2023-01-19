@@ -182,6 +182,7 @@ export default class ThreeRenderer extends Renderer {
             this.renderer.render(this.scene, this.camera)
             this.renderer.setRenderTarget(null)
         }
+        this.renderer.autoClear = !opts.keepFrame
         this.renderer.render(this.scene, this.camera)
     }
 }
