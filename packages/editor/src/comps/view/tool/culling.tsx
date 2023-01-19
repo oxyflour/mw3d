@@ -9,11 +9,11 @@ function arrayEqual(a: number[], b: number[]) {
 }
 
 const scene = new Engine.Scene()
-export function Culling({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
+export function Culling({ view, setView, frameCount = 60 }: { view: ViewOpts, setView: (view: ViewOpts) => void, frameCount?: number }) {
     const ctx = useCanvas(),
         counter = useRef(0)
     useFrame(async () => {
-        if ((counter.current ++) % 60) {
+        if ((counter.current ++) % frameCount) {
             return
         }
         const objs = { } as Record<number, Engine.Obj3>,
