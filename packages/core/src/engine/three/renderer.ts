@@ -125,11 +125,17 @@ export default class ThreeRenderer extends Renderer {
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
     private camera = new THREE.Camera()
+    private revs = { } as Record<number, number>
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         const { width, height } = this
         if (width != this.sizeCache.width || height != this.sizeCache.height) {
             this.renderer.setSize(width, height, false)
             Object.assign(this.sizeCache, { width, height })
+        }
+
+        camera.updateIfNecessary(this.revs)
+        for (const obj of scene) {
+            obj.updateIfNecessary(this.revs)
         }
 
         this.threeClearColor.setRGB(this.clearColor.r, this.clearColor.g, this.clearColor.b)
