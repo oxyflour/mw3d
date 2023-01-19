@@ -208,7 +208,6 @@ export default class WebGPURenderer extends Renderer {
             }
         },
     }
-    private statics = { ticks: [] as number[], frameTime: 0 }
     override render(scene: Scene, camera: Camera, opts = { } as {
         depthTexture?: Texture
         colorTexture?: Texture
@@ -218,7 +217,6 @@ export default class WebGPURenderer extends Renderer {
             depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
         }
     }) {
-        const start = performance.now()
         if (this.width * this.devicePixelRatio !== this.renderSize.width ||
             this.height * this.devicePixelRatio !== this.renderSize.height) {
             this.resize()
@@ -341,12 +339,5 @@ export default class WebGPURenderer extends Renderer {
 
         pass.end()
         this.device.queue.submit([cmd.finish()])
-
-        const { ticks } = this.statics
-        ticks.push(performance.now() - start)
-        if (ticks.length > 60 * 20) {
-            this.statics.frameTime = ticks.reduce((a, b) => a + b, 0) / ticks.length
-            ticks.splice(0, 60)
-        }
     }
 }
