@@ -9,7 +9,7 @@ import Geometry from "../geometry"
 import { vec4 } from "gl-matrix"
 import { Sampler, Texture, UniformValue } from "../uniform"
 import { ClipMeshes } from "./clip"
-import Renderer, { RendererOptions } from "../renderer"
+import Renderer, { RendererOptions, RenderOptions } from "../renderer"
 
 const MAX_LIGHTS = 4
 
@@ -73,8 +73,6 @@ export default class WebGPURenderer extends Renderer {
         return await new WebGPURenderer(canvas, opts).init()
     }
 
-    width = 100
-    height = 100
     private renderSize = { width: 100, height: 100 }
     get devicePixelRatio() {
         return this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1
@@ -208,9 +206,7 @@ export default class WebGPURenderer extends Renderer {
             }
         },
     }
-    override render(scene: Scene, camera: Camera, opts = { } as {
-        depthTexture?: Texture
-        colorTexture?: Texture
+    override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
             keepFrame?: boolean
             disableBundle?: boolean

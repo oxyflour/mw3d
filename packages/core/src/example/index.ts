@@ -129,7 +129,7 @@ const camera = new PerspectiveCamera({
             color: [1, 1, 1],
             entry: { frag: 'fragMainMultiDepth' },
             texture: new Texture({
-                size: { width: renderer.width, height: renderer.height },
+                size: { width: renderer.canvas.width, height: renderer.canvas.height },
                 format: 'depth24plus-stencil8',
                 usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.RENDER_ATTACHMENT,
                 sampleCount: renderer.opts.sampleCount
@@ -198,8 +198,7 @@ requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
-    depthScene
-    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, disableBundle: true })
+    renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
     control.update()
     renderer.render(scene, camera)
 })

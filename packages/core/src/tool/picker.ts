@@ -13,7 +13,6 @@ import WorkerSelf from './picker?worker&inline'
 interface WebGPUOffscreenCanvas extends
         Omit<OffscreenCanvas, 'getContext' | 'addEventListener' | 'removeEventListener'>,
         HTMLCanvasElement {
-    transferToImageBitmap(): ImageBitmap
     convertToBlob(): Promise<Blob>
 }
 
@@ -28,7 +27,7 @@ const cache = {
 async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: RendererOptions) {
     const renderer = await Renderer.create(canvas, opts),
         camera = new PerspectiveCamera(),
-        ctx = pixels.getContext('2d')
+        ctx = pixels.getContext('2d', { willReadFrequently: true })
     if (!ctx) {
         throw Error(`get context 2d failed`)
     }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Canvas, Control, Mesh, Sender, Receiver } from '..'
-import { Engine } from '@ttk/core'
+import { Canvas, Control, Mesh, Engine } from '..'
 
 function rand(begin: number, end = 0) {
     return Math.random() * (end - begin) + begin
@@ -72,20 +71,18 @@ function App() {
             <Control />
             { list }
         </Canvas>
+        {
+            /*
         <Canvas style={{ width: '50%', height: '50%' }}>
             <Control />
             { list }
         </Canvas>
+             */
+        }
     </>
 }
 
 document.body.style.margin = document.body.style.padding = '0'
 const div = document.getElementById('root') as any,
     root = div.__root || (div.__root = createRoot(div))
-root.render(
-    true ?
-    <App /> :
-    navigator.gpu ?
-    <Sender><App /></Sender> :
-    <Receiver channel='123' />
-)
+root.render(<App />)

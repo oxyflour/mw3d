@@ -6,26 +6,35 @@ import Light from '../light'
 import Material from '../material'
 import Mesh from '../mesh'
 import Obj3, { Scene } from '../obj3'
-import Renderer from '../renderer'
+import Renderer, { RenderOptions } from '../renderer'
 import { Texture } from '../uniform'
 
 class ThreeDepthMaterial extends THREE.ShaderMaterial {
     constructor(parameters?: THREE.ShaderMaterialParameters) {
         super({
             vertexShader: `
-                varying vec2 vUv;
+                varying vec4 vPos;
                 void main() {
-                    vUv = uv;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    vPos = (gl_Position + 1.) * .5;
                 }
             `,
             fragmentShader: `
                 #include <packing>
-                varying vec2 vUv;
+                varying vec4 vPos;
                 uniform sampler2D tDepth;
                 void main() {
-                    float fragCoordZ = texture2D(tDepth, vUv).x;
-                    gl_FragColor = vec4(fragCoordZ / 10., 0., 0., 1.);
+                    float v = texture2D(tDepth, vPos.xy).x;
+                    v = 1. - v / 2.;
+                    uint i = uint(v * float(0x1000000));
+                    uint r = (i & 0x0000ffu);
+                    uint g = (i & 0x00ff00u) >> 8u;
+                    uint b = (i & 0xff0000u) >> 16u;
+                    gl_FragColor = vec4(
+                        float(r) / 255.,
+                        float(g) / 255.,
+                        float(b) / 255.,
+                        1.);
                 }
             `,
             uniforms: {
@@ -77,14 +86,18 @@ export default class ThreeRenderer extends Renderer {
         return new THREE.CanvasTexture(canvas)
     })
     private dt = cache((tex: Texture) => {
-        const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict
-        return new THREE.DepthTexture(width, height)
+        const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict,
+            ret = new THREE.DepthTexture(width, height)
+        ret.format = THREE.DepthFormat
+        ret.type = THREE.UnsignedIntType
+        return ret
     })
     private rt = cache((tex: Texture) => {
-        const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict,
-            ret = new THREE.WebGLRenderTarget(width, height)
-        ret.depthTexture = this.dt(tex)
-        return ret
+        const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict
+        return new THREE.WebGLRenderTarget(width, height, {
+            depthBuffer: true,
+            depthTexture: this.dt(tex),
+        })
     })
     private obj3 = cache((obj3: Obj3) => {
         return obj3 instanceof Mesh ? new THREE.Mesh() :
@@ -96,16 +109,11 @@ export default class ThreeRenderer extends Renderer {
             new THREE.PerspectiveCamera(camera.fov / Math.PI * 180, camera.aspect, camera.near, camera.far) :
             new THREE.Camera()
     })
-    width = 0
-    height = 0
     readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
     private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
-    override render(scene: Scene, camera: Camera, opts = { } as {
-        depthTexture?: Texture
-        colorTexture?: Texture
-    }) {
+    override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         const { width, height } = this
         if (width != this.sizeCache.width || height != this.sizeCache.height) {
             this.renderer.setSize(width, height, false)
@@ -115,6 +123,17 @@ export default class ThreeRenderer extends Renderer {
         this.threeClearColor.setRGB(this.clearColor.r, this.clearColor.g, this.clearColor.b)
         this.renderer.setClearColor(this.threeClearColor)
         this.renderer.setClearAlpha(this.clearColor.a)
+
+        const c = this.camera(camera)
+        c.position.set(camera.position.x, camera.position.y, camera.position.z)
+        c.scale.set(camera.scaling.x, camera.scaling.y, camera.scaling.z)
+        c.quaternion.set(camera.rotation.x, camera.rotation.y, camera.rotation.z, camera.rotation.w)
+        if (camera instanceof PerspectiveCamera && c instanceof THREE.PerspectiveCamera) {
+            c.fov = camera.fov / Math.PI * 180
+            c.near = camera.near
+            c.far = camera.far
+            c.aspect = camera.aspect
+        }
 
         this.scene.clear()
         scene.walk((obj, parent) => {
@@ -145,16 +164,6 @@ export default class ThreeRenderer extends Renderer {
             }
         })
 
-        const c = this.camera(camera)
-        c.position.set(camera.position.x, camera.position.y, camera.position.z)
-        c.scale.set(camera.scaling.x, camera.scaling.y, camera.scaling.z)
-        c.quaternion.set(camera.rotation.x, camera.rotation.y, camera.rotation.z, camera.rotation.w)
-        if (camera instanceof PerspectiveCamera && c instanceof THREE.PerspectiveCamera) {
-            c.fov = camera.fov / Math.PI * 180
-            c.near = camera.near
-            c.far = camera.far
-            c.aspect = camera.aspect
-        }
         if (opts.depthTexture) {
             this.renderer.setRenderTarget(this.rt(opts.depthTexture))
             this.renderer.render(this.scene, c)
