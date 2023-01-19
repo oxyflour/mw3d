@@ -121,7 +121,6 @@ export default class ThreeRenderer extends Renderer {
         const { x, y, z, w } = mat.clip
         return new THREE.Plane(new THREE.Vector3(x, y, z), w)
     })
-    readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
     private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()

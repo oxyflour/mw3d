@@ -187,10 +187,7 @@ export default class WebGPURenderer extends Renderer {
     }
 
     readonly clipCache = new WeakMap<Mesh, ClipMeshes>()
-    override getOrderFor(mesh: RenderMesh) {
-        return this.cache.pipeline(mesh.geo.type, mesh.mat).id
-    }
-    override prepare(scene: Scene, camera: Camera) {
+    prepareClips(scene: Scene, camera: Camera) {
         const { lights, updated, sorted } = super.prepare(scene, camera),
             clipCaps = [] as typeof sorted
         for (const item of sorted) {
@@ -205,11 +202,12 @@ export default class WebGPURenderer extends Renderer {
                 clipCaps.push(clip.back, clip.front, clip.plane)
             }
         }
-        sorted.unshift(...clipCaps)
-        return { lights, updated, sorted }
+        return { lights, updated, sorted: clipCaps }
     }
 
-    readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
+    override getOrderFor(mesh: RenderMesh) {
+        return this.cache.pipeline(mesh.geo.type, mesh.mat).id
+    }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
             keepFrame?: boolean
@@ -222,7 +220,9 @@ export default class WebGPURenderer extends Renderer {
             this.resize()
         }
 
-        const { lights, updated, sorted } = this.prepare(scene, camera)
+        const { lights, updated, sorted } = opts.renderClips ?
+            this.prepareClips(scene, camera) :
+            this.prepare(scene, camera)
         this.updateUniforms(this.buildRenderUnifroms(lights))
         this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {

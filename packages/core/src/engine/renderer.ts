@@ -16,6 +16,7 @@ export class RendererOptions {
 export class RenderOptions {
     depthTexture?: Texture
     colorTexture?: Texture
+    renderClips?: boolean
 }
 
 export type RenderMesh = Mesh & { geo: Geometry, mat: Material }
@@ -23,6 +24,7 @@ export type RenderMesh = Mesh & { geo: Geometry, mat: Material }
 export default class Renderer {
     width = 0
     height = 0
+    readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
     constructor(
         public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
         public readonly opts: RendererOptions) {

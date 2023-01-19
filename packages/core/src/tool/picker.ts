@@ -16,32 +16,25 @@ interface WebGPUOffscreenCanvas extends
     convertToBlob(): Promise<Blob>
 }
 
+interface PickContext {
+    canvas: WebGPUOffscreenCanvas
+    pixels: WebGPUOffscreenCanvas
+    renderer: Renderer
+    ctx: CanvasRenderingContext2D
+}
+
+let resolveContext = (_: PickContext) => { }
 const cache = {
     inited: undefined as undefined | Promise<void>,
-    created: undefined as undefined | ReturnType<typeof initCache>,
-    scene: new Scene(),
+    context: new Promise<PickContext>(resolve => resolveContext = resolve),
+
     geoMap: { } as Record<number, Geometry>,
     matMap: [] as Material[],
     meshMap: [] as Mesh[],
 }
-async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: RendererOptions) {
-    const renderer = await Renderer.create(canvas, opts),
-        camera = new PerspectiveCamera(),
-        ctx = pixels.getContext('2d', { willReadFrequently: true })
-    if (!ctx) {
-        throw Error(`get context 2d failed`)
-    }
-    return { renderer, camera, canvas, pixels, ctx }
-}
-async function getCache() {
-    const ret = await cache.created
-    if (!ret) {
-        throw Error(`not started`)
-    }
-    return ret
-}
+
 async function readPixel({ x, y, w = 1, h = 1 }: { x: number, y: number, w?: number, h?: number }) {
-    const { ctx, pixels, renderer, canvas } = await getCache(),
+    const { ctx, pixels, renderer, canvas } = await cache.context,
         image = canvas.transferToImageBitmap()
     pixels.width = image.width
     pixels.height = image.height
@@ -93,24 +86,20 @@ const textureCache = {
     texture: undefined as undefined | Texture,
 }
 
-let renderLock = 0
-async function renderDepth(meshes: Record<number, PickMesh>,
-                geometries: Record<number, PickGeo>,
-                { fov, aspect, near, far, worldMatrix }: PickCamera,
-                { width, height }: { width: number, height: number }) {
-    while (renderLock > Date.now() - 5000) {
-        await new Promise(resolve => setTimeout(resolve, 10))
-    }
-    renderLock = Date.now()
-
-    const { renderer, camera } = await getCache(),
-        { scene, geoMap, matMap, meshMap } = cache
+async function prepareScene(meshes: Record<number, PickMesh>,
+        geometries: Record<number, PickGeo>,
+        { fov, aspect, near, far, worldMatrix }: PickCamera,
+        { width, height }: { width: number, height: number }) {
+    const { renderer } = await cache.context,
+        { geoMap, matMap, meshMap } = cache
     renderer.width = width
     renderer.height = height
 
-    scene.clear()
+    const scene = new Scene(),
+        camera = new PerspectiveCamera()
     Object.assign(camera, { fov, aspect, near, far })
     camera.setWorldMatrix(worldMatrix)
+
     const list = Object.values(meshes)
     for (const [index, { worldMatrix, geoId, offset, count, clipPlane, lineWidth }] of list.entries()) {
         if (!geometries[geoId] && !geoMap[geoId]) {
@@ -131,6 +120,33 @@ async function renderDepth(meshes: Record<number, PickMesh>,
         mesh.setWorldMatrix(worldMatrix)
         scene.add(mesh)
     }
+    return { scene, camera, renderer, list }
+}
+
+let renderLock = 0
+function runWithLock<F extends (...args: any[]) => Promise<any>>(func: F) {
+    return (async (...args: any[]) => {
+        while (renderLock > Date.now() - 5000) {
+            await new Promise(resolve => setTimeout(resolve, 10))
+        }
+        renderLock = Date.now()
+        const ret = await func(...args)
+        renderLock = 0
+        return ret as Awaited<ReturnType<F>>
+    }) as F
+}
+const renderClip = runWithLock(async (meshes: Record<number, PickMesh>,
+        geometries: Record<number, PickGeo>,
+        pick: PickCamera,
+        { width, height }: { width: number, height: number }) => {
+    const { scene, camera, renderer } = await prepareScene(meshes, geometries, pick, { width, height })
+    renderer.render(scene, camera, { renderClips: true })
+})
+const renderDepth = runWithLock(async (meshes: Record<number, PickMesh>,
+        geometries: Record<number, PickGeo>,
+        pick: PickCamera,
+        { width, height }: { width: number, height: number }) => {
+    const { scene, camera, renderer, list } = await prepareScene(meshes, geometries, pick, { width, height })
     if (scene.size >= 0xffff) {
         throw Error(`picker support ${0xffff} meshes at max`)
     }
@@ -146,10 +162,10 @@ async function renderDepth(meshes: Record<number, PickMesh>,
                 aspect: 'depth-only'
             })
         }))
+
     renderer.render(scene, camera, { depthTexture })
-    renderLock = 0
     return { depthTexture, list }
-}
+})
 
 const worker = wrap({
     num: 1,
@@ -161,10 +177,26 @@ const worker = wrap({
     },
     api: {
         async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: RendererOptions) {
-            await cache.created || (cache.created = initCache(canvas, pixels, opts))
+            const renderer = await Renderer.create(canvas, opts),
+                ctx = pixels.getContext('2d', { willReadFrequently: true })
+            if (!ctx) {
+                throw Error(`get context 2d failed`)
+            }
+            resolveContext({ canvas, pixels, renderer, ctx })
         },
         async test({ geometries }: { geometries: number[] }) {
             return { geometries: geometries.filter(id => !cache.geoMap[id]) }
+        },
+        async clip(meshes: Record<number, PickMesh>,
+                     geometries: Record<number, PickGeo>,
+                     camera: PickCamera,
+                     { width, height }: { width: number, height: number }) {
+            await renderClip(meshes, geometries, camera, { width, height })
+            await readPixel({ x: 0, y: 0 })
+            const { pixels } = await cache.context,
+                blob = await pixels.convertToBlob(),
+                buffer = await blob.arrayBuffer()
+            return { buffer }
         },
         async query(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
@@ -179,7 +211,7 @@ const worker = wrap({
                      camera: PickCamera,
                      { width, height, x, y }: { x: number, y: number, width: number, height: number }) {
             const { depthTexture, list } = await renderDepth(meshes, geometries, camera, { width, height }),
-                { renderer, pixels } = await getCache(),
+                { renderer, pixels } = await cache.context,
                 [idx = 0] = await readPixel({ x, y }),
                 { id } = list[idx - 1] || { id: 0 }
 
@@ -218,7 +250,7 @@ async function init() {
 }
 
 async function prepare(scene: Set<Obj3>, camera: PerspectiveCamera) {
-    await (cache.created || (cache.inited = init()))
+    await (cache.inited || (cache.inited = init()))
     const meshes = { } as Record<number, PickMesh>,
         geometries = { } as Record<number, PickGeo>
     camera.updateIfNecessary({ })
@@ -257,6 +289,13 @@ const Picker = {
     }) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.pick(meshes, geoms, view, opts)
-    }
+    },
+    async clip(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
+        width: number
+        height: number
+    }) {
+        const { meshes, geoms, view } = await prepare(scene, camera)
+        return await worker.clip(meshes, geoms, view, opts)
+    },
 }
 export default Picker

@@ -6,9 +6,9 @@ import Geometry from "./geometry"
 import Material from "./material"
 import Light from "./light"
 import Camera from "./camera"
+import RendererBase, { RendererOptions } from "./renderer"
 
-export type RendererOptions = WebGPURenderer['opts'] & ThreeRenderer['opts']
-export class Renderer {
+export class Renderer extends RendererBase {
     static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
         return navigator.gpu ?
             await WebGPURenderer.create(canvas, opts) :
@@ -23,6 +23,7 @@ export {
     Material,
     Camera,
     Light,
+    RendererOptions,
 }
 export * from './geometry'
 export * from './material'

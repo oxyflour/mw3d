@@ -17,10 +17,7 @@ document.body.appendChild(elem)
 document.body.style.margin = document.body.style.padding = '0'
 document.body.style.background = 'linear-gradient(45deg, black, transparent)'
 
-const renderer = await Renderer.create(elem, {
-    devicePixelRatio: window.devicePixelRatio,
-    sampleCount: 4,
-})
+const renderer = await Renderer.create(elem, { sampleCount: 4 })
 
 async function updatePivot({ x, y }: { x: number, y: number }) {
     const { id, position } = await Picker.pick(scene, camera, {
@@ -54,7 +51,12 @@ async function clickScene(evt: MouseEvent) {
         x: evt.clientX,
         y: evt.clientY,
     })
+    buffer
     if ((window as any).DEBUG_SHOW_CLICK_BUFFER) {
+        const { buffer } = await Picker.clip(scene, camera, {
+            width: elem.clientWidth,
+            height: elem.clientHeight,
+        })
         await showBuffer(buffer)
     }
     scene.walk(obj => {
@@ -198,7 +200,8 @@ requestAnimationFrame(function render() {
     requestAnimationFrame(render)
     cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
-    renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
+    depthScene
+    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
     control.update()
     renderer.render(scene, camera)
 })
