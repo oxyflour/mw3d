@@ -104,7 +104,7 @@ export default class ThreeRenderer extends Renderer {
             obj3 instanceof Light ? new THREE.PointLight() :
             new THREE.Object3D()
     })
-    private camera = cache((camera: Camera) => {
+    private cam = cache((camera: Camera) => {
         return camera instanceof PerspectiveCamera ?
             new THREE.PerspectiveCamera(camera.fov / Math.PI * 180, camera.aspect, camera.near, camera.far) :
             new THREE.Camera()
@@ -113,6 +113,7 @@ export default class ThreeRenderer extends Renderer {
     private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
+    private camera = new THREE.Camera()
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         const { width, height } = this
         if (width != this.sizeCache.width || height != this.sizeCache.height) {
@@ -124,15 +125,15 @@ export default class ThreeRenderer extends Renderer {
         this.renderer.setClearColor(this.threeClearColor)
         this.renderer.setClearAlpha(this.clearColor.a)
 
-        const c = this.camera(camera)
-        c.position.set(camera.position.x, camera.position.y, camera.position.z)
-        c.scale.set(camera.scaling.x, camera.scaling.y, camera.scaling.z)
-        c.quaternion.set(camera.rotation.x, camera.rotation.y, camera.rotation.z, camera.rotation.w)
-        if (camera instanceof PerspectiveCamera && c instanceof THREE.PerspectiveCamera) {
-            c.fov = camera.fov / Math.PI * 180
-            c.near = camera.near
-            c.far = camera.far
-            c.aspect = camera.aspect
+        this.camera = this.cam(camera)
+        this.camera.position.set(camera.position.x, camera.position.y, camera.position.z)
+        this.camera.scale.set(camera.scaling.x, camera.scaling.y, camera.scaling.z)
+        this.camera.quaternion.set(camera.rotation.x, camera.rotation.y, camera.rotation.z, camera.rotation.w)
+        if (camera instanceof PerspectiveCamera && this.camera instanceof THREE.PerspectiveCamera) {
+            this.camera.fov = camera.fov / Math.PI * 180
+            this.camera.near = camera.near
+            this.camera.far = camera.far
+            this.camera.aspect = camera.aspect
         }
 
         this.scene.clear()
@@ -166,9 +167,9 @@ export default class ThreeRenderer extends Renderer {
 
         if (opts.depthTexture) {
             this.renderer.setRenderTarget(this.rt(opts.depthTexture))
-            this.renderer.render(this.scene, c)
+            this.renderer.render(this.scene, this.camera)
             this.renderer.setRenderTarget(null)
         }
-        this.renderer.render(this.scene, c)
+        this.renderer.render(this.scene, this.camera)
     }
 }
