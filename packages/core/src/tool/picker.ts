@@ -11,12 +11,10 @@ import { Texture } from "../engine/uniform"
 import WorkerSelf from './picker?worker&inline'
 
 interface WebGPUOffscreenCanvas extends
-        Omit<OffscreenCanvas, 'getContext'>,
-        Omit<HTMLCanvasElement, 'getContext'> {
+        Omit<OffscreenCanvas, 'getContext' | 'addEventListener' | 'removeEventListener'>,
+        HTMLCanvasElement {
     transferToImageBitmap(): ImageBitmap
     convertToBlob(): Promise<Blob>
-    getContext(context: '2d'): CanvasRenderingContext2D
-    getContext(context: 'webgpu'): GPUCanvasContext
 }
 
 const cache = {
@@ -31,6 +29,9 @@ async function initCache(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenC
     const renderer = await Renderer.create(canvas, opts),
         camera = new PerspectiveCamera(),
         ctx = pixels.getContext('2d')
+    if (!ctx) {
+        throw Error(`get context 2d failed`)
+    }
     return { renderer, camera, canvas, pixels, ctx }
 }
 async function getCache() {

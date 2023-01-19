@@ -51,8 +51,8 @@ export default class WebGPURenderer extends Renderer {
         this.height = this.opts.size?.height || (this.canvas as HTMLCanvasElement).clientHeight || 100
 
         this.renderSize = {
-            width: this.width * this.devicePixelRatio,
-            height: this.height * this.devicePixelRatio,
+            width: this.canvas.width = this.width * this.devicePixelRatio,
+            height: this.canvas.height = this.height * this.devicePixelRatio,
         }
         this.cache = new Cache(device, {
             size: this.renderSize,
@@ -81,8 +81,8 @@ export default class WebGPURenderer extends Renderer {
     }
     private resize() {
         this.renderSize = {
-            width: this.width * this.devicePixelRatio,
-            height: this.height * this.devicePixelRatio,
+            width: this.canvas.width = this.width * this.devicePixelRatio,
+            height: this.canvas.height = this.height * this.devicePixelRatio,
         }
         this.cache.resize(this.renderSize)
         this.context.configure({

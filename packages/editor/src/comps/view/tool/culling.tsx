@@ -1,4 +1,5 @@
-import { Engine, useCanvas, useTick } from "@ttk/react"
+import { Engine, useCanvas, useFrame } from "@ttk/react"
+import { useRef } from "react"
 import { Entity } from "../../../utils/data/entity"
 import { ViewOpts } from "../../../utils/data/view"
 import { Obj3WithEntity, query } from "../pick/utils"
@@ -9,8 +10,12 @@ function arrayEqual(a: number[], b: number[]) {
 
 const scene = new Engine.Scene()
 export function Culling({ view, setView }: { view: ViewOpts, setView: (view: ViewOpts) => void }) {
-    const ctx = useCanvas()
-    useTick(async () => {
+    const ctx = useCanvas(),
+        counter = useRef(0)
+    useFrame(async () => {
+        if ((counter.current ++) % 60) {
+            return
+        }
         const objs = { } as Record<number, Engine.Obj3>,
             updateEntity = (entity: Entity, update: any) => Object.assign(entity.attrs || (entity.attrs = { }), update)
         scene.clear()
@@ -28,6 +33,6 @@ export function Culling({ view, setView }: { view: ViewOpts, setView: (view: Vie
         if (!arrayEqual(visibleMeshes, view.viewPort?.visibleMeshes || [])) {
             setView({ ...view, viewPort: { ...view.viewPort, visibleMeshes } })
         }
-    }, 1000)
+    })
     return null
 }

@@ -89,20 +89,16 @@ export function Canvas({ children, options, style, className }: {
                 light = new Engine.Light({ position: [10, 20, 30] }),
                 frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>
             scene.add(light)
-            renderer.width = canvas.clientWidth
-            renderer.height = canvas.clientHeight
             requestAnimationFrame(function render(time: number) {
                 if (handle.running) {
                     requestAnimationFrame(render)
-                    //for (const func of frame.before) {
-                    //    func(time)
-                    //}
+                    for (const func of frame.before) {
+                        func(time)
+                    }
                     renderer.render(scene, camera)
-                    //for (const func of frame.after) {
-                    //    func(time)
-                    //}
-                    frame
-                    time
+                    for (const func of frame.after) {
+                        func(time)
+                    }
                 }
             })
             setState({ scene, camera, canvas, frame })
