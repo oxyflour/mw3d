@@ -6,7 +6,7 @@ import Light from '../light'
 import Material from '../material'
 import Mesh from '../mesh'
 import Obj3, { Scene } from '../obj3'
-import Renderer, { RenderOptions } from '../renderer'
+import Renderer, { RendererOptions, RenderOptions } from '../renderer'
 import { Texture } from '../uniform'
 
 class ThreeDepthMaterial extends THREE.ShaderMaterial {
@@ -46,7 +46,15 @@ class ThreeDepthMaterial extends THREE.ShaderMaterial {
 }
 
 export default class ThreeRenderer extends Renderer {
-    private readonly renderer = new THREE.WebGLRenderer({ canvas: this.canvas as any, alpha: true, antialias: true })
+    private readonly renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        alpha: true,
+        antialias: true,
+    })
+    constructor(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
+        super(canvas, opts)
+        this.renderer.localClippingEnabled = true
+    }
     private geo = cache((geo: Geometry) => {
         const ret = new THREE.BufferGeometry()
         ret.setAttribute('position', new THREE.Float32BufferAttribute(geo.positions, 3))
@@ -109,6 +117,10 @@ export default class ThreeRenderer extends Renderer {
             new THREE.PerspectiveCamera(camera.fov / Math.PI * 180, camera.aspect, camera.near, camera.far) :
             new THREE.Camera()
     })
+    private clip = cache((mat: Material) => {
+        const { x, y, z, w } = mat.clip
+        return new THREE.Plane(new THREE.Vector3(x, y, z), w)
+    })
     readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
     private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
@@ -149,6 +161,7 @@ export default class ThreeRenderer extends Renderer {
                 if (obj.mat) {
                     const mat = mesh.material = this.mat(obj.mat),
                         tex = obj.mat.opts.texture
+                    mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null
                     if (tex) {
                         if (mat instanceof ThreeDepthMaterial) {
                             mat.uniforms.tDepth!.value = this.dt(tex)

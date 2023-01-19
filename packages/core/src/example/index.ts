@@ -174,11 +174,11 @@ const camera = new PerspectiveCamera({
         }
     })
 
-for (let i = 0; i < 100; i ++) {
+const mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] })
+mat.clip.assign(CLIP_PLANE)
+for (let i = 0; i < 1000; i ++) {
     const { geo } = cube,
-        mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] }),
         mesh = new Mesh(geo, mat)
-    mat.clip.assign(CLIP_PLANE)
     mesh.scaling.set(rand(0.03, 0.3), rand(0.03, 0.3), rand(0.03, 0.3))
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
     mesh.rotation.rotX(rand(0, 10)).rotY(rand(0, 10))

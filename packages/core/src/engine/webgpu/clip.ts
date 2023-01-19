@@ -1,5 +1,5 @@
 import Geometry, { PlaneXY } from "../geometry"
-import Material, { BasicMaterial, MaterialProp } from "../material"
+import Material, { BasicMaterial } from "../material"
 import Mesh from "../mesh"
 
 type RenderMesh = Mesh & { geo: Geometry, mat: Material }
@@ -118,12 +118,8 @@ const CLIP_MATS = {
 export class ClipMeshes {
     back = new Mesh(undefined, CLIP_MATS.back) as RenderMesh
     front = new Mesh(undefined, CLIP_MATS.front) as RenderMesh
-    plane = new Mesh(CLIP_GEO, new BasicMaterial({ ...CLIP_MATS.plane.opts })) as RenderMesh
-    constructor(prop: Partial<MaterialProp>, stride = 5) {
-        Object.assign(this.plane.mat.prop, prop)
-        this.plane.mat.prop.metallic = stride
-        this.plane.mat.prop.roughness = stride / 5 * 3
-    }
+    plane = new Mesh(CLIP_GEO) as RenderMesh
+    private static planeMats = new WeakMap<Material, Material>()
     update(item: RenderMesh) {
         this.back.geo = item.geo
         this.back.setWorldMatrix(item.worldMatrix)
@@ -133,6 +129,18 @@ export class ClipMeshes {
         this.front.setWorldMatrix(item.worldMatrix)
         this.front.mat.clip.copy(item.mat.clip)
 
-        this.plane.mat.clip.copy(item.mat.clip)
+        let mat = ClipMeshes.planeMats.get(item.mat)
+        if (!mat) {
+            ClipMeshes.planeMats.set(item.mat, mat = new BasicMaterial(CLIP_MATS.plane.opts))
+        }
+
+        this.plane.mat = mat
+        mat.prop.copy(item.mat.prop)
+        mat.clip.copy(item.mat.clip)
+
+        // Note: DO NOT set stride for picker
+        const stride = item.mat.opts.entry.frag === 'fragMainColor' ? 0 : 5
+        mat.prop.metallic = stride
+        mat.prop.roughness = stride / 5 * 3
     }
 }

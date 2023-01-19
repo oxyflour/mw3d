@@ -1,19 +1,16 @@
 import Camera from "../camera"
 import Material from "../material"
-import Obj3, { Scene } from "../obj3"
 import Mesh from '../mesh'
 import Light from '../light'
+import { Scene } from "../obj3"
 
 import Cache, { BindingResource } from './cache'
 import Geometry from "../geometry"
-import { vec4 } from "gl-matrix"
 import { Sampler, Texture, UniformValue } from "../uniform"
 import { ClipMeshes } from "./clip"
-import Renderer, { RendererOptions, RenderOptions } from "../renderer"
+import Renderer, { RendererOptions, RenderMesh, RenderOptions } from "../renderer"
 
 const MAX_LIGHTS = 4
-
-type RenderMesh = Mesh & { geo: Geometry, mat: Material }
 
 export default class WebGPURenderer extends Renderer {
     constructor(
@@ -189,23 +186,30 @@ export default class WebGPURenderer extends Renderer {
         return this.cache.bindings(this)
     }
 
-    readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
-    private cachedRenderList = {
-        revs: { } as Record<number, number>,
-        list: [] as Obj3[],
-        updated: new Set<Mesh | Light | Material>(),
-        opaque: [] as RenderMesh[],
-        translucent: [] as RenderMesh[],
-        lights: [] as Light[],
-        clips: new WeakMap<Mesh, ClipMeshes>(),
-        addToUpdated: (...objs: (Obj3 | Material)[]) => {
-            for (const obj of objs) {
-                if (obj instanceof Mesh || obj instanceof Light || obj instanceof Material) {
-                    this.cachedRenderList.updated.add(obj)
-                }
-            }
-        },
+    readonly clipCache = new WeakMap<Mesh, ClipMeshes>()
+    override getOrderFor(mesh: RenderMesh) {
+        return this.cache.pipeline(mesh.geo.type, mesh.mat).id
     }
+    override prepare(scene: Scene, camera: Camera) {
+        const { lights, updated, sorted } = super.prepare(scene, camera),
+            clipCaps = [] as typeof sorted
+        for (const item of sorted) {
+            if (item.mat.needsClip && item.geo.type === 'triangle-list') {
+                let clip = this.clipCache.get(item)
+                if (!clip) {
+                    this.clipCache.set(item, clip = new ClipMeshes())
+                }
+                clip.update(item)
+                this.addToUpdated(clip.back.mat, clip.front.mat, clip.plane.mat)
+                this.addToUpdated(clip.back, clip.front, clip.plane)
+                clipCaps.push(clip.back, clip.front, clip.plane)
+            }
+        }
+        sorted.unshift(...clipCaps)
+        return { lights, updated, sorted }
+    }
+
+    readonly clearColor = { r: 0, g: 0, b: 0, a: 0 }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
             keepFrame?: boolean
@@ -218,69 +222,7 @@ export default class WebGPURenderer extends Renderer {
             this.resize()
         }
 
-        const { revs, list, updated, addToUpdated } = this.cachedRenderList
-        list.length = 0
-        updated.clear()
-        camera.updateIfNecessary(revs, addToUpdated)
-        // TODO: enable this
-        // Obj3.update(objs)
-        for (const obj of scene) {
-            obj.updateIfNecessary(revs, addToUpdated)
-            obj.walk(obj => (obj instanceof Mesh || obj instanceof Light) && list.push(obj))
-        }
-
-        const { opaque, translucent, lights } = this.cachedRenderList
-        opaque.length = translucent.length = lights.length = 0
-        for (const obj of list) {
-            if (obj instanceof Mesh && obj.isVisible && obj.geo && obj.mat) {
-                const { mat } = obj
-                if (revs[mat.id] !== mat.rev && (revs[mat.id] = mat.rev)) {
-                    addToUpdated(mat)
-                }
-                if (obj.mat.prop.a < 1) {
-                    translucent.push(obj as any)
-                } else {
-                    opaque.push(obj as any)
-                }
-            } else if (obj instanceof Light) {
-                lights.push(obj)
-            }
-        }
-
-        const { pipeline } = this.cache,
-            opaqueSorted = (opaque as (RenderMesh & { pipelineId: number })[])
-                .map(item => ((item.pipelineId = pipeline(item.geo.type, item.mat).id), item))
-                .sort((a, b) => 
-                    (a.renderOrder - b.renderOrder) ||
-                    (a.pipelineId - b.pipelineId) ||
-                    (a.mat.renderOrder - b.mat.renderOrder) ||
-                    (a.mat.id - b.mat.id) ||
-                    (a.geo.id - b.geo.id)) as RenderMesh[],
-            transSorted = (translucent as (RenderMesh & { cameraDist: number })[])
-                .map(item => ((item.cameraDist = vec4.dist(item.center, camera.worldPosition)), item))
-                .sort((a, b) => b.cameraDist - a.cameraDist) as RenderMesh[],
-            sorted = [] as typeof opaqueSorted,
-            clipCaps = [] as typeof opaqueSorted
-
-        let hasClipPlane = false
-        for (const item of opaqueSorted.concat(transSorted)) {
-            if (item.mat.needsClip && item.geo.type === 'triangle-list') {
-                hasClipPlane = true
-                let clip = this.cachedRenderList.clips.get(item)
-                if (!clip) {
-                    const { r, g, b } = item.mat.prop,
-                        stride = item.mat.opts.entry.frag === 'fragMainColor' ? 0 : 5
-                    this.cachedRenderList.clips.set(item, clip = new ClipMeshes({ r, g, b }, stride))
-                }
-                clip.update(item)
-                addToUpdated(clip.back.mat, clip.front.mat, clip.plane.mat)
-                addToUpdated(clip.back, clip.front, clip.plane)
-                clipCaps.push(clip.back, clip.front, clip.plane)
-            }
-            sorted.push(item)
-        }
-        sorted.unshift(...clipCaps)
-
+        const { lights, updated, sorted } = this.prepare(scene, camera)
         this.updateUniforms(this.buildRenderUnifroms(lights))
         this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {
@@ -314,9 +256,7 @@ export default class WebGPURenderer extends Renderer {
                 }
             })
 
-        if (hasClipPlane) {
-            pass.setStencilReference(1)
-        }
+        pass.setStencilReference(1)
         if (opts.webgpu?.disableBundle) {
             this.runRenderPass(pass, sorted, camera)
         } else {
