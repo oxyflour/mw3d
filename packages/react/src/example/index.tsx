@@ -71,14 +71,10 @@ function App() {
             <Control />
             { list }
         </Canvas>
-        {
-            /*
         <Canvas style={{ width: '50%', height: '50%' }}>
             <Control />
             { list }
         </Canvas>
-             */
-        }
     </>
 }
 
