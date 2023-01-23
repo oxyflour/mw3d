@@ -124,7 +124,6 @@ export default class ThreeRenderer extends Renderer {
     private readonly sizeCache = { width: 0, height: 0 }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
-    private camera = new THREE.Camera()
     private revs = { } as Record<number, number>
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         const { width, height } = this
@@ -142,15 +141,17 @@ export default class ThreeRenderer extends Renderer {
         this.renderer.setClearColor(this.threeClearColor)
         this.renderer.setClearAlpha(this.clearColor.a)
 
-        this.camera = this.cam(camera)
-        this.camera.position.set(camera.position.x, camera.position.y, camera.position.z)
-        this.camera.scale.set(camera.scaling.x, camera.scaling.y, camera.scaling.z)
-        this.camera.quaternion.set(camera.rotation.x, camera.rotation.y, camera.rotation.z, camera.rotation.w)
-        if (camera instanceof PerspectiveCamera && this.camera instanceof THREE.PerspectiveCamera) {
-            this.camera.fov = camera.fov / Math.PI * 180
-            this.camera.near = camera.near
-            this.camera.far = camera.far
-            this.camera.aspect = camera.aspect
+        const c = this.cam(camera)
+        c.position.set(camera.position.x, camera.position.y, camera.position.z)
+        c.scale.set(camera.scaling.x, camera.scaling.y, camera.scaling.z)
+        c.quaternion.set(camera.rotation.x, camera.rotation.y, camera.rotation.z, camera.rotation.w)
+        if (camera instanceof PerspectiveCamera && c instanceof THREE.PerspectiveCamera) {
+            c.fov = camera.fov / Math.PI * 180
+            c.near = camera.near
+            // Note: threejs matrix DOES NOT support infinity far plane
+            c.far = camera.far === Infinity ? c.near * 1e9 : camera.far
+            c.aspect = camera.aspect
+            c.updateProjectionMatrix()
         }
 
         this.scene.clear()
@@ -185,10 +186,10 @@ export default class ThreeRenderer extends Renderer {
 
         if (opts.depthTexture) {
             this.renderer.setRenderTarget(this.rt(opts.depthTexture))
-            this.renderer.render(this.scene, this.camera)
+            this.renderer.render(this.scene, c)
             this.renderer.setRenderTarget(null)
         }
         this.renderer.autoClear = !opts.keepFrame
-        this.renderer.render(this.scene, this.camera)
+        this.renderer.render(this.scene, c)
     }
 }
