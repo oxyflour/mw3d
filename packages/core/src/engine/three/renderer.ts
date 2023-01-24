@@ -46,13 +46,14 @@ class ThreeDepthMaterial extends THREE.ShaderMaterial {
 }
 
 export default class ThreeRenderer extends Renderer {
-    private readonly renderer = new THREE.WebGLRenderer({
-        canvas: this.canvas,
-        alpha: true,
-        antialias: true,
-    })
+    private readonly renderer: THREE.WebGLRenderer
     constructor(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
         super(canvas, opts)
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            alpha: true,
+            antialias: opts.sampleCount! > 1,
+        })
         this.renderer.localClippingEnabled = true
     }
     private geo = cache((geo: Geometry) => {
@@ -128,7 +129,8 @@ export default class ThreeRenderer extends Renderer {
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         const { width, height } = this
         if (width != this.sizeCache.width || height != this.sizeCache.height) {
-            this.renderer.setSize(width, height, false)
+            const { devicePixelRatio = 1 } = this.opts
+            this.renderer.setSize(width * devicePixelRatio, height * devicePixelRatio, false)
             Object.assign(this.sizeCache, { width, height })
         }
 

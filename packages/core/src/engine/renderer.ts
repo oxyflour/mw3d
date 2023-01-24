@@ -31,8 +31,10 @@ export default class Renderer {
         public readonly opts: RendererOptions) {
         const cv = canvas as HTMLCanvasElement
         if (cv.clientWidth && cv.clientHeight) {
-            this.width = cv.width = cv.clientWidth
-            this.height = cv.height = cv.clientHeight
+            this.width = cv.clientWidth
+            this.height = cv.clientHeight
+            cv.width = cv.clientWidth * (opts.devicePixelRatio || 1)
+            cv.height = cv.clientHeight * (opts.devicePixelRatio || 1)
         }
     }
 
