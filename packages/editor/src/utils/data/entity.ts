@@ -61,6 +61,7 @@ export function parse(ents: Entity[]) {
         if (split.some(item => item.startsWith('$'))) {
             continue
         }
+        ent.nodes = []
         add('Components/' + $n, idx, ent)
         add('Materials/' + $m, idx, ent)
     }

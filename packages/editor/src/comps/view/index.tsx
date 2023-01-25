@@ -9,11 +9,11 @@ import { KeyControl } from './control/key'
 import { MouseControl } from './control/mouse'
 
 import './index.less'
-import { loadGeom, loadMatSet, MATERIAL_SET } from './loader/utils'
+import { loadGeom, loadMatSet } from './loader/utils'
 import { EntityPicker, TopoPicked } from './pick/entity'
 import { Obj3WithEntity } from './pick/utils'
 import { Axies } from './tool/axies'
-import { Culling } from './tool/culling'
+import { Culling, EntityCulling } from './tool/culling'
 
 function EntityMeshBind({ entity }: { entity: Entity }) {
     const { obj } = useObj3() as { obj: Obj3WithEntity }
@@ -55,13 +55,13 @@ function EntityMesh(props: EntityProps) {
         mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props }
-            isVisible={ props.data.attrs?.$visible }
+            isVisible={ !(props.data as EntityCulling).$culled }
             mat={ props.active ? mats.default : mats.dimmed }
             geo={ geom.faces }>
             <EntityMeshBind entity={ props.data } />
         </Mesh> }
         { geom.edges && <Mesh
-            isVisible={ props.active && props.data?.attrs?.$visible && props.view.pick?.mode !== 'edge' }
+            isVisible={ props.active && !props.data?.attrs?.$culled && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
 }
@@ -103,9 +103,8 @@ export default ({ tree, ents, view, setView, children, onSelect }: {
         {
             visible.map((data, key) => {
                 const active = !selected.length || !!data.nodes?.some(id => tree[id]?.selected),
-                    mat = active ? MATERIAL_SET.default : MATERIAL_SET.dimmed,
                     matrix = data.trans
-                return <EntityMesh { ...{ key, view, active, data, mat, matrix } } />
+                return <EntityMesh { ...{ key, view, active, data, matrix } } />
             })
         }
         <Axies />
