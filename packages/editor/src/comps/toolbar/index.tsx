@@ -10,6 +10,7 @@ import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
 import { ViewOpts } from '../../utils/data/view'
 import { Modal } from '../utils/Modal'
+import { CgSpinnerTwo } from 'react-icons/cg'
 
 const m = mat4.create(),
     v = vec3.create()
@@ -113,7 +114,7 @@ export function OpenFile({ ents, setEnts }: { ents: Entity[], setEnts: (ents: En
         [logs, setLogs] = useState([] as string[])
     return <>
         {
-            opening && <Modal title={ `Opening ${opening}` }>
+            opening && <Modal title={ <><CgSpinnerTwo className="icon-spin inline" /> Opening {opening}</> }>
                 <pre style={{ maxHeight: 300, overflow: 'hidden' }}>{ logs.join('\n') }</pre>
             </Modal>
         }

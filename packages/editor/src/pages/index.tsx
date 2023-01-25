@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Center } from '../comps/utils/center'
+import { CgSpinnerTwo } from 'react-icons/cg'
 
 import './index.less'
 
@@ -11,7 +13,9 @@ export function layout({ children }: { children: any }) {
 }
 
 export function loading() {
-    return <div>loading...</div>
+    return <Center style={{ height: '100%' }}>
+        <CgSpinnerTwo className="icon-spin" /> Loading
+    </Center>
 }
 
 export default () => 'Starting New Session...'
