@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import cache from '../../utils/cache'
 import Camera, { PerspectiveCamera } from '../camera'
-import Geometry from '../geometry'
+import Geometry, { GeometryPrimitive } from '../geometry'
 import Light from '../light'
 import Material from '../material'
 import Mesh from '../mesh'
@@ -9,36 +9,43 @@ import Obj3, { Scene } from '../obj3'
 import Renderer, { RendererOptions, RenderOptions } from '../renderer'
 import { Texture } from '../uniform'
 
-class ThreeDepthMaterial extends THREE.ShaderMaterial {
+import glsl from './shader.glsl?raw'
+
+const GLSL_CHUNKS = { } as Record<string, Record<string, string>>
+for (const chunk of (glsl as string).split('// @chunk:')) {
+    const name = chunk.slice(0, chunk.indexOf('\n')).trim(),
+        map = GLSL_CHUNKS[name] = { } as Record<string, string>
+    for (const part of chunk.split('// @')) {
+        const head = part.slice(0, part.indexOf('\n')),
+            name = head.trim()
+        if (name) {
+            map[name] = part.slice(head.length)
+        }
+    }
+}
+
+class DepthMaterial extends THREE.ShaderMaterial {
     constructor(parameters?: THREE.ShaderMaterialParameters) {
         super({
-            vertexShader: `
-                varying vec4 vPos;
-                void main() {
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    vPos = (gl_Position + 1.) * .5;
-                }
-            `,
-            fragmentShader: `
-                #include <packing>
-                varying vec4 vPos;
-                uniform sampler2D tDepth;
-                void main() {
-                    float v = texture2D(tDepth, vPos.xy).x;
-                    v = 1. - v / 2.;
-                    uint i = uint(v * float(0x1000000));
-                    uint r = (i & 0x0000ffu);
-                    uint g = (i & 0x00ff00u) >> 8u;
-                    uint b = (i & 0xff0000u) >> 16u;
-                    gl_FragColor = vec4(
-                        float(r) / 255.,
-                        float(g) / 255.,
-                        float(b) / 255.,
-                        1.);
-                }
-            `,
+            vertexShader:   GLSL_CHUNKS.depth?.vert + '',
+            fragmentShader: GLSL_CHUNKS.depth?.frag + '',
+            uniforms: { tDepth: { value: null } },
+            ...parameters
+        })
+    }
+}
+
+class FatLineMaterial extends THREE.ShaderMaterial {
+    constructor(parameters?: THREE.ShaderMaterialParameters) {
+        super({
+            vertexShader:   GLSL_CHUNKS.line?.vert + '',
+            fragmentShader: GLSL_CHUNKS.line?.frag + '',
+            defines: {
+            },
             uniforms: {
-                tDepth: { value: null },
+                vResolution: { value: new THREE.Vector2() },
+                fLineWidth: { value: 2 },
+                vColor: { value: new THREE.Vector3() },
             },
             ...parameters
         })
@@ -63,13 +70,15 @@ export default class ThreeRenderer extends Renderer {
         geo.indices && ret.setIndex(new THREE.BufferAttribute(geo.indices, 1))
         return ret
     })
-    private mat = cache((mat: Material) => {
+    private mat = cache((primitive: GeometryPrimitive, mat: Material) => {
         const { r, g, b, a, roughness, metallic } = mat.prop
         const ret =
+            primitive === 'fat-line-list' ?
+                new FatLineMaterial() :
             mat.opts.entry.frag === 'fragMainColor' ?
                 new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b) }) :
             mat.opts.entry.frag === 'fragMainDepth' ?
-                new ThreeDepthMaterial() :
+                new DepthMaterial() :
                 new THREE.MeshPhysicalMaterial({
                     color: new THREE.Color(r, g, b),
                     transparent: a < 1,
@@ -167,11 +176,23 @@ export default class ThreeRenderer extends Renderer {
                 mesh.renderOrder = obj.renderOrder
                 obj.geo && (mesh.geometry = this.geo(obj.geo))
                 if (obj.mat) {
-                    const mat = mesh.material = this.mat(obj.mat),
-                        tex = obj.mat.opts.texture
+                    const mat = mesh.material = this.mat(obj.geo?.type || 'triangle-list', obj.mat)
                     mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null
+                    if (mat instanceof FatLineMaterial) {
+                        const { width, height } = this,
+                            { devicePixelRatio = 1 } = this.opts,
+                            { lineWidth, r, g, b } = obj.mat.prop
+                        mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                        mat.uniforms.fLineWidth!.value = lineWidth * devicePixelRatio
+                        mat.uniforms.vColor!.value.set(r, g, b)
+                    } else if (mat instanceof THREE.MeshPhysicalMaterial) {
+                        mat.metalness = obj.mat.prop.metallic
+                        mat.roughness = obj.mat.prop.roughness
+                    }
+
+                    const tex = obj.mat.opts.texture
                     if (tex) {
-                        if (mat instanceof ThreeDepthMaterial) {
+                        if (mat instanceof DepthMaterial) {
                             mat.uniforms.tDepth!.value = this.dt(tex)
                         } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                             mat.map = this.ct(tex)

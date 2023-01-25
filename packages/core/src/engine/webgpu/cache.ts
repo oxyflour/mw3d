@@ -162,7 +162,6 @@ export default class Cache {
     })
 
     private cachedPipelines = { } as Record<string, Record<string, CachedPipeline>>
-    private cachedPrimitive = { } as Record<string, { primitive: GeometryPrimitive }>
     pipeline = (primitive: GeometryPrimitive, mat: Material) => {
         const cache = this.cachedPipelines[primitive] || (this.cachedPipelines[primitive] = { })
         if (cache[mat.id]) {
@@ -178,8 +177,7 @@ export default class Cache {
         if (cache[code]) {
             return cache[mat.id] = cache[code]!
         }
-        const geo = this.cachedPrimitive[primitive] || (this.cachedPrimitive[primitive] = { primitive })
-        return cache[mat.id] = cache[code] = this.buildPipeline(geo, mat)
+        return cache[mat.id] = cache[code] = this.buildPipeline(primitive, mat)
     }
 
     private cachedModules = { } as Record<string, GPUShaderModule>
@@ -187,17 +185,21 @@ export default class Cache {
         const match = entry.trim().match(/^fn ([^\(]+)/)
         return match ? { name: match[1]!, code: entry } : { name: entry, code: '' }
     }
-    buildPipeline = cache((geo: { primitive: GeometryPrimitive }, mat: Material) => {
+    buildPipeline = cache((primitive: GeometryPrimitive, mat: Material) => {
         const { code: shader, entry: { vert, frag } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
             vertEntry = Cache.parseShaderEntry(
-                geo.primitive === 'fat-line-list' ? 'vertLineMain' :
-                geo.primitive === 'point-sprite' ? 'vertSpriteMain' :
-                typeof vert === 'string' ? vert : (vert[geo.primitive] || 'vertMain')),
+                primitive === 'fat-line-list' ? 'vertLineMain' :
+                primitive === 'point-sprite' ? 'vertSpriteMain' :
+                typeof vert === 'string' ? vert : (vert[primitive] || 'vertMain')),
             fragEntry = Cache.parseShaderEntry(
-                geo.primitive === 'fat-line-list' ? 'fragMainColor' :
-                geo.primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
-                typeof frag === 'string' ? frag : (frag[geo.primitive] || 'fragMainColor')),
+                primitive === 'fat-line-list' ? 'fragMainColor' :
+                primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
+                typeof frag === 'string' ? frag : (frag[primitive] || 'fragMainColor')),
+            topology =
+                primitive === 'fat-line-list' ? 'triangle-list' :
+                primitive === 'point-sprite' ? 'triangle-list' :
+                primitive,
             code = shader
                 .replace('// @vert-extra-code', vertEntry.code ? `@vertex ` + vertEntry.code : '')
                 .replace('// @frag-extra-code', fragEntry.code ? `@fragment ` + fragEntry.code : ''),
@@ -244,7 +246,7 @@ export default class Cache {
                     }]
                 },
                 primitive: {
-                    topology: geo.primitive === 'fat-line-list' || geo.primitive === 'point-sprite' ? 'triangle-list' : geo.primitive,
+                    topology,
                     cullMode: 'back',
                     ...mat.opts.primitive,
                 },
