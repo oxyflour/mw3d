@@ -52,15 +52,16 @@ function MeshBound(props: EntityProps) {
 export const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [props.data.geom?.url]),
-        mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
+        mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats]),
+        culled = (props.data as EntityCulling).$culled
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props }
-            isVisible={ !(props.data as EntityCulling).$culled }
+            isVisible={ !culled }
             mat={ props.active ? mats.default : mats.dimmed }
             geo={ geom.faces }>
             <EntityMeshBind entity={ props.data } />
         </Mesh> }
-        { geom.edges && <Mesh
+        { geom.edges && !culled && <Mesh
             isVisible={ props.active && !props.data?.attrs?.$culled && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
@@ -97,7 +98,7 @@ export default ({ tree, ents, view, setView, children, onSelect }: {
                 canvas => {
                     // TODO: set context menu
                     canvas.oncontextmenu = () => false
-                    return { }
+                    return { sampleCount: 4 }
                 }
             }>
         {

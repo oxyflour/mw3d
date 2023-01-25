@@ -70,15 +70,8 @@ export default class WebGPURenderer extends Renderer {
         return await new WebGPURenderer(canvas, opts).init()
     }
 
-    private renderSize = { width: 100, height: 100 }
-    get devicePixelRatio() {
-        return this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1
-    }
-    private resize() {
-        this.renderSize = {
-            width: this.canvas.width = this.width * this.devicePixelRatio,
-            height: this.canvas.height = this.height * this.devicePixelRatio,
-        }
+    override resize() {
+        super.resize()
         this.cache.resize(this.renderSize)
         this.context.configure({
             size: this.renderSize,
@@ -215,10 +208,7 @@ export default class WebGPURenderer extends Renderer {
             depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
         }
     }) {
-        if (this.width * this.devicePixelRatio !== this.renderSize.width ||
-            this.height * this.devicePixelRatio !== this.renderSize.height) {
-            this.resize()
-        }
+        super.render(scene, camera, opts)
 
         const { lights, updated, sorted } = opts.renderClips ?
             this.prepareClips(scene, camera) :

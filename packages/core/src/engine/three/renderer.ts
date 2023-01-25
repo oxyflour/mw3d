@@ -131,17 +131,15 @@ export default class ThreeRenderer extends Renderer {
         const { x, y, z, w } = mat.clip
         return new THREE.Plane(new THREE.Vector3(x, y, z), w)
     })
-    private readonly sizeCache = { width: 0, height: 0 }
+    override resize() {
+        super.resize()
+        this.renderer.setSize(this.renderSize.width, this.renderSize.height, false)
+    }
     private readonly threeClearColor = new THREE.Color()
     private readonly scene = new THREE.Scene()
     private revs = { } as Record<number, number>
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
-        const { width, height } = this
-        if (width != this.sizeCache.width || height != this.sizeCache.height) {
-            const { devicePixelRatio = 1 } = this.opts
-            this.renderer.setSize(width * devicePixelRatio, height * devicePixelRatio, false)
-            Object.assign(this.sizeCache, { width, height })
-        }
+        super.render(scene, camera, opts)
 
         camera.updateIfNecessary(this.revs)
         for (const obj of scene) {
@@ -174,16 +172,16 @@ export default class ThreeRenderer extends Renderer {
             if (obj instanceof Mesh) {
                 const mesh = item as THREE.Mesh
                 mesh.renderOrder = obj.renderOrder
+                mesh.visible = obj.isVisible
                 obj.geo && (mesh.geometry = this.geo(obj.geo))
                 if (obj.mat) {
                     const mat = mesh.material = this.mat(obj.geo?.type || 'triangle-list', obj.mat)
                     mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null
                     if (mat instanceof FatLineMaterial) {
-                        const { width, height } = this,
-                            { devicePixelRatio = 1 } = this.opts,
+                        const { width, height, devicePixelRatio } = this,
                             { lineWidth, r, g, b } = obj.mat.prop
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
-                        mat.uniforms.fLineWidth!.value = lineWidth * devicePixelRatio
+                        mat.uniforms.fLineWidth!.value = lineWidth
                         mat.uniforms.vColor!.value.set(r, g, b)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                         mat.metalness = obj.mat.prop.metallic

@@ -33,8 +33,19 @@ export default class Renderer {
         if (cv.clientWidth && cv.clientHeight) {
             this.width = cv.clientWidth
             this.height = cv.clientHeight
-            cv.width = cv.clientWidth * (opts.devicePixelRatio || 1)
-            cv.height = cv.clientHeight * (opts.devicePixelRatio || 1)
+            cv.width = cv.clientWidth * this.devicePixelRatio
+            cv.height = cv.clientHeight * this.devicePixelRatio
+        }
+    }
+
+    get devicePixelRatio() {
+        return this.opts.devicePixelRatio || globalThis.devicePixelRatio || 1
+    }
+    renderSize = { width: 100, height: 100 }
+    resize() {
+        this.renderSize = {
+            width: this.canvas.width = this.width * this.devicePixelRatio,
+            height: this.canvas.height = this.height * this.devicePixelRatio,
         }
     }
 
@@ -106,5 +117,9 @@ export default class Renderer {
         scene
         camera
         opts
+        if (this.width * this.devicePixelRatio !== this.renderSize.width ||
+            this.height * this.devicePixelRatio !== this.renderSize.height) {
+            this.resize()
+        }
     }
 }
