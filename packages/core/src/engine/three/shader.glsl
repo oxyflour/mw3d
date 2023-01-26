@@ -45,3 +45,13 @@ uniform vec3 vColor;
 void main() {
     gl_FragColor = vec4(vColor, 1.);
 }
+
+// @chunk:dash
+// @vert
+void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+// @frag
+void main() {
+    gl_FragColor = vec4(1., 0., 0., 1.);
+}

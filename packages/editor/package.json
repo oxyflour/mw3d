@@ -8,27 +8,12 @@
     "deploy": "sn deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "sn": {
-    "port": 3000,
-    "koa": {
-      "middlewares": [
-        "./dist/utils/koa/assets"
-      ]
-    },
-    "deploy": {
-      "useDocker": true,
-      "insideWorkspace": true,
-      "namespace": "default",
-      "registry": "pc10.yff.me",
-      "baseImage": "node:16"
-    }
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@yff/ncc": "^2.0.11",
-    "@yff/sn": "^1.0.23-beta-1",
+    "@yff/sn": "^1.0.24",
     "autoprefixer": "^10.4.8",
     "commander": "^9.4.0",
     "electron": "^21.2.0",

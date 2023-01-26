@@ -1,7 +1,10 @@
-import { Camera, Geometry, Material, Mesh, Renderer, RendererOptions, Scene, Texture, Uniform } from '..'
+import { Camera, Geometry, Light, Material, Mesh, Renderer, RendererOptions, Scene, Texture } from '..'
 import cache from '../../utils/cache'
 import { RenderOptions } from '../renderer'
 
+/*
+ * WIP: DO NOT USE
+ */
 export default class WebGL2Renderer extends Renderer {
     private ctx: WebGL2RenderingContext
     constructor(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
@@ -49,7 +52,7 @@ export default class WebGL2Renderer extends Renderer {
 
         return prog
     })
-    geo = cache((geo: Geometry) => {
+    vao = cache((geo: Geometry) => {
         const { ctx } = this,
             arr = ctx.createVertexArray()
         if (!arr) {
@@ -91,15 +94,30 @@ export default class WebGL2Renderer extends Renderer {
                 ctx.DEPTH_ATTACHMENT, ctx.RENDERBUFFER, depthBuffer)
         return depthBuffer
     })
-    private updateUniforms(prog: WebGLProgram, uniforms: Uniform[]) {
+    private getUniforms(entity: Camera | Material | Mesh | Light) {
+        // WIP: DO NOT USE
+        return entity instanceof Material ? [{
+            type: 'vec4',
+            name: '',
+            value: []
+        }] : entity instanceof Mesh ? [{
+            type: 'vec4',
+            name: '',
+            value: []
+        }] : [{
+            type: 'vec4',
+            name: '',
+            value: []
+        }]
+    }
+    private updateUniforms(prog: WebGLProgram, entity: Camera | Material | Mesh | Light) {
         const { ctx } = this
-        uniforms
-        for (const { name, type, values } of []/* WIP: uniforms */) {
+        for (const { name, type, value } of this.getUniforms(entity)) {
             const location = ctx.getUniformLocation(prog, name)
             if (type === 'vec4') {
-                ctx.uniform4fv(location, values)
+                ctx.uniform4fv(location, value)
             } else if (type === 'mat4') {
-                ctx.uniformMatrix4fv(location, false, values)
+                ctx.uniformMatrix4fv(location, false, value)
             } else {
                 throw Error(`not implemented type ${type} for unifrom ${name}`)
             }
@@ -120,22 +138,26 @@ export default class WebGL2Renderer extends Renderer {
 
         const { lights, sorted } = this.prepare(scene, camera)
         let prog = null as WebGLProgram | null,
+            mat = null as Material | null,
             mesh = null as Mesh | null,
             geo = null as Geometry | null
         for (const item of sorted) {
             const program = this.prog(item.mat)
             if (prog !== program && (prog = program)) {
                 ctx.useProgram(prog)
-                this.updateUniforms(prog, camera.uniforms)
+                this.updateUniforms(prog, camera)
                 for (const light of lights) {
-                    this.updateUniforms(prog, light.uniforms)
+                    this.updateUniforms(prog, light)
                 }
             }
+            if (mat !== item.mat && (mat = item.mat)) {
+                this.updateUniforms(prog, mat)
+            }
             if (mesh !== item && (mesh = item)) {
-                this.updateUniforms(prog, mesh.uniforms)
+                this.updateUniforms(prog, mesh)
             }
             if (geo !== item.geo && (geo = item.geo)) {
-                ctx.bindVertexArray(this.geo(geo))
+                ctx.bindVertexArray(this.vao(geo))
             }
             /* WIP: mode */
             const mode = 0

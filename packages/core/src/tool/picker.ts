@@ -56,10 +56,11 @@ export interface PickMesh {
     id: number
     geoId: number 
     worldMatrix: mat4
-    clipPlane: vec4
-    lineWidth: number
     offset: number
     count: number
+    clipPlane: vec4
+    lineWidth: number
+    transparent: boolean
 }
 
 export interface PickGeo {
@@ -67,6 +68,8 @@ export interface PickGeo {
     positions: Float32Array
     normals?: Float32Array
     indices?: Uint16Array | Uint32Array
+    min: number[]
+    max: number[]
 }
 
 export interface PickCamera {
@@ -164,8 +167,21 @@ const renderDepth = runWithLock(async (meshes: Record<number, PickMesh>,
         }))
 
     renderer.render(scene, camera, { depthTexture })
-    return { depthTexture, list }
+    return { depthTexture, list, camera }
 })
+
+function expandBound([x0 = 0, y0 = 0, z0 = 0]: number[], [x1 = 0, y1 = 0, z1 = 0]: number[]) {
+    return [
+        [x0, y0, z0],
+        [x1, y0, z0],
+        [x0, y1, z0],
+        [x1, y1, z0],
+        [x0, y0, z1],
+        [x1, y0, z1],
+        [x0, y1, z1],
+        [x1, y1, z1],
+    ] as [number, number, number][]
+}
 
 const worker = wrap({
     num: 1,
@@ -200,11 +216,46 @@ const worker = wrap({
         },
         async query(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
-                     camera: PickCamera,
+                     view: PickCamera,
                      { width, height }: { width: number, height: number }) {
-            const { list } = await renderDepth(meshes, geometries, camera, { width, height }),
-                indices = await readPixel({ x: 0, y: 0, w: width, h: height })
-            return indices.map(idx => list[idx - 1]?.id).filter(id => id) as number[]
+            const opaque = { } as typeof meshes,
+                transclude = { } as typeof meshes
+            for (const mesh of Object.values(meshes)) {
+                (mesh.transparent ? transclude : opaque)[mesh.id] = mesh
+            }
+            const { list, camera: { viewProjection } } = await renderDepth(opaque, geometries, view, { width, height }),
+                indices = await readPixel({ x: 0, y: 0, w: width, h: height }),
+                found = indices.map(idx => list[idx - 1]?.id).filter(id => id) as number[]
+
+            const mat = mat4.create(),
+                vec = vec4.create(),
+                tmp = vec3.create(),
+                min = vec3.create(),
+                max = vec3.create()
+            for (const { geoId, worldMatrix, id } of Object.values(transclude)) {
+                const geo = geometries[geoId] || cache.geoMap[geoId]
+                if (geo) {
+                    mat4.multiply(mat, viewProjection, worldMatrix)
+                    vec3.set(min,  Infinity,  Infinity,  Infinity)
+                    vec3.set(max, -Infinity, -Infinity, -Infinity)
+                    for (const [a, b, c] of expandBound(geo.min, geo.max)) {
+                        vec4.set(vec, a, b, c, 1.)
+                        vec4.transformMat4(vec, vec, mat)
+                        const [x = 0, y = 0, z = 0, w = 0] = vec
+                        vec3.set(tmp, x / w, y / w, z / w)
+                        vec3.min(min, min, tmp)
+                        vec3.max(max, max, tmp)
+                    }
+                    const [x0 = 0, y0 = 0] = min,
+                        [x1 = 0, y1 = 0] = max
+                    if (x0 < 1 && x1 > -1 &&
+                        y0 < 1 && y1 > -1) {
+                        found.push(id)
+                    }
+                }
+            }
+
+            return found
         },
         async pick(meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
@@ -258,10 +309,13 @@ async function prepare(scene: Set<Obj3>, camera: PerspectiveCamera) {
         obj.updateIfNecessary({ })
         obj.walk(obj => {
             if (obj instanceof Mesh && obj.geo && obj.mat) {
-                const { worldMatrix, geo, id, mat, offset, count } = obj
-                meshes[obj.id] = { worldMatrix, id, offset, count, clipPlane: mat.clip.data, geoId: geo.id, lineWidth: obj.mat.prop.lineWidth }
-                const { type, positions, normals, indices } = geo
-                geometries[geo.id] = { type, positions, normals, indices }
+                const { worldMatrix, geo, id, mat, offset, count } = obj,
+                    { lineWidth, a } = mat.prop,
+                    clipPlane = mat.clip.data,
+                    transparent = a < 1
+                meshes[obj.id] = { worldMatrix, id, offset, count, clipPlane, lineWidth, transparent, geoId: geo.id }
+                const { type, positions, normals, indices, min, max } = geo
+                geometries[geo.id] = { type, positions, normals, indices, min, max }
             }
         })
     }

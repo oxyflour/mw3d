@@ -2,7 +2,12 @@ import { Server as HttpServer } from 'http'
 import { register } from '@ttk/react/dist/cast/stream'
 
 import store from "../utils/node/store"
+import assets from '../utils/koa/assets'
 import { open } from './shape'
+
+export const koa = {
+    middlewares: [assets]
+}
 
 export const hooks = {
     init(httpServer: HttpServer) {
