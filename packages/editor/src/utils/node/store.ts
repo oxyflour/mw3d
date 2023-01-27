@@ -10,9 +10,9 @@ import { Entity } from "../data/entity"
 
 const unzip = promisify(unzipRaw),
     deflate = promisify(deflateRaw),
-    getRedis = asyncCache(async () => new Redis()),
+    getRedis = asyncCache(async () => new Redis(process.env.STORE_REDIS as any)),
     getReceiver = asyncCache(async () => {
-        const redis = new Redis()
+        const redis = new Redis(process.env.STORE_REDIS as any)
         redis.on('message', (channel, message) => {
             for (const cb of callbacks[channel] || []) {
                 cb(message)
