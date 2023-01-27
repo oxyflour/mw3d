@@ -10,9 +10,8 @@
     "dev:editor": "npm run build:react && npm -w packages/editor run dev",
     "build:core": "npm -w packages/core run build",
     "build:react": "npm run build:core && npm -w packages/react run build",
-    "pub-patch:core": "npm -w packages/core version patch && npm run build:core && npm -w packages/core publish",
-    "pub-patch:react": "npm -w packages/react version patch && npm run build:react && npm -w packages/react publish",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm run build:react && npm -w packages/editor exec sn build",
+    "deploy": "npm -w packages/editor exec sn deploy"
   },
   "repository": {
     "type": "git",

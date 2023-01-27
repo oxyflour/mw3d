@@ -28,8 +28,8 @@ export function Culling({ visible, setVisible, frameCount = 60 }: {
         }
 
         const value = new Set<Entity>,
-            { indices } = await query({ ...ctx, scene })
-        for (const id of indices) {
+            { ids } = await query({ ...ctx, scene })
+        for (const id of ids) {
             const { entity } = objs[id] || { }
             entity && value.add(entity)
         }
