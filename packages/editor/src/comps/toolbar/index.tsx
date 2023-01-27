@@ -124,7 +124,7 @@ export function OpenFile({ ents, setEnts }: { ents: Entity[], setEnts: (ents: En
                     setOpening(Array.from(files || []).map(item => item.name).join(', '))
                     try {
                         const arr = files ? Array.from(files) : [],
-                            ret = ents.slice(),
+                            ret = ents.slice(0, 0),
                             logs = [] as string[]
                         for await (const { entities, message } of lambda.shape.open(arr)) {
                             entities && ret.push(...entities)

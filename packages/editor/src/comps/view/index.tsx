@@ -1,5 +1,5 @@
 import { Canvas, Engine, Mesh, Obj3, useObj3 } from '@ttk/react'
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 
 import { Entity, TreeEnts } from '../../utils/data/entity'
 import { TreeData, TreeNode } from '../../utils/data/tree'
@@ -13,7 +13,7 @@ import { loadGeom, loadMatSet } from './loader/utils'
 import { EntityPicker, TopoPicked } from './pick/entity'
 import { Obj3WithEntity } from './pick/utils'
 import { Axies } from './tool/axies'
-import { Culling, EntityCulling } from './tool/culling'
+import { Culling } from './tool/culling'
 
 function EntityMeshBind({ entity }: { entity: Entity }) {
     const { obj } = useObj3() as { obj: Obj3WithEntity }
@@ -52,17 +52,15 @@ function MeshBound(props: EntityProps) {
 export const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
 function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [props.data.geom?.url]),
-        mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats]),
-        culled = (props.data as EntityCulling).$culled
+        mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats])
     return geom?.faces || geom?.edges ? <>
         { geom.faces && <Mesh { ...props }
-            isVisible={ !culled }
             mat={ props.active ? mats.default : mats.dimmed }
             geo={ geom.faces }>
             <EntityMeshBind entity={ props.data } />
         </Mesh> }
-        { geom.edges && !culled && <Mesh
-            isVisible={ props.active && !props.data?.attrs?.$culled && props.view.pick?.mode !== 'edge' }
+        { geom.edges && <Mesh
+            isVisible={ props.active && props.isVisible && props.view.pick?.mode !== 'edge' }
             geo={ geom.edges } mat={ EDGE_MAT } /> }
     </> : <MeshBound { ...props } />
 }
@@ -91,7 +89,8 @@ export default ({ tree, ents, view, setView, children, onSelect }: {
     onSelect?: (nodes?: string[], obj?: Engine.Obj3) => any
 }) => {
     const selected = Object.keys(tree.$selected?.children || { }),
-        visible = ents.filter(item => item.nodes?.length && checked(tree, item.nodes))
+        list = ents.filter(item => item.nodes?.length && checked(tree, item.nodes)),
+        [visible, setVisible] = useState(new Set<Entity>())
     return <Canvas className="view"
             style={{ width: '100%', height: '100%' }}
             options={
@@ -102,14 +101,15 @@ export default ({ tree, ents, view, setView, children, onSelect }: {
                 }
             }>
         {
-            visible.map((data, key) => {
+            list.map((data, key) => {
                 const active = !selected.length || !!data.nodes?.some(id => tree[id]?.selected),
-                    matrix = data.trans
-                return <EntityMesh { ...{ key, view, active, data, matrix } } />
+                    matrix = data.trans,
+                    isVisible = visible.has(data)
+                return <EntityMesh { ...{ key, view, active, data, matrix, isVisible } } />
             })
         }
         <Axies />
-        <Culling view={ view } setView={ setView } />
+        <Culling visible={ visible } setVisible={ setVisible} />
         <KeyControl view={ view } setView={ setView } />
         <MouseControl view={ view }
             onSelect={ (obj?: Obj3WithEntity) => !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj) } />

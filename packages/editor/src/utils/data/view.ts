@@ -4,9 +4,6 @@ import { Entity } from "./entity"
 export type ViewPickMode = 'face' | 'edge' | 'vert'
 
 export interface ViewOpts {
-    viewPort?: {
-        visibleMeshes?: number[]
-    }
     pick?: {
         mode?: ViewPickMode
         topos?: {

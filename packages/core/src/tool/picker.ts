@@ -183,6 +183,26 @@ function expandBound([x0 = 0, y0 = 0, z0 = 0]: number[], [x1 = 0, y1 = 0, z1 = 0
     ] as [number, number, number][]
 }
 
+const mat = mat4.create(),
+    vec = vec4.create(),
+    tmp = vec3.create(),
+    min = vec3.create(),
+    max = vec3.create()
+function getNDCBound({ worldMatrix }: PickMesh, geo: PickGeo, { viewProjection }: PerspectiveCamera) {
+    mat4.multiply(mat, viewProjection, worldMatrix)
+    vec3.set(min,  Infinity,  Infinity,  Infinity)
+    vec3.set(max, -Infinity, -Infinity, -Infinity)
+    for (const [a, b, c] of expandBound(geo.min, geo.max)) {
+        vec4.set(vec, a, b, c, 1.)
+        vec4.transformMat4(vec, vec, mat)
+        const [x = 0, y = 0, z = 0, w = 0] = vec
+        vec3.set(tmp, x / w, y / w, z / w)
+        vec3.min(min, min, tmp)
+        vec3.max(max, max, tmp)
+    }
+    return { min, max }
+}
+
 const worker = wrap({
     num: 1,
     // @ts-ignore
@@ -204,9 +224,9 @@ const worker = wrap({
             return { geometries: geometries.filter(id => !cache.geoMap[id]) }
         },
         async clip(meshes: Record<number, PickMesh>,
-                     geometries: Record<number, PickGeo>,
-                     camera: PickCamera,
-                     { width, height }: { width: number, height: number }) {
+                   geometries: Record<number, PickGeo>,
+                   camera: PickCamera,
+                   { width, height }: { width: number, height: number }) {
             await renderClip(meshes, geometries, camera, { width, height })
             await readPixel({ x: 0, y: 0 })
             const { pixels } = await cache.context,
@@ -214,47 +234,48 @@ const worker = wrap({
                 buffer = await blob.arrayBuffer()
             return { buffer }
         },
+        async bound(meshes: Record<number, PickMesh>,
+                    geometries: Record<number, PickGeo>,
+                    { fov, aspect, near, far, worldMatrix }: PickCamera) {
+            const camera = new PerspectiveCamera()
+            Object.assign(camera, { fov, aspect, near, far })
+            camera.setWorldMatrix(worldMatrix)
+
+            const min = vec3.fromValues( Infinity,  Infinity,  Infinity),
+                  max = vec3.fromValues(-Infinity, -Infinity, -Infinity)
+            for (const mesh of Object.values(meshes)) {
+                const geo = geometries[mesh.geoId] || cache.geoMap[mesh.geoId]
+                if (geo) {
+                    const bound = getNDCBound(mesh, geo, camera)
+                    vec3.min(min, min, bound.min)
+                    vec3.max(max, max, bound.max)
+                }
+            }
+
+            return { min, max }
+        },
         async query(meshes: Record<number, PickMesh>,
-                     geometries: Record<number, PickGeo>,
-                     view: PickCamera,
-                     { width, height }: { width: number, height: number }) {
+                    geometries: Record<number, PickGeo>,
+                    view: PickCamera,
+                    { width, height }: { width: number, height: number }) {
             const opaque = { } as typeof meshes,
                 transclude = { } as typeof meshes
             for (const mesh of Object.values(meshes)) {
                 (mesh.transparent ? transclude : opaque)[mesh.id] = mesh
             }
-            const { list, camera: { viewProjection } } = await renderDepth(opaque, geometries, view, { width, height }),
+            const { list, camera } = await renderDepth(opaque, geometries, view, { width, height }),
                 indices = await readPixel({ x: 0, y: 0, w: width, h: height }),
                 found = indices.map(idx => list[idx - 1]?.id).filter(id => id) as number[]
-
-            const mat = mat4.create(),
-                vec = vec4.create(),
-                tmp = vec3.create(),
-                min = vec3.create(),
-                max = vec3.create()
-            for (const { geoId, worldMatrix, id } of Object.values(transclude)) {
-                const geo = geometries[geoId] || cache.geoMap[geoId]
+            for (const mesh of Object.values(transclude)) {
+                const geo = geometries[mesh.geoId] || cache.geoMap[mesh.geoId]
                 if (geo) {
-                    mat4.multiply(mat, viewProjection, worldMatrix)
-                    vec3.set(min,  Infinity,  Infinity,  Infinity)
-                    vec3.set(max, -Infinity, -Infinity, -Infinity)
-                    for (const [a, b, c] of expandBound(geo.min, geo.max)) {
-                        vec4.set(vec, a, b, c, 1.)
-                        vec4.transformMat4(vec, vec, mat)
-                        const [x = 0, y = 0, z = 0, w = 0] = vec
-                        vec3.set(tmp, x / w, y / w, z / w)
-                        vec3.min(min, min, tmp)
-                        vec3.max(max, max, tmp)
-                    }
-                    const [x0 = 0, y0 = 0] = min,
-                        [x1 = 0, y1 = 0] = max
-                    if (x0 < 1 && x1 > -1 &&
-                        y0 < 1 && y1 > -1) {
-                        found.push(id)
+                    const { min: [x0 = 0, y0 = 0], max: [x1 = 0, y1 = 0] } = getNDCBound(mesh, geo, camera)
+                    if (x0 > -1 && x1 < 1 &&
+                        y0 > -1 && y1 < 1) {
+                        found.push(mesh.id)
                     }
                 }
             }
-
             return found
         },
         async pick(meshes: Record<number, PickMesh>,
@@ -326,27 +347,21 @@ async function prepare(scene: Set<Obj3>, camera: PerspectiveCamera) {
     return { meshes, geoms, view }
 }
 
+export interface Size {
+    width: number
+    height: number
+}
+
 const Picker = {
-    async query(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
-        width: number
-        height: number
-    }) {
+    async query(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.query(meshes, geoms, view, opts)
     },
-    async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
-        width: number
-        height: number
-        x: number
-        y: number
-    }) {
+    async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size & {x: number, y: number }) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.pick(meshes, geoms, view, opts)
     },
-    async clip(scene: Set<Obj3>, camera: PerspectiveCamera, opts: {
-        width: number
-        height: number
-    }) {
+    async clip(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.clip(meshes, geoms, view, opts)
     },
