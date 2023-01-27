@@ -9,4 +9,4 @@ COPY packages ./packages
 RUN npm run build
 WORKDIR /app/packages/editor/
 CMD npm exec sn start
-ENV STORE_REDIS pc10.yff.me
+ENV STORE_REDIS_HOST pc10.yff.me

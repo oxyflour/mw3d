@@ -8,11 +8,15 @@ import { sha256 } from "./common"
 import { mkdir, readFile, writeFile } from "fs/promises"
 import { Entity } from "../data/entity"
 
-const unzip = promisify(unzipRaw),
+const opts = {
+        host: process.env.STORE_REDIS_HOST,
+        port: parseInt(process.env.STORE_REDIS_PORT || '6379'),
+    },
+    unzip = promisify(unzipRaw),
     deflate = promisify(deflateRaw),
-    getRedis = asyncCache(async () => new Redis(process.env.STORE_REDIS as any)),
+    getRedis = asyncCache(async () => new Redis(opts)),
     getReceiver = asyncCache(async () => {
-        const redis = new Redis(process.env.STORE_REDIS as any)
+        const redis = new Redis(opts)
         redis.on('message', (channel, message) => {
             for (const cb of callbacks[channel] || []) {
                 cb(message)
