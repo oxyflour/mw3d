@@ -125,30 +125,17 @@ async function prepareScene(meshes: Record<number, PickMesh>,
     }
     return { scene, camera, renderer, list }
 }
-
-let renderLock = 0
-function runWithLock<F extends (...args: any[]) => Promise<any>>(func: F) {
-    return (async (...args: any[]) => {
-        while (renderLock > Date.now() - 5000) {
-            await new Promise(resolve => setTimeout(resolve, 10))
-        }
-        renderLock = Date.now()
-        const ret = await func(...args)
-        renderLock = 0
-        return ret as Awaited<ReturnType<F>>
-    }) as F
-}
-const renderClip = runWithLock(async (meshes: Record<number, PickMesh>,
+async function renderClip(meshes: Record<number, PickMesh>,
         geometries: Record<number, PickGeo>,
         pick: PickCamera,
-        { width, height }: { width: number, height: number }) => {
+        { width, height }: { width: number, height: number }) {
     const { scene, camera, renderer } = await prepareScene(meshes, geometries, pick, { width, height })
     renderer.render(scene, camera, { renderClips: true })
-})
-const renderDepth = runWithLock(async (meshes: Record<number, PickMesh>,
+}
+async function renderDepth(meshes: Record<number, PickMesh>,
         geometries: Record<number, PickGeo>,
         pick: PickCamera,
-        { width, height }: { width: number, height: number }) => {
+        { width, height }: { width: number, height: number }) {
     const { scene, camera, renderer, list } = await prepareScene(meshes, geometries, pick, { width, height })
     if (scene.size >= 0xffff) {
         throw Error(`picker support ${0xffff} meshes at max`)
@@ -168,7 +155,32 @@ const renderDepth = runWithLock(async (meshes: Record<number, PickMesh>,
 
     renderer.render(scene, camera, { depthTexture })
     return { depthTexture, list, camera }
-})
+}
+
+let renderLock = 0
+async function runWithinMutex<F extends () => Promise<any>>(func: F) {
+    while (renderLock > Date.now() - 5000) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    renderLock = Date.now()
+    let err, ret
+    try {
+        ret = await func()
+    } catch (error) {
+        err = error
+    }
+    renderLock = 0
+
+    if (err) {
+        throw err
+    } else {
+        return ret as Awaited<ReturnType<F>>
+    }
+}
+function makeMutexFunc<F extends (...args: any[]) => Promise<any>>(func: F) {
+    return ((...args: any[]) => runWithinMutex(() => func(...args))) as F
+}
 
 function expandBound([x0 = 0, y0 = 0, z0 = 0]: number[], [x1 = 0, y1 = 0, z1 = 0]: number[]) {
     return [
@@ -223,17 +235,17 @@ const worker = wrap({
         async test({ geometries }: { geometries: number[] }) {
             return { geometries: geometries.filter(id => !cache.geoMap[id]) }
         },
-        async clip(meshes: Record<number, PickMesh>,
+        clip: makeMutexFunc(async (meshes: Record<number, PickMesh>,
                    geometries: Record<number, PickGeo>,
                    camera: PickCamera,
-                   { width, height }: { width: number, height: number }) {
+                   { width, height }: { width: number, height: number }) => {
             await renderClip(meshes, geometries, camera, { width, height })
             await readPixel({ x: 0, y: 0 })
             const { pixels } = await cache.context,
                 blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
             return { buffer }
-        },
+        }),
         async bound(meshes: Record<number, PickMesh>,
                     geometries: Record<number, PickGeo>,
                     { fov, aspect, near, far, worldMatrix }: PickCamera) {
@@ -263,25 +275,28 @@ const worker = wrap({
             for (const mesh of Object.values(meshes)) {
                 (mesh.transparent ? transclude : opaque)[mesh.id] = mesh
             }
-            const { list, camera } = await renderDepth(opaque, geometries, view, { width, height }),
-                indices = await readPixel({ x: 0, y: 0, w: width, h: height }),
-                found = indices.map(idx => list[idx - 1]?.id).filter(id => id) as number[]
+            const { camera, ids } = await runWithinMutex(async () => {
+                const { list, camera } = await renderDepth(opaque, geometries, view, { width, height }),
+                    read = await readPixel({ x: 0, y: 0, w: width, h: height }),
+                    ids = read.map(idx => list[idx - 1]?.id).filter(id => id) as number[]
+                return { camera, ids }
+            })
             for (const mesh of Object.values(transclude)) {
                 const geo = geometries[mesh.geoId] || cache.geoMap[mesh.geoId]
                 if (geo) {
                     const { min: [x0 = 0, y0 = 0], max: [x1 = 0, y1 = 0] } = getNDCBound(mesh, geo, camera)
-                    if (x0 > -1 && x1 < 1 &&
-                        y0 > -1 && y1 < 1) {
-                        found.push(mesh.id)
+                    if (-1 < x1 && x0 < 1 &&
+                        -1 < y1 && y0 < 1) {
+                        ids.push(mesh.id)
                     }
                 }
             }
-            return found
+            return { ids }
         },
-        async pick(meshes: Record<number, PickMesh>,
+        pick: makeMutexFunc(async (meshes: Record<number, PickMesh>,
                      geometries: Record<number, PickGeo>,
                      camera: PickCamera,
-                     { width, height, x, y }: { x: number, y: number, width: number, height: number }) {
+                     { width, height, x, y }: { x: number, y: number, width: number, height: number }) => {
             const { depthTexture, list } = await renderDepth(meshes, geometries, camera, { width, height }),
                 { renderer, pixels } = await cache.context,
                 [idx = 0] = await readPixel({ x, y }),
@@ -309,7 +324,7 @@ const worker = wrap({
             const blob = await pixels.convertToBlob(),
                 buffer = await blob.arrayBuffer()
             return { id, buffer, distance, position }
-        }
+        }),
     }
 })
 

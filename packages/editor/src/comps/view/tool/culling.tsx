@@ -21,15 +21,16 @@ export function Culling({ visible, setVisible, frameCount = 60 }: {
         }
         scene.clear()
 
-        const objs = { } as Record<number, Engine.Obj3>
+        const objs = { } as Record<number, Obj3WithEntity>
         for (const obj of ctx.scene || []) {
             const { entity, id } = obj as Obj3WithEntity
             entity && scene.add(objs[id] = obj)
         }
 
-        const value = new Set<Entity>
-        for (const id of await query({ ...ctx, scene })) {
-            const { entity } = objs[id] as Obj3WithEntity
+        const value = new Set<Entity>,
+            { indices } = await query({ ...ctx, scene })
+        for (const id of indices) {
+            const { entity } = objs[id] || { }
             entity && value.add(entity)
         }
 

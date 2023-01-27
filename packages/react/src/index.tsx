@@ -217,16 +217,14 @@ function MeshSetter({ geo, mat, isVisible, renderOrder, offset, count }: {
     count?: number
 }) {
     const { obj: mesh } = useObj3() as { obj: Engine.Mesh }
-    useEffect(() => {
-        if (mesh) {
-            mesh.geo = geo
-            mesh.mat = mat
-            mesh.isVisible = isVisible !== undefined ? isVisible : true
-            mesh.renderOrder = renderOrder || 0
-            mesh.offset = offset || 0
-            mesh.count = count || -1
-        }
-    }, [mesh, geo, mat, isVisible, renderOrder, offset, count])
+    if (mesh) {
+        mesh.geo = geo
+        mesh.mat = mat
+        mesh.isVisible = isVisible !== undefined ? isVisible : true
+        mesh.renderOrder = renderOrder || 0
+        mesh.offset = offset || 0
+        mesh.count = count || -1
+    }
     return null
 }
 export function Mesh({ children, ...props }: Arg0<typeof MeshSetter> & Arg0<typeof Obj3>) {
