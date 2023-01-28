@@ -5,7 +5,9 @@ import { pool } from "../common/pool"
 import WorkerSelf from './worker?worker&inline'
 
 async function load(url: string) {
-    const req = await fetch(`/static/geom/${url}`)
+    const href = location.href.replace(/^blob:/, ''),
+        abs = new URL(`/static/geom/${url}`, href),
+        req = await fetch(abs.toString())
     return await req.arrayBuffer()
 }
 

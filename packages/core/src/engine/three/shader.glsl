@@ -46,6 +46,29 @@ void main() {
     gl_FragColor = vec4(vColor, 1.);
 }
 
+// @chunk:sprite
+// @vert
+uniform vec2 vResolution;
+uniform float fLineWidth;
+void main() {
+    vec4 p0 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec4 p1 = projectionMatrix * modelViewMatrix * vec4(normal, 1.0);
+    vec4 dir = normalize(p0 - p1);
+    int idx = gl_VertexID % 4;
+    float thickness = fLineWidth / vResolution.x * p0.w;
+    if (idx == 0 || idx == 3) {
+        thickness *= -1.;
+    }
+    p0.y -= thickness * dir.x;
+    p0.x += thickness * dir.y;
+    gl_Position = p0;
+}
+// @frag
+uniform vec3 vColor;
+void main() {
+    gl_FragColor = vec4(vColor, 1.);
+}
+
 // @chunk:dash
 // @vert
 void main() {
