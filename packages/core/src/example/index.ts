@@ -73,7 +73,7 @@ async function clickScene(evt: MouseEvent) {
     })
 }
 
-const CLIP_PLANE = vec4.fromValues(1, 0, 0, 20)
+const CLIP_PLANE = vec4.fromValues(0, 0, 0, 20)
 
 const tex = document.createElement('canvas'),
     ctx = tex.getContext('2d')
@@ -178,7 +178,7 @@ const camera = new PerspectiveCamera({
 
 const mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] })
 mat.clip.assign(CLIP_PLANE)
-for (let i = 0; i < 1000; i ++) {
+for (let i = 0; i < 10; i ++) {
     const { geo } = cube,
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.03, 0.3), rand(0.03, 0.3), rand(0.03, 0.3))

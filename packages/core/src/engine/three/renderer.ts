@@ -52,6 +52,22 @@ class FatLineMaterial extends THREE.ShaderMaterial {
     }
 }
 
+class SpriteMaterial extends THREE.ShaderMaterial {
+    constructor(parameters?: THREE.ShaderMaterialParameters) {
+        super({
+            vertexShader:   GLSL_CHUNKS.sprite?.vert + '',
+            fragmentShader: GLSL_CHUNKS.sprite?.frag + '',
+            defines: {
+            },
+            uniforms: {
+                vResolution: { value: new THREE.Vector2() },
+                tMap: { value: null },
+            },
+            ...parameters
+        })
+    }
+}
+
 export default class ThreeRenderer extends Renderer {
     private readonly renderer: THREE.WebGLRenderer
     constructor(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
@@ -75,6 +91,8 @@ export default class ThreeRenderer extends Renderer {
         const ret =
             primitive === 'fat-line-list' ?
                 new FatLineMaterial() :
+            primitive === 'point-sprite' ?
+                new SpriteMaterial() :
             mat.opts.entry.frag === 'fragMainColor' ?
                 new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b) }) :
             mat.opts.entry.frag === 'fragMainDepth' ?
@@ -183,6 +201,9 @@ export default class ThreeRenderer extends Renderer {
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
                         mat.uniforms.fLineWidth!.value = lineWidth
                         mat.uniforms.vColor!.value.set(r, g, b)
+                    } else if (mat instanceof SpriteMaterial) {
+                        const { width, height, devicePixelRatio } = this
+                        mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                         mat.metalness = obj.mat.prop.metallic
                         mat.roughness = obj.mat.prop.roughness
@@ -192,6 +213,8 @@ export default class ThreeRenderer extends Renderer {
                     if (tex) {
                         if (mat instanceof DepthMaterial) {
                             mat.uniforms.tDepth!.value = this.dt(tex)
+                        } else if (mat instanceof SpriteMaterial) {
+                            mat.uniforms.tMap!.value = this.ct(tex)
                         } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                             mat.map = this.ct(tex)
                         }
