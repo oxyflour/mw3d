@@ -129,7 +129,7 @@ const camera = new PerspectiveCamera({
             size: 100,
         }), depthMaterial = new BasicMaterial({
             color: [1, 1, 1],
-            entry: { frag: 'fragMainMultiDepth' },
+            wgsl: { frag: 'fragMainMultiDepth' },
             texture: new Texture({
                 size: { width: renderer.canvas.width, height: renderer.canvas.height },
                 format: 'depth24plus-stencil8',

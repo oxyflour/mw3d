@@ -111,15 +111,15 @@ export default class ThreeRenderer extends Renderer {
     private mat = cache((primitive: GeometryPrimitive, mat: Material) => {
         const { r, g, b, a, roughness, metallic } = mat.prop
         const ret =
-            mat.opts.entry.frag === 'fragMainColorDash' ?
+            mat.opts.wgsl?.frag === 'fragMainColorDash' ?
                 new ColorDashMaterial() :
             primitive === 'fat-line-list' ?
                 new FatLineMaterial() :
             primitive === 'point-sprite' ?
                 new SpriteMaterial() :
-            mat.opts.entry.frag === 'fragMainColor' ?
+            mat.opts.wgsl?.frag === 'fragMainColor' ?
                 new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b) }) :
-            mat.opts.entry.frag === 'fragMainDepth' ?
+            mat.opts.wgsl?.frag === 'fragMainDepth' ?
                 new DepthMaterial() :
                 new THREE.MeshPhysicalMaterial({
                     color: new THREE.Color(r, g, b),

@@ -8,7 +8,7 @@ const CLIP_GEO = new PlaneXY({ size: 200 })
 const CLIP_MATS = {
     back: new BasicMaterial({
         color: [1, 1, 1, 0],
-        entry: {
+        wgsl: {
             frag: `fn fragMainColorBack(input: FragInput) -> @location(0) vec4<f32> {
                 checkClip(input);
                 return material.color;
@@ -29,7 +29,7 @@ const CLIP_MATS = {
     }),
     front: new BasicMaterial({
         color: [1, 1, 1, 0],
-        entry: {
+        wgsl: {
             frag: `fn fragMainColorFront(input: FragInput) -> @location(0) vec4<f32> {
                 checkClip(input);
                 return material.color;
@@ -49,7 +49,7 @@ const CLIP_MATS = {
         },
     }),
     plane: new BasicMaterial({
-        entry: {
+        wgsl: {
             // TODO: compute the right coords for a plane covering camera
             vert: `fn vertMainPlane(input: VertexInput) -> VertexOutput {
                 var output: VertexOutput;
@@ -139,7 +139,7 @@ export class ClipMeshes {
         mat.clip.copy(item.mat.clip)
 
         // Note: DO NOT set stride for picker
-        const stride = item.mat.opts.entry.frag === 'fragMainColor' ? 0 : 5
+        const stride = item.mat.opts.wgsl?.frag === 'fragMainColor' ? 0 : 5
         mat.prop.metallic = stride
         mat.prop.roughness = stride / 5 * 3
     }

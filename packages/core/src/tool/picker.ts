@@ -111,7 +111,7 @@ async function prepareScene(meshes: Record<number, PickMesh>,
         const geo = geoMap[geoId] || (geoMap[geoId] = new Geometry(geometries[geoId]!)),
             idx = index + 1,
             mat = matMap[idx] || (matMap[idx] = new BasicMaterial({
-                entry: { frag: 'fragMainColor' },
+                wgsl: { frag: 'fragMainColor' },
                 color: new Uint8Array([idx, idx >> 8, idx >> 16]),
             })),
             mesh = meshMap[idx] || (meshMap[idx] = new Mesh())
@@ -302,7 +302,7 @@ const worker = wrap({
                 [idx = 0] = await readPixel({ x, y }),
                 { id } = list[idx - 1] || { id: 0 }
 
-            DEPTH_PLANE.mat = new BasicMaterial({ entry: { frag: 'fragMainDepth' }, texture: depthTexture }),
+            DEPTH_PLANE.mat = new BasicMaterial({ wgsl: { frag: 'fragMainDepth' }, texture: depthTexture }),
             renderer.render(DEPTH_SCENE, DEPTH_CAMERA)
             const [val = 0] = await readPixel({ x, y }),
                 d = val / 0xffffff,

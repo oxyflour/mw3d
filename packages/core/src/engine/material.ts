@@ -5,10 +5,6 @@ import { AutoIndex } from '../utils/common'
 import { MutableArray } from '../utils/math'
 import { GeometryPrimitive } from './geometry'
 import { Sampler, Texture, Uniform } from './uniform'
-import wgsl from './webgpu/shader.wgsl?raw'
-
-// Note: wgsl global const not yet supported
-const code = (wgsl + '').replace(/\r\n/g, '\n').replace(/\/\/ @replace-let-with-const\nlet /g, 'const ')
 
 export type ProgramEntry = Partial<{ [k in GeometryPrimitive]: string }> | string
 
@@ -68,8 +64,8 @@ export default class Material extends AutoIndex {
     renderOrder = 0
 
     constructor(readonly opts: {
-        code: string
-        entry: { vert: ProgramEntry, frag: ProgramEntry }
+        wgsl?: { vert?: ProgramEntry, frag?: ProgramEntry }
+        glsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
     } & MatOpts) {
         super()
         if (opts.texture) {
@@ -100,13 +96,14 @@ export class BasicMaterial extends Material {
         } as ProgramEntry
     }
     constructor(opts = { } as {
-        entry?: { vert?: ProgramEntry, frag?: ProgramEntry },
+        wgsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
+        glsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
         color?: Float32Array | Uint8Array | number[]
         clipPlane?: vec4 | number[]
     } & Partial<MaterialProp> & MatOpts) {
-        const entry = BasicMaterial.defaultEntry,
-            { vert = entry.vert, frag = entry.frag } = opts.entry || { }
-        super({ ...opts, code, entry: { vert, frag } })
+        const wgsl = BasicMaterial.defaultEntry,
+            { vert = wgsl.vert, frag = wgsl.frag } = opts.wgsl || { }
+        super({ ...opts, wgsl: { vert, frag } })
         let [r = Math.random(), g = Math.random(), b = Math.random(), a = 1] = opts.color || []
         if (opts.color instanceof Uint8Array) {
             r /= 255

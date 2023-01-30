@@ -2,6 +2,10 @@ import cache from "../../utils/cache"
 import Geometry, { GeometryPrimitive } from "../geometry"
 import Material from "../material"
 import { Sampler, Texture, Uniform, UniformValue } from '../uniform'
+import wgsl from './shader.wgsl?raw'
+
+// Note: wgsl global const not yet supported
+const WGSL_CODE = (wgsl + '').replace(/\r\n/g, '\n').replace(/\/\/ @replace-let-with-const\nlet /g, 'const ')
 
 export interface CachedAttr {
     buffer: GPUBuffer
@@ -168,10 +172,9 @@ export default class Cache {
             return cache[mat.id]!
         }
         const code = [
-            mat.opts.code,
             mat.prop.a < 1,
-            mat.opts.entry.frag,
-            mat.opts.entry.vert,
+            mat.opts.wgsl?.frag,
+            mat.opts.wgsl?.vert,
             mat.opts.texture ? 't' : '',
         ].join('###')
         if (cache[code]) {
@@ -181,12 +184,12 @@ export default class Cache {
     }
 
     private cachedModules = { } as Record<string, GPUShaderModule>
-    static parseShaderEntry(entry: string) {
-        const match = entry.trim().match(/^fn ([^\(]+)/)
-        return match ? { name: match[1]!, code: entry } : { name: entry, code: '' }
+    static parseShaderEntry(wgsl: string) {
+        const match = wgsl.trim().match(/^fn ([^\(]+)/)
+        return match ? { name: match[1]!, code: wgsl } : { name: wgsl, code: '' }
     }
     buildPipeline = cache((primitive: GeometryPrimitive, mat: Material) => {
-        const { code: shader, entry: { vert, frag } } = mat.opts,
+        const { wgsl: { vert = { }, frag = { } } = { } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
             vertEntry = Cache.parseShaderEntry(
                 primitive === 'fat-line-list' ? 'vertLineMain' :
@@ -200,7 +203,7 @@ export default class Cache {
                 primitive === 'fat-line-list' ? 'triangle-list' :
                 primitive === 'point-sprite' ? 'triangle-list' :
                 primitive,
-            code = shader
+            code = WGSL_CODE
                 .replace('// @vert-extra-code', vertEntry.code ? `@vertex ` + vertEntry.code : '')
                 .replace('// @frag-extra-code', fragEntry.code ? `@fragment ` + fragEntry.code : ''),
             module = this.cachedModules[code] || (this.cachedModules[code] = this.device.createShaderModule({ code })),
