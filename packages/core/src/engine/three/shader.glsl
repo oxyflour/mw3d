@@ -90,6 +90,7 @@ varying vec4 vPos;
 void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     vPos = (gl_Position + 1.) * .5;
+    gl_Position.w -= 0.001;
 }
 // @frag
 uniform vec2 vDash;

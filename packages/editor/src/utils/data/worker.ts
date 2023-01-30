@@ -1,4 +1,4 @@
-import { Utils } from "@ttk/core"
+import { Utils } from "@ttk/react"
 import { unpack } from "../common/pack"
 import { pool } from "../common/pool"
 

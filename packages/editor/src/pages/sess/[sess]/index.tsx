@@ -3,7 +3,7 @@ import { RouteMatch, useNavigate } from 'react-router-dom'
 
 import lambda from '../../../lambda'
 import { Entity } from '../../../utils/data/entity'
-import { Utils } from '@ttk/core'
+import { Utils } from '@ttk/react'
 
 const entityCache = new WeakMap<Entity[], string>(),
     commitCache = new Utils.LRU<Entity[]>()

@@ -44,6 +44,8 @@ class ColorDashMaterial extends THREE.ShaderMaterial {
                 vDash: { value: new THREE.Vector2() },
                 vColor: { value: new THREE.Vector4() },
             },
+            // IMPORTANT: keep dash material on top
+            transparent: true,
             depthTest: false,
             ...parameters
         })
@@ -94,6 +96,11 @@ export default class ThreeRenderer extends Renderer {
         })
         this.renderer.localClippingEnabled = true
     }
+    private subGeo = cache((geo: Geometry, start: number, count: number) => {
+        const item = this.geo(geo).clone()
+        item.setDrawRange(start, count)
+        return item
+    })
     private geo = cache((geo: Geometry) => {
         const ret = new THREE.BufferGeometry()
         ret.setAttribute('position', new THREE.Float32BufferAttribute(geo.positions, 3))
@@ -209,7 +216,13 @@ export default class ThreeRenderer extends Renderer {
                 const mesh = item as THREE.Mesh
                 mesh.renderOrder = obj.renderOrder
                 mesh.visible = obj.isVisible
-                obj.geo && (mesh.geometry = this.geo(obj.geo))
+                if (obj.geo) {
+                    if (obj.offset !== 0 || obj.count !== -1) {
+                        mesh.geometry = this.subGeo(obj.geo, obj.offset, obj.count)
+                    } else {
+                        mesh.geometry = this.geo(obj.geo)
+                    }
+                }
                 if (obj.mat) {
                     const mat = mesh.material = this.mat(obj.geo?.type || 'triangle-list', obj.mat)
                     mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null

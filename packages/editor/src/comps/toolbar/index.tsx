@@ -9,7 +9,7 @@ import { upload } from '../../utils/dom/upload'
 import { Menu, MenuGroup, MenuItem } from '../utils/menu'
 import './index.less'
 import { ViewOpts } from '../../utils/data/view'
-import { Modal } from '../utils/mdx'
+import { Modal } from '../utils/model'
 import { CgSpinnerTwo } from 'react-icons/cg'
 
 const m = mat4.create(),
