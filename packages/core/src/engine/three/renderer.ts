@@ -35,6 +35,21 @@ class DepthMaterial extends THREE.ShaderMaterial {
     }
 }
 
+class ColorDashMaterial extends THREE.ShaderMaterial {
+    constructor(parameters?: THREE.ShaderMaterialParameters) {
+        super({
+            vertexShader:   GLSL_CHUNKS.dash?.vert + '',
+            fragmentShader: GLSL_CHUNKS.dash?.frag + '',
+            uniforms: {
+                vDash: { value: new THREE.Vector2() },
+                vColor: { value: new THREE.Vector4() },
+            },
+            depthTest: false,
+            ...parameters
+        })
+    }
+}
+
 class FatLineMaterial extends THREE.ShaderMaterial {
     constructor(parameters?: THREE.ShaderMaterialParameters) {
         super({
@@ -89,6 +104,8 @@ export default class ThreeRenderer extends Renderer {
     private mat = cache((primitive: GeometryPrimitive, mat: Material) => {
         const { r, g, b, a, roughness, metallic } = mat.prop
         const ret =
+            mat.opts.entry.frag === 'fragMainColorDash' ?
+                new ColorDashMaterial() :
             primitive === 'fat-line-list' ?
                 new FatLineMaterial() :
             primitive === 'point-sprite' ?
@@ -176,6 +193,7 @@ export default class ThreeRenderer extends Renderer {
             c.fov = camera.fov / Math.PI * 180
             c.near = camera.near
             // Note: threejs matrix DOES NOT support infinity far plane
+            // https://github.com/mrdoob/three.js/issues/11755
             c.far = camera.far === Infinity ? c.near * 1e9 : camera.far
             c.aspect = camera.aspect
             c.updateProjectionMatrix()
@@ -204,6 +222,10 @@ export default class ThreeRenderer extends Renderer {
                     } else if (mat instanceof SpriteMaterial) {
                         const { width, height, devicePixelRatio } = this
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                    } else if (mat instanceof ColorDashMaterial) {
+                        const { r, g, b, metallic, roughness } = obj.mat.prop
+                        mat.uniforms.vColor!.value.set(r, g, b, 1)
+                        mat.uniforms.vDash!.value.set(metallic, roughness)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                         mat.metalness = obj.mat.prop.metallic
                         mat.roughness = obj.mat.prop.roughness

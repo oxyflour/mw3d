@@ -86,10 +86,27 @@ void main() {
 
 // @chunk:dash
 // @vert
+varying vec4 vPos;
 void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vPos = (gl_Position + 1.) * .5;
 }
 // @frag
+uniform vec2 vDash;
+uniform vec4 vColor;
+varying vec4 vPos;
 void main() {
-    gl_FragColor = vec4(1., 0., 0., 1.);
+    float n = vDash.x;
+    float v = vDash.y;
+    vec2 s = fract(vPos.xy / n) * n;
+    if (v > 0.) {
+        if (s.x > v || s.y > v) {
+            discard;
+        }
+    } else if (v < 0.) {
+        if (s.x < -v || s.y < -v) {
+            discard;
+        }
+    }
+    gl_FragColor = vColor;
 }

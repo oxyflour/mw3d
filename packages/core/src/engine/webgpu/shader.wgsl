@@ -199,6 +199,24 @@ fn fragMainColor(input: FragInput) -> @location(0) vec4<f32> {
 }
 
 @fragment
+fn fragMainColorDash(input: FragInput) -> @location(0) vec4<f32> {
+    checkClip(input);
+    var n = material.metallic;
+    var v = material.roughness;
+    var s = fract(input.position.xy / n) * n;
+    if (v > 0.) {
+        if (s.x > v || s.y > v) {
+            discard;
+        }
+    } else if (v < 0.) {
+        if (s.x < -v || s.y < -v) {
+            discard;
+        }
+    }
+    return material.color;
+}
+
+@fragment
 fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
   var C = textureSample(imageTexture, materialSampler, input.normal.xy);
   checkClip(input);
