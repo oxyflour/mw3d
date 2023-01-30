@@ -89,17 +89,17 @@ void main() {
 varying vec4 vPos;
 void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    vPos = (gl_Position + 1.) * .5;
-    gl_Position.w -= 0.001;
+    vPos = gl_Position;
 }
 // @frag
 uniform vec2 vDash;
 uniform vec4 vColor;
+uniform vec2 vResolution;
 varying vec4 vPos;
 void main() {
     float n = vDash.x;
     float v = vDash.y;
-    vec2 s = fract(vPos.xy / n) * n;
+    vec2 s = fract(vPos.xy / vPos.w * vResolution / n) * n;
     if (v > 0.) {
         if (s.x > v || s.y > v) {
             discard;

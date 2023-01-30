@@ -43,6 +43,7 @@ class ColorDashMaterial extends THREE.ShaderMaterial {
             uniforms: {
                 vDash: { value: new THREE.Vector2() },
                 vColor: { value: new THREE.Vector4() },
+                vResolution: { value: new THREE.Vector2() },
             },
             // IMPORTANT: keep dash material on top
             transparent: true,
@@ -236,9 +237,11 @@ export default class ThreeRenderer extends Renderer {
                         const { width, height, devicePixelRatio } = this
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
                     } else if (mat instanceof ColorDashMaterial) {
-                        const { r, g, b, metallic, roughness } = obj.mat.prop
+                        const { width, height, devicePixelRatio } = this,
+                            { r, g, b, metallic, roughness } = obj.mat.prop
                         mat.uniforms.vColor!.value.set(r, g, b, 1)
-                        mat.uniforms.vDash!.value.set(metallic, roughness)
+                        mat.uniforms.vDash!.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
+                        mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                         mat.metalness = obj.mat.prop.metallic
                         mat.roughness = obj.mat.prop.roughness
