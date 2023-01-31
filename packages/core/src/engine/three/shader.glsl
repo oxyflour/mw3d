@@ -41,9 +41,9 @@ void main() {
     gl_Position = p0;
 }
 // @frag
-uniform vec3 vColor;
+uniform vec4 vColor;
 void main() {
-    gl_FragColor = vec4(vColor, 1.);
+    gl_FragColor = vColor;
 }
 
 // @chunk:sprite
@@ -76,6 +76,7 @@ void main() {
 // @frag
 varying vec2 vUv;
 uniform sampler2D tMap;
+uniform vec4 vColor;
 void main() {
     vec4 c = texture2D(tMap, vUv);
     if (c.a == 0.) {

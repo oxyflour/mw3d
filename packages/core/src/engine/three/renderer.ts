@@ -41,13 +41,10 @@ class ColorDashMaterial extends THREE.ShaderMaterial {
             vertexShader:   GLSL_CHUNKS.dash?.vert + '',
             fragmentShader: GLSL_CHUNKS.dash?.frag + '',
             uniforms: {
-                vDash: { value: new THREE.Vector2() },
-                vColor: { value: new THREE.Vector4() },
                 vResolution: { value: new THREE.Vector2() },
+                vColor: { value: new THREE.Vector4() },
+                vDash: { value: new THREE.Vector2() },
             },
-            // IMPORTANT: keep dash material on top
-            transparent: true,
-            depthTest: false,
             ...parameters
         })
     }
@@ -58,12 +55,10 @@ class FatLineMaterial extends THREE.ShaderMaterial {
         super({
             vertexShader:   GLSL_CHUNKS.line?.vert + '',
             fragmentShader: GLSL_CHUNKS.line?.frag + '',
-            defines: {
-            },
             uniforms: {
                 vResolution: { value: new THREE.Vector2() },
+                vColor: { value: new THREE.Vector4() },
                 fLineWidth: { value: 2 },
-                vColor: { value: new THREE.Vector3() },
             },
             ...parameters
         })
@@ -75,10 +70,9 @@ class SpriteMaterial extends THREE.ShaderMaterial {
         super({
             vertexShader:   GLSL_CHUNKS.sprite?.vert + '',
             fragmentShader: GLSL_CHUNKS.sprite?.frag + '',
-            defines: {
-            },
             uniforms: {
                 vResolution: { value: new THREE.Vector2() },
+                vColor: { value: new THREE.Vector4() },
                 tMap: { value: null },
             },
             ...parameters
@@ -112,8 +106,12 @@ export default class ThreeRenderer extends Renderer {
     private mat = cache((primitive: GeometryPrimitive, mat: Material) => {
         const { r, g, b, a, roughness, metallic } = mat.prop
         const ret =
-            mat.opts.wgsl?.frag === 'fragMainColorDash' ?
-                new ColorDashMaterial() :
+            primitive === 'triangle-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
+                new ColorDashMaterial({ transparent: true, depthTest: false }) :
+            primitive === 'fat-line-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
+                new FatLineMaterial({ transparent: true, depthTest: false }) :
+            primitive === 'point-sprite' && (mat.opts.wgsl?.frag === 'fragMainColor' || mat.opts.wgsl?.frag === 'fragMainColorDash') ?
+                new SpriteMaterial({ transparent: true, depthTest: false, fragmentShader: GLSL_CHUNKS.line?.frag }) :
             primitive === 'fat-line-list' ?
                 new FatLineMaterial() :
             primitive === 'point-sprite' ?
@@ -227,21 +225,19 @@ export default class ThreeRenderer extends Renderer {
                 if (obj.mat) {
                     const mat = mesh.material = this.mat(obj.geo?.type || 'triangle-list', obj.mat)
                     mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null
+                    const { width, height, devicePixelRatio } = this,
+                        { lineWidth, metallic, roughness, r, g, b, a } = obj.mat.prop
                     if (mat instanceof FatLineMaterial) {
-                        const { width, height, devicePixelRatio } = this,
-                            { lineWidth, r, g, b } = obj.mat.prop
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                        mat.uniforms.vColor!.value.set(r, g, b, a)
                         mat.uniforms.fLineWidth!.value = lineWidth
-                        mat.uniforms.vColor!.value.set(r, g, b)
                     } else if (mat instanceof SpriteMaterial) {
-                        const { width, height, devicePixelRatio } = this
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                        mat.uniforms.vColor!.value.set(r, g, b, a)
                     } else if (mat instanceof ColorDashMaterial) {
-                        const { width, height, devicePixelRatio } = this,
-                            { r, g, b, metallic, roughness } = obj.mat.prop
-                        mat.uniforms.vColor!.value.set(r, g, b, 1)
-                        mat.uniforms.vDash!.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
                         mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                        mat.uniforms.vColor!.value.set(r, g, b, a)
+                        mat.uniforms.vDash!.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                         mat.metalness = obj.mat.prop.metallic
                         mat.roughness = obj.mat.prop.roughness
