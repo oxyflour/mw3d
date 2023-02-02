@@ -9,6 +9,7 @@ import { Mesh, Renderer, RendererOptions } from '../engine'
 import { Texture } from "../engine/uniform"
 
 import WorkerSelf from './picker?worker&inline'
+import { queue } from "../utils/common"
 
 interface WebGPUOffscreenCanvas extends
         Omit<OffscreenCanvas, 'getContext' | 'addEventListener' | 'removeEventListener'>,
@@ -157,27 +158,7 @@ async function renderDepth(meshes: Record<number, PickMesh>,
     return { depthTexture, list, camera }
 }
 
-let renderLock = 0
-async function runWithinMutex<F extends () => Promise<any>>(func: F) {
-    while (renderLock > Date.now() - 5000) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-    }
-
-    renderLock = Date.now()
-    let err, ret
-    try {
-        ret = await func()
-    } catch (error) {
-        err = error
-    }
-    renderLock = 0
-
-    if (err) {
-        throw err
-    } else {
-        return ret as Awaited<ReturnType<F>>
-    }
-}
+const runWithinMutex = queue((func: () => Promise<any>) => func())
 function makeMutexFunc<F extends (...args: any[]) => Promise<any>>(func: F) {
     return ((...args: any[]) => runWithinMutex(() => func(...args))) as F
 }
@@ -195,24 +176,39 @@ function expandBound([x0 = 0, y0 = 0, z0 = 0]: number[], [x1 = 0, y1 = 0, z1 = 0
     ] as [number, number, number][]
 }
 
-const mat = mat4.create(),
-    vec = vec4.create(),
-    tmp = vec3.create(),
-    min = vec3.create(),
-    max = vec3.create()
-function getNDCBound({ worldMatrix }: PickMesh, geo: PickGeo, { viewProjection }: PerspectiveCamera) {
-    mat4.multiply(mat, viewProjection, worldMatrix)
-    vec3.set(min,  Infinity,  Infinity,  Infinity)
-    vec3.set(max, -Infinity, -Infinity, -Infinity)
+class Bound {
+    min = vec3.fromValues( Infinity,  Infinity,  Infinity)
+    max = vec3.fromValues(-Infinity, -Infinity, -Infinity)
+    reset() {
+        vec3.set(this.min, Infinity,  Infinity,  Infinity)
+        vec3.set(this.max, -Infinity, -Infinity, -Infinity)
+    }
+    extend(pos: vec3) {
+        vec3.min(this.min, this.min, pos)
+        vec3.max(this.max, this.max, pos)
+    }
+    center(pos = vec3.create()) {
+        vec3.scaleAndAdd(pos, pos, this.min, 0.5)
+        vec3.scaleAndAdd(pos, pos, this.max, 0.5)
+        return pos
+    }
+    size(pos = vec3.create()) {
+        vec3.scaleAndAdd(pos, pos, this.min, -1)
+        vec3.scaleAndAdd(pos, pos, this.max,  1)
+        return pos
+    }
+}
+const vec = vec4.create(),
+    tmp = vec3.create()
+function getGeoBound(geo: PickGeo, mat: mat4, bound = new Bound()) {
     for (const [a, b, c] of expandBound(geo.min, geo.max)) {
         vec4.set(vec, a, b, c, 1.)
         vec4.transformMat4(vec, vec, mat)
         const [x = 0, y = 0, z = 0, w = 0] = vec
         vec3.set(tmp, x / w, y / w, z / w)
-        vec3.min(min, min, tmp)
-        vec3.max(max, max, tmp)
+        bound.extend(tmp)
     }
-    return { min, max }
+    return bound
 }
 
 const worker = wrap({
@@ -253,18 +249,21 @@ const worker = wrap({
             Object.assign(camera, { fov, aspect, near, far })
             camera.setWorldMatrix(worldMatrix)
 
-            const min = vec3.fromValues( Infinity,  Infinity,  Infinity),
-                  max = vec3.fromValues(-Infinity, -Infinity, -Infinity)
-            for (const mesh of Object.values(meshes)) {
-                const geo = geometries[mesh.geoId] || cache.geoMap[mesh.geoId]
+            const ndc = new Bound(),
+                world = new Bound(),
+                { viewProjection } = camera,
+                mat = mat4.create()
+            for (const { worldMatrix, geoId } of Object.values(meshes)) {
+                const geo = geometries[geoId] || cache.geoMap[geoId]
                 if (geo) {
-                    const bound = getNDCBound(mesh, geo, camera)
-                    vec3.min(min, min, bound.min)
-                    vec3.max(max, max, bound.max)
+                    getGeoBound(geo, worldMatrix, world)
+                    mat4.multiply(mat, viewProjection, worldMatrix)
+                    getGeoBound(geo, mat, ndc)
                 }
             }
 
-            return { min, max }
+            const compute = (bound: Bound) => ({ ...bound, center: bound.center(), size: bound.size() })
+            return { ndc: compute(ndc), world: compute(world) }
         },
         async query(meshes: Record<number, PickMesh>,
                     geometries: Record<number, PickGeo>,
@@ -281,13 +280,19 @@ const worker = wrap({
                     ids = read.map(idx => list[idx - 1]?.id).filter(id => id) as number[]
                 return { camera, ids }
             })
-            for (const mesh of Object.values(transclude)) {
-                const geo = geometries[mesh.geoId] || cache.geoMap[mesh.geoId]
+            const { viewProjection } = camera,
+                mat = mat4.create(),
+                bound = new Bound()
+            for (const { worldMatrix, geoId, id } of Object.values(transclude)) {
+                const geo = geometries[geoId] || cache.geoMap[geoId]
                 if (geo) {
-                    const { min: [x0 = 0, y0 = 0], max: [x1 = 0, y1 = 0] } = getNDCBound(mesh, geo, camera)
+                    bound.reset()
+                    mat4.multiply(mat, viewProjection, worldMatrix)
+                    getGeoBound(geo, mat, bound)
+                    const { min: [x0 = 0, y0 = 0], max: [x1 = 0, y1 = 0] } = bound
                     if (-1 < x1 && x0 < 1 &&
                         -1 < y1 && y0 < 1) {
-                        ids.push(mesh.id)
+                        ids.push(id)
                     }
                 }
             }
@@ -379,6 +384,10 @@ const Picker = {
     async clip(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.clip(meshes, geoms, view, opts)
+    },
+    async bound(scene: Set<Obj3>, camera: PerspectiveCamera) {
+        const { meshes, geoms, view } = await prepare(scene, camera)
+        return await worker.bound(meshes, geoms, view)
     },
 }
 export default Picker

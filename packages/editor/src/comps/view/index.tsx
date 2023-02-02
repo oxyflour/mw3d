@@ -100,6 +100,12 @@ function checked(tree: TreeData, nodes: string[]) {
     return ret.checked
 }
 
+const camera = new Engine.PerspectiveCamera({
+    near: 10,
+    far: 10000,
+    fov: 2 / 180 * Math.PI,
+    position: [0, 0, 500],
+})
 export default ({ tree, ents, view, setView, children, onSelect }: {
     tree: TreeEnts
     ents: Entity[]
@@ -112,6 +118,7 @@ export default ({ tree, ents, view, setView, children, onSelect }: {
         list = ents.filter(item => item.nodes?.length && checked(tree, item.nodes)),
         [visible, setVisible] = useState(new Set<Entity>())
     return <Canvas className="view"
+            camera={ camera }
             style={{ width: '100%', height: '100%' }}
             options={
                 canvas => {

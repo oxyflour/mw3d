@@ -3,11 +3,6 @@ import { vec3, mat4, quat } from "gl-matrix"
 import Obj3 from "../engine/obj3"
 import { PerspectiveCamera } from "../engine/camera"
 
-function vec3FromObj(out: vec3, obj: Obj3) {
-    const { worldPosition: [x = 0, y = 0, z = 0] } = obj
-    return vec3.set(out, x, y, z)
-}
-
 function withMouseDown(onMouseMove: (evt: MouseEvent) => any, onMouseUp?: (evt: MouseEvent) => any) {
     document.body.addEventListener('mousemove', onMouseMove)
     document.body.addEventListener('mouseup', function onceMouseUp(evt) {
@@ -24,7 +19,7 @@ function lerp(from: number, to: number, factor: number) {
 type Pos = { clientX: number, clientY: number }
 const axis = vec3.create(),
     origin = vec3.create(),
-    from = vec3.create(),
+    source = vec3.create(),
     target = vec3.create(),
     delta = vec3.create(),
     tran = mat4.create(),
@@ -71,10 +66,11 @@ export class Control {
         const { canvas, camera, pivot, opts } = this,
             { left, top } = canvas.getBoundingClientRect(),
             [hw, hh, hf] = [canvas.clientWidth / 2, canvas.clientHeight / 2, camera.fov / 2],
-            [tx, ty] = [Math.tan(hf * camera.aspect), Math.tan(hf)]
+            [tx, ty] = [Math.tan(hf * camera.aspect), Math.tan(hf)],
+            setNDC = (out: vec3, x: number, y: number) => vec3.set(out, tx * (x - hw) / hw, ty * (y - hh) / -hh, -1)
         function onRotateAroundPivot(p0: Pos, p1: Pos) {
-            vec3FromObj(origin, camera)
-            vec3FromObj(target, pivot)
+            vec3.copy(origin, camera.worldPosition as vec3)
+            vec3.copy(target, pivot.worldPosition as vec3)
             const dx = p0.clientX - p1.clientX,
                 dy = p0.clientY - p1.clientY,
                 ds = Math.sqrt(dx * dx + dy * dy)
@@ -83,8 +79,7 @@ export class Control {
             vec3.sub(axis, axis, origin)
             vec3.normalize(axis, axis)
             if (vec3.length(axis)) {
-                mat4.identity(rotation)
-                mat4.rotate(rotation, rotation, (opts?.rotate?.speed || 0.005) * ds, axis)
+                mat4.fromRotation(rotation, (opts?.rotate?.speed || 0.005) * ds, axis)
                 vec3.sub(delta, origin, target)
                 vec3.transformMat4(delta, delta, rotation)
                 vec3.add(target, target, delta)
@@ -98,35 +93,16 @@ export class Control {
                 camera.setWorldMatrix(tran)
             }
         }
-        function getWorldDirFromScreen(out: vec3, x: number, y: number) {
-            vec3.set(out, tx * (x - hw) / hw, ty * (y - hh) / -hh, -1)
-            vec3.transformMat4(out, out, camera.worldMatrix)
-            vec3.sub(out, out, origin)
-            vec3.normalize(out, out)
-        }
         function onDragWithPivot(p0: Pos, p1: Pos) {
-            vec3FromObj(origin, camera)
-            getWorldDirFromScreen(from, p0.clientX - left, p0.clientY - top)
-            getWorldDirFromScreen(target, p1.clientX - left, p1.clientY - top)
-            vec3.cross(axis, from, target)
-            vec3.normalize(axis, axis)
-            const rad = vec3.angle(from, target)
-            mat4.identity(rotation)
-            mat4.rotate(rotation, rotation, -rad, axis)
-
-            mat4.getRotation(rot, camera.worldMatrix)
-            mat4.fromQuat(tran, rot)
-            mat4.multiply(tran, rotation, tran)
-            mat4.fromTranslation(rotation, origin)
-            mat4.multiply(tran, rotation, tran)
-
-            camera.setWorldMatrix(tran)
+            camera.getWorldDirFromNDC(setNDC(source, p0.clientX - left, p0.clientY - top))
+            camera.getWorldDirFromNDC(setNDC(target, p1.clientX - left, p1.clientY - top))
+            camera.rotateInWorld(source, target)
         }
         if (this.state.isDown) {
             let factor = 1
             if (this.mode === 'rot') {
                 onRotateAroundPivot(this.source, this.target)
-                factor = 0.3
+                //factor = 0.3
             } else if (this.mode === 'pan') {
                 onDragWithPivot(this.source, this.target)
             }
@@ -170,8 +146,8 @@ export class Control {
             target = vec3.create(),
             delta = vec3.create(),
             rot = quat.create()
-        vec3FromObj(origin, camera)
-        vec3FromObj(target, pivot)
+        vec3.copy(origin, camera.worldPosition as vec3)
+        vec3.copy(target, pivot.worldPosition as vec3)
         vec3.sub(delta, origin, target)
         const factor = opts?.zoom?.factor || 0.1
         let distance = vec3.length(delta) * (evt.deltaY > 0 ? (1 + factor) : (1 - factor))

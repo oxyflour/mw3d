@@ -14,7 +14,7 @@ export class KeyBinding {
         for (const key in this.keystates) delete this.keystates[key]
         for (const key in this.shortcuts) delete this.shortcuts[key]
         for (const combo of Object.keys(map)) {
-            const keys = combo.split('+').map(item => item.trim())
+            const keys = combo.split('+').map(item => item.trim().replace('Space', ' '))
             for (const key of keys) {
                 const state = this.keystates[key] || (this.keystates[key] = { down: false, shortcuts: [] })
                 state.shortcuts.push(combo)

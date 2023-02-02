@@ -17,13 +17,10 @@ export class AutoIndex {
     }
 }
 
-export function enqueue<F extends (...args: any) => Promise<any>>(func: F) {
+export function queue<F extends (...args: any) => Promise<any>>(func: F) {
     let promise: undefined | Promise<any>
     return ((...args: any) => {
-        if (!promise) {
-            promise = func(...args)
-            promise.finally(() => { promise = undefined })
-        }
-        return promise
-    }) as F
+        return promise || (promise = func(...args)
+            .finally(() => promise = undefined))
+    }) as any as F
 }

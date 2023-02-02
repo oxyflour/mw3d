@@ -1,4 +1,4 @@
-import { mat4 } from 'gl-matrix'
+import { mat4, quat, vec3 } from 'gl-matrix'
 import { MutableArray } from '../utils/math'
 
 import Obj3, { ObjOpts } from './obj3'
@@ -42,6 +42,10 @@ export class PerspectiveProp extends MutableArray({
 }) {
 }
 
+const axis = vec3.create(),
+    tran = mat4.create(),
+    rotation = mat4.create(),
+    rot = quat.create()
 export class PerspectiveCamera extends Camera {
     readonly prop = new PerspectiveProp()
     override get rev() {
@@ -87,6 +91,45 @@ export class PerspectiveCamera extends Camera {
             projection = mat4.perspectiveZO(mat4.create(), fov, aspect, near, far)
         super({ ...opts, projection })
         Object.assign(this.prop, { fov, aspect, near, far })
+    }
+    /**
+     * Note: remember to update camera first
+     */
+    getWorldDirFromNDC(out: vec3) {
+        vec3.set(out, out[0], out[1], -1)
+        vec3.transformMat4(out, out, this.worldMatrix)
+        vec3.sub(out, out, this.worldPosition as vec3)
+        vec3.normalize(out, out)
+        return out
+    }
+    /**
+     * Note: remember to update camera first
+     */
+    rotateInWorld(source: vec3, target: vec3) {
+        vec3.cross(axis, source, target)
+        vec3.normalize(axis, axis)
+        const rad = vec3.angle(source, target)
+        mat4.identity(rotation)
+        mat4.rotate(rotation, rotation, -rad, axis)
+
+        mat4.getRotation(rot, this.worldMatrix)
+        mat4.fromQuat(tran, rot)
+        mat4.multiply(tran, rotation, tran)
+        mat4.fromTranslation(rotation, this.worldPosition as vec3)
+        mat4.multiply(tran, rotation, tran)
+
+        this.setWorldMatrix(tran)
+    }
+    /**
+     * 
+     */
+    setWorldPosition(target: vec3) {
+        mat4.getRotation(rot, this.worldMatrix)
+        mat4.fromQuat(tran, rot)
+        mat4.fromTranslation(rotation, target)
+        mat4.multiply(tran, rotation, tran)
+
+        this.setWorldMatrix(tran)
     }
 }
 
