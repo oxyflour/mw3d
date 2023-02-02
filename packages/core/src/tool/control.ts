@@ -22,9 +22,7 @@ const axis = vec3.create(),
     source = vec3.create(),
     target = vec3.create(),
     delta = vec3.create(),
-    tran = mat4.create(),
-    rotation = mat4.create(),
-    rot = quat.create()
+    rotation = mat4.create()
 
 export class Control {
     readonly pivot: Obj3
@@ -84,13 +82,7 @@ export class Control {
                 vec3.transformMat4(delta, delta, rotation)
                 vec3.add(target, target, delta)
 
-                mat4.getRotation(rot, camera.worldMatrix)
-                mat4.fromQuat(tran, rot)
-                mat4.multiply(tran, rotation, tran)
-                mat4.fromTranslation(rotation, target)
-                mat4.multiply(tran, rotation, tran)
-
-                camera.setWorldMatrix(tran)
+                camera.targetToWorld(pivot.worldPosition as vec3, target)
             }
         }
         function onDragWithPivot(p0: Pos, p1: Pos) {
@@ -102,7 +94,7 @@ export class Control {
             let factor = 1
             if (this.mode === 'rot') {
                 onRotateAroundPivot(this.source, this.target)
-                //factor = 0.3
+                factor = 0.3
             } else if (this.mode === 'pan') {
                 onDragWithPivot(this.source, this.target)
             }

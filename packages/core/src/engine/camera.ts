@@ -43,6 +43,8 @@ export class PerspectiveProp extends MutableArray({
 }
 
 const axis = vec3.create(),
+    src = vec3.create(),
+    dst = vec3.create(),
     tran = mat4.create(),
     rotation = mat4.create(),
     rot = quat.create()
@@ -123,13 +125,23 @@ export class PerspectiveCamera extends Camera {
     /**
      * 
      */
-    setWorldPosition(target: vec3) {
-        mat4.getRotation(rot, this.worldMatrix)
-        mat4.fromQuat(tran, rot)
-        mat4.fromTranslation(rotation, target)
-        mat4.multiply(tran, rotation, tran)
+    targetToWorld(pivot: vec3, target: vec3) {
+        vec3.sub(src, this.worldPosition as vec3, pivot)
+        vec3.sub(dst, target, pivot)
+        vec3.cross(axis, dst, src)
+        vec3.normalize(axis, axis)
+        if (vec3.len(axis)) {
+            const rad = vec3.angle(dst, src)
+            mat4.fromRotation(rotation, -rad, axis)
 
-        this.setWorldMatrix(tran)
+            mat4.getRotation(rot, this.worldMatrix)
+            mat4.fromQuat(tran, rot)
+            mat4.multiply(tran, rotation, tran)
+            mat4.fromTranslation(rotation, target)
+            mat4.multiply(tran, rotation, tran)
+
+            this.setWorldMatrix(tran)
+        }
     }
 }
 

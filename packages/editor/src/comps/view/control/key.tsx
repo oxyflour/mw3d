@@ -27,9 +27,9 @@ export function KeyControl({ view, setView }: { view: ViewOpts, setView: (view: 
                 dir = vec3.sub(vec3.create(), center, camera.worldPosition as vec3),
                 source = vec3.normalize(vec3.create(), dir),
                 target = camera.getWorldDirFromNDC(vec3.fromValues(0, 0, -1)),
-                next = vec3.add(center, center, vec3.scale(dir, dir, -scale))
+                next = vec3.scaleAndAdd(vec3.create(), center, dir, -scale)
             camera.rotateInWorld(source, target)
-            camera.setWorldPosition(next)
+            camera.targetToWorld(center, next)
         }
     }
     Object.assign(map.current, {
