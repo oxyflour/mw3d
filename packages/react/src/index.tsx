@@ -67,11 +67,12 @@ export function useTick(func: (time: number) => void, interval = 100) {
     }, [frame])
 }
 
-export function Canvas({ children, options, style, className }: {
+export function Canvas({ children, options, style, className, camera: initCamera }: {
     children: any
     options?: (canvas: HTMLCanvasElement) => Engine.RendererOptions
     style?: CSSProperties
     className?: string
+    camera?: Engine.PerspectiveCamera
 }) {
     const [state, setState] = useState({ } as CanvasContextValue),
         [error, setError] = useState(null as any),
@@ -81,13 +82,13 @@ export function Canvas({ children, options, style, className }: {
             const scene = new Engine.Scene(),
                 opts = options?.(canvas) || { },
                 renderer = await Engine.Renderer.create(canvas, opts),
-                camera = new Engine.PerspectiveCamera({
+                camera = initCamera || new Engine.PerspectiveCamera({
                     fov: 2 / 180 * Math.PI,
-                    aspect: canvas.clientWidth / canvas.clientHeight,
                     position: [0, 0, 500],
                 }),
                 light = new Engine.Light({ position: [10, 20, 30] }),
                 frame = { before: [], after: [] } as NonNullable<CanvasContextValue['frame']>
+            camera.aspect = canvas.clientWidth / canvas.clientHeight
             scene.add(light)
             requestAnimationFrame(function render(time: number) {
                 if (handle.running) {

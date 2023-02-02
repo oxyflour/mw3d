@@ -110,11 +110,18 @@ export function MouseControl({ view, onSelect }: {
         }
     }
     return <>
-        <Control pivot={ CAMERA_PIVOT } hooks={{
-            mouse: align,
-            wheel: alignEnqueue,
-            click,
-        }} />
+        {
+            camera && <Control pivot={ CAMERA_PIVOT } hooks={{
+                mouse: align,
+                wheel: alignEnqueue,
+                click,
+            }} zoom={{
+                distance: {
+                    min: camera.near * 1.2,
+                    max: camera.far * 0.9,
+                }
+            }}/>
+        }
         {
             overlay.width > 0 && overlay.height > 0 &&
             <div style={{
