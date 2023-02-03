@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { check, search, select, TreeData, TreeNode } from '../../utils/data/tree'
 import './index.less'
 
-export function Tree({ id = '', data, onChange }: {
+export function Tree({ id = '', data, onChange, onKeyDownOnNode }: {
     id?: string
     data: TreeData
-    onChange: ((data: TreeData) => void) | undefined
+    onChange?: (data: TreeData) => void
+    onKeyDownOnNode?: (id: string, evt: React.KeyboardEvent) => void
 }): JSX.Element | null {
     const node = data[id]
     function updateSelf(update: Partial<TreeNode>) {
@@ -19,7 +20,9 @@ export function Tree({ id = '', data, onChange }: {
             </button>
         <input className="check" type="checkbox" checked={ !!node.checked }
             onChange={ evt => onChange?.(check(data, id, evt.target.checked)) } />
-        <label className={ `${node.selected ? 'selected' : ''} title` }
+        <label tabIndex={ -1 }
+            onKeyDown={ evt => onKeyDownOnNode?.(id, evt) }
+            className={ `${node.selected ? 'selected' : ''} title` }
             onClick={ () => onChange?.(select(data, [id])) }>
             { node.title || '<Empty>' }
         </label>
@@ -27,20 +30,18 @@ export function Tree({ id = '', data, onChange }: {
             node.open && children.length > 0 && <div style={{ marginLeft: 16 }}>
             {
                 children.filter(id => data[id])
-                    .map(id => <Tree
-                        key={ id }
-                        id={ id }
-                        data={ data }
-                        onChange={ onChange } />)
+                    .map(id => <Tree key={ id } { ...{ id, data, onChange, onKeyDownOnNode } } />)
             }
             </div>
         }
     </div>
 }
 
-export default ({ tree, setTree }: {
+export default ({ tree, setTree, children, onKeyDownOnNode }: {
     tree: TreeData
-    setTree?: ((tree: TreeData) => void) | undefined
+    setTree?: (tree: TreeData) => void
+    children?: any
+    onKeyDownOnNode?: (id: string, evt: React.KeyboardEvent) => void
 }) => {
     const [filter, setFilter] = useState({ search: '', tree })
     return <div className="nav flex flex-col h-full">
@@ -69,8 +70,9 @@ export default ({ tree, setTree }: {
             }
         </div>
         <div className="content grow">
-            <Tree id="Components" data={ tree } onChange={ setTree } />
-            <Tree id="Materials" data={ tree } onChange={ setTree } />
+            <Tree id="Components" data={ tree } onChange={ setTree } onKeyDownOnNode={ onKeyDownOnNode } />
+            <Tree id="Materials" data={ tree } onChange={ setTree } onKeyDownOnNode={ onKeyDownOnNode } />
+            { children }
         </div>
     </div>
 }
