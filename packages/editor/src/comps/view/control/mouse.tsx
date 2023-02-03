@@ -40,7 +40,7 @@ const updatePivotEnqueue = queue(updatePivot)
 
 export function MouseControl({ view, onSelect }: {
     view: ViewOpts
-    onSelect?: (obj?: Engine.Obj3) => any
+    onSelect?: (obj?: Engine.Obj3, evt?: MouseEvent) => any
 }) {
     const ctx = useCanvas(),
         { scene, camera } = ctx,
@@ -103,7 +103,7 @@ export function MouseControl({ view, onSelect }: {
                 { id } = await pickEntity({ ...ctx, scene }, evt)
             let found = undefined as undefined | Engine.Obj3
             id && scene?.walk(obj => obj.id === id && (found = obj))
-            select.current?.(found)
+            select.current?.(found, evt)
             clickedAt.current = 0
         } else {
             clickedAt.current = Date.now()

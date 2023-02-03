@@ -1,4 +1,4 @@
-import { TreeNode } from "./tree"
+import { TreeNode, walk } from "./tree"
 
 export interface BufferData {
     url?: string
@@ -32,6 +32,19 @@ export type TreeEntNode = TreeNode & {
 export type TreeEnts = Record<string, TreeEntNode> & {
     $root?: TreeEntNode
     $selected?: TreeEntNode
+}
+
+export function remove(ents: Entity[], tree: TreeEnts, ids: string[]) {
+    const left = new Set(ents)
+    for (const id of ids) {
+        walk(tree, id, (_, { entities }: TreeEntNode) => {
+            for (const idx of entities || []) {
+                const ent = ents[idx]
+                ent && left.delete(ent)
+            }
+        })
+    }
+    return ents.filter(ent => left.has(ent))
 }
 
 export function parse(ents: Entity[], prev: TreeEnts) {

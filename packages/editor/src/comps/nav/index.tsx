@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { TreeEnts } from '../../utils/data/entity'
 import { check, search, select, TreeData, TreeNode } from '../../utils/data/tree'
 import './index.less'
 
@@ -8,11 +9,15 @@ export function Tree({ id = '', data, onChange, onKeyDownOnNode }: {
     onChange?: (data: TreeData) => void
     onKeyDownOnNode?: (id: string, evt: React.KeyboardEvent) => void
 }): JSX.Element | null {
-    const node = data[id]
+    const node = data[id],
+        children = Object.keys(node?.children || { })
     function updateSelf(update: Partial<TreeNode>) {
         onChange?.({ ...data, [id]: { ...node, ...update } })
     }
-    const children = Object.keys(node?.children || { })
+    function getSelection(evt: React.MouseEvent) {
+        const prev = evt.ctrlKey ? Object.keys((data as TreeEnts).$selected?.children || { }) : []
+        return select(data, prev.concat([id]))
+    }
     return !node ? null : <div className="tree">
         <button className="carpet"
             onClick={ () => updateSelf({ open: !node.open }) }>
@@ -23,7 +28,7 @@ export function Tree({ id = '', data, onChange, onKeyDownOnNode }: {
         <label tabIndex={ -1 }
             onKeyDown={ evt => onKeyDownOnNode?.(id, evt) }
             className={ `${node.selected ? 'selected' : ''} title` }
-            onClick={ () => onChange?.(select(data, [id])) }>
+            onClick={ evt => onChange?.(getSelection(evt)) }>
             { node.title || '<Empty>' }
         </label>
         {
