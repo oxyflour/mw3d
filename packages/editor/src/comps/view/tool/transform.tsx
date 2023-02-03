@@ -13,18 +13,16 @@ function PreviewEntity({ data }: {
     data: Entity
 }) {
     const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [data.geom?.url])
-    return geom?.faces ? <Mesh
-        matrix={ data.trans }
-        mat={ PREVIEW_MAT }
-        geo={ geom.faces }>
-    </Mesh> : null
+    return geom?.faces ? <Mesh matrix={ data.trans } mat={ PREVIEW_MAT } geo={ geom.faces } /> : null
 }
 
 export function Transform({ view, ents }: {
     view: ViewOpts
     ents: Entity[]
 }) {
-    const { action = 'translate', x = 0, y = 0, z = 0 } = view.transform || { },
+    const { action = 'translate' } = view.transform || { },
+        v = action === 'scale' ? 1 : 0,
+        { x = v, y = v, z = v } = view.transform || { },
         [list, setList] = useState([] as Entity[])
     useEffect(() => setList(Object.values(getTransformedEntities(view, ents))), [action, x, y, z])
     return <>
