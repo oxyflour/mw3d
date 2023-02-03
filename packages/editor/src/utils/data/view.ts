@@ -4,6 +4,16 @@ import { Entity } from "./entity"
 export type ViewPickMode = 'face' | 'edge' | 'vert'
 
 export interface ViewOpts {
+    transform?: {
+        entities?: Record<number, Entity>
+        action?: 'translate' | 'rotate' | 'scale'
+        x?: number
+        xT?: string
+        y?: number
+        yT?: string
+        z?: number
+        zT?: string
+    },
     pick?: {
         mode?: ViewPickMode
         topos?: {

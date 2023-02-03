@@ -29,8 +29,8 @@ export default ({ view, updateView }: {
                 active={ view.clipPlane?.enabled }
                 onClick={ () => updateView('clipPlane', { enabled: !view.clipPlane?.enabled }) } />
             <div>
-                <IconButton icon={ null } title={
-                    <span>
+                <IconButton title={
+                    <>
                         Normal <select value={ view.clipPlane?.dir }
                             onChange={ evt => updateView('clipPlane', { dir: evt.target.value as any }) }>
                             <option value="+x">+x</option>
@@ -40,10 +40,10 @@ export default ({ view, updateView }: {
                             <option value="-y">-y</option>
                             <option value="-z">-z</option>
                         </select>
-                    </span>
+                    </>
                 } />
-                <IconButton icon={ null } title={
-                    <span>
+                <IconButton title={
+                    <>
                         Position <input value={ view.clipPlane?.posText }
                             onChange={
                                 evt => updateView('clipPlane', {
@@ -51,7 +51,7 @@ export default ({ view, updateView }: {
                                     posText: evt.target.value,
                                 })
                             } />
-                    </span>
+                    </>
                 } />
             </div>
         </Group>

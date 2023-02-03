@@ -13,6 +13,7 @@ import { EntityPicker, TopoPicked } from './pick/entity'
 import { Obj3WithEntity } from './pick/utils'
 import { Axies } from './tool/axies'
 import { Culling } from './tool/culling'
+import { Transform } from './tool/transform'
 
 function checked(tree: TreeData, nodes: string[]) {
     const ret = { } as TreeNode
@@ -93,7 +94,12 @@ export default ({ tree, ents, view, setView, setEnts, children, onSelect }: {
                 } />
         }
         {
-            view.pick?.topos && view.pick.topos.map((item, idx) => <TopoPicked key={ idx } { ...item } />)
+            view.pick?.topos &&
+            view.pick.topos.map((item, idx) => <TopoPicked key={ idx } { ...item } />)
+        }
+        {
+            view.transform?.entities &&
+            <Transform view={ view } />
         }
         { children }
     </Canvas>

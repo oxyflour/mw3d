@@ -32,7 +32,7 @@ export default ({ params }: RouteMatch<'sess' | 'commit'>) => {
         [view, setView] = useState(DEFAULT_VIEWOPTS)
     useEffect(() => { setTree(parse(ents, tree)) }, [ents])
     return <div className="app flex flex-col h-full">
-        <Toolbar { ...{ ents, setEnts, view, setView } }>
+        <Toolbar { ...{ ents, tree, view, setEnts, setView } }>
             <div title="Debug">
                 <Group title="Tool">
                     <ImageButton title="TODO" />
