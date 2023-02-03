@@ -36,6 +36,7 @@ export function EntityMesh(props: EntityProps) {
         </Mesh> }
         { geom.edges && <Mesh
             isVisible={ props.active && props.isVisible && props.view.pick?.mode !== 'edge' }
+            matrix={ props.matrix }
             mat={ EDGE_MAT }
             geo={ geom.edges } /> }
     </> : <MeshBound { ...props } />

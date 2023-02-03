@@ -17,7 +17,7 @@ export default ({ className, ents, view, tree, setEnts, setView, children }: {
     setView: (view: ViewOpts) => void
     children?: any
 }) => {
-    function updateView<K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) {
+    function updateView<K extends keyof ViewOpts>(key: K, val?: Partial<ViewOpts[K]>) {
         val ? setView({ ...view, [key]: { ...view[key], ...val } }) : setView({ ...view, [key]: undefined })
     }
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
@@ -28,7 +28,7 @@ export default ({ className, ents, view, tree, setEnts, setView, children }: {
             <Home view={ view } updateView={ updateView } />
         </div>
         <div title="Modeling">
-            <Modeling ents={ ents } tree={ tree } view={ view } updateView={ updateView } />
+            <Modeling { ...{ ents, tree, view, updateView, setEnts } } />
         </div>
         <div title="View">
             <View view={ view } updateView={ updateView } />

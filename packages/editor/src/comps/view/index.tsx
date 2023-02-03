@@ -99,7 +99,7 @@ export default ({ tree, ents, view, setView, setEnts, children, onSelect }: {
         }
         {
             view.transform?.entities &&
-            <Transform view={ view } />
+            <Transform ents={ ents } view={ view } />
         }
         { children }
     </Canvas>

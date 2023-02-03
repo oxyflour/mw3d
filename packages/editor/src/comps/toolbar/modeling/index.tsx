@@ -1,10 +1,10 @@
 import { Entity, TreeEnts } from "../../../utils/data/entity"
-import { ViewOpts } from "../../../utils/data/view"
+import { getTransformedEntities, ViewOpts } from "../../../utils/data/view"
 import { Group } from "../utils/group"
 import { IconButton } from "../utils/icon-button"
 import { ImageButton } from "../utils/image-button"
 
-function getTransform(tree: TreeEnts, ents: Entity[]) {
+function initTransform(tree: TreeEnts, ents: Entity[]) {
     const entities = { } as Record<number, Entity>
     for (const key in tree.$selected?.children || { }) {
         for (const idx of tree[key]?.entities || []) {
@@ -17,22 +17,28 @@ function getTransform(tree: TreeEnts, ents: Entity[]) {
     return Object.keys(entities).length ? { entities } : undefined
 }
 
-export default ({ view, tree, ents, updateView }: {
+export default ({ view, tree, ents, updateView, setEnts }: {
     view: ViewOpts
     tree: TreeEnts
     ents: Entity[]
-    updateView: <K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) => void
+    updateView: <K extends keyof ViewOpts>(key: K, val?: Partial<ViewOpts[K]>) => void
+    setEnts: (ents: Entity[]) => void
 }) => {
+    function applyTransform() {
+        updateView('transform')
+        const map = getTransformedEntities(view, ents)
+        setEnts(ents.map((ent, idx) => map[idx] || ent))
+    }
     return <>
         <Group title="Tool">
             <ImageButton title="Transform"
                 active={ !!view.transform }
-                onClick={ () => updateView('transform', view.transform ? undefined : getTransform(tree, ents)) } />
+                onClick={ () => updateView('transform', view.transform ? undefined : initTransform(tree, ents)) } />
             {
                 view.transform && <div>
                     <IconButton title={
                         <>
-                        Action <select value={ view.transform.action } style={{ width: 110 }}
+                        Action <select value={ view.transform.action } style={{ width: 120 }}
                             onChange={
                                 evt => updateView('transform', {
                                     ...view.transform,
@@ -47,7 +53,7 @@ export default ({ view, tree, ents, updateView }: {
                     } />
                     <IconButton title={
                         <>
-                            <span> X</span>
+                            <span> X </span>
                             <input value={ view.transform.xT } style={{ width: 40 }}
                                 onChange={
                                     evt => updateView('transform', {
@@ -56,7 +62,7 @@ export default ({ view, tree, ents, updateView }: {
                                         xT: evt.target.value,
                                     })
                                 } />
-                            <span> Y</span>
+                            <span> Y </span>
                             <input value={ view.transform.yT } style={{ width: 40 }}
                                 onChange={
                                     evt => updateView('transform', {
@@ -65,7 +71,7 @@ export default ({ view, tree, ents, updateView }: {
                                         yT: evt.target.value,
                                     })
                                 } />
-                            <span> Z</span>
+                            <span> Z </span>
                             <input value={ view.transform.zT } style={{ width: 40 }}
                                 onChange={
                                     evt => updateView('transform', {
@@ -75,6 +81,16 @@ export default ({ view, tree, ents, updateView }: {
                                     })
                                 } />
                         </>
+                    } />
+                    <IconButton style={{ width: 90, display: 'inline-block' }} title={
+                        <span>OK</span>
+                    } onClick={
+                        () => applyTransform()
+                    } />
+                    <IconButton style={{ width: 90, display: 'inline-block' }} title={
+                        <span>Cancel</span>
+                    } onClick={
+                        () => updateView('transform')
                     } />
                 </div>
             }
