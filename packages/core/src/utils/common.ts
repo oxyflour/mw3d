@@ -18,9 +18,8 @@ export class AutoIndex {
 }
 
 export function queue<F extends (...args: any) => Promise<any>>(func: F) {
-    let promise: undefined | Promise<any>
-    return ((...args: any) => {
-        return promise || (promise = func(...args)
-            .finally(() => promise = undefined))
-    }) as any as F
+    let promise = Promise.resolve()
+    return ((...args: any) => new Promise((resolve, reject) => {
+        promise = promise.then(() => func(...args).then(resolve).catch(reject))
+    })) as any as F
 }
