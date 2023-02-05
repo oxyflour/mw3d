@@ -24,62 +24,6 @@ for (const chunk of (glsl as string).split('// @chunk:')) {
     }
 }
 
-class DepthMaterial extends THREE.ShaderMaterial {
-    constructor(parameters?: THREE.ShaderMaterialParameters) {
-        super({
-            vertexShader:   GLSL_CHUNKS.depth?.vert + '',
-            fragmentShader: GLSL_CHUNKS.depth?.frag + '',
-            uniforms: { tDepth: { value: null } },
-            ...parameters
-        })
-    }
-}
-
-class ColorDashMaterial extends THREE.ShaderMaterial {
-    constructor(parameters?: THREE.ShaderMaterialParameters) {
-        super({
-            vertexShader:   GLSL_CHUNKS.dash?.vert + '',
-            fragmentShader: GLSL_CHUNKS.dash?.frag + '',
-            uniforms: {
-                vResolution: { value: new THREE.Vector2() },
-                vColor: { value: new THREE.Vector4() },
-                vDash: { value: new THREE.Vector2() },
-            },
-            ...parameters
-        })
-    }
-}
-
-class FatLineMaterial extends THREE.ShaderMaterial {
-    constructor(parameters?: THREE.ShaderMaterialParameters) {
-        super({
-            vertexShader:   GLSL_CHUNKS.line?.vert + '',
-            fragmentShader: GLSL_CHUNKS.line?.frag + '',
-            uniforms: {
-                vResolution: { value: new THREE.Vector2() },
-                vColor: { value: new THREE.Vector4() },
-                fLineWidth: { value: 2 },
-            },
-            ...parameters
-        })
-    }
-}
-
-class SpriteMaterial extends THREE.ShaderMaterial {
-    constructor(parameters?: THREE.ShaderMaterialParameters) {
-        super({
-            vertexShader:   GLSL_CHUNKS.sprite?.vert + '',
-            fragmentShader: GLSL_CHUNKS.sprite?.frag + '',
-            uniforms: {
-                vResolution: { value: new THREE.Vector2() },
-                vColor: { value: new THREE.Vector4() },
-                tMap: { value: null },
-            },
-            ...parameters
-        })
-    }
-}
-
 export default class ThreeRenderer extends Renderer {
     private readonly renderer: THREE.WebGLRenderer
     constructor(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
@@ -107,19 +51,68 @@ export default class ThreeRenderer extends Renderer {
         const { r, g, b, a, roughness, metallic } = mat.prop
         const ret =
             primitive === 'triangle-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
-                new ColorDashMaterial({ transparent: true, depthTest: false }) :
+                new THREE.ShaderMaterial({
+                    transparent: true,
+                    vertexShader:   GLSL_CHUNKS.dash?.vert,
+                    fragmentShader: GLSL_CHUNKS.dash?.frag,
+                    uniforms: {
+                        vResolution: { value: new THREE.Vector2() },
+                        vColor: { value: new THREE.Vector4() },
+                        vDash: { value: new THREE.Vector2() },
+                    },
+                }) :
             primitive === 'fat-line-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
-                new FatLineMaterial({ transparent: true, depthTest: false }) :
+                new THREE.ShaderMaterial({
+                    transparent: true,
+                    vertexShader:   GLSL_CHUNKS.line?.vert,
+                    fragmentShader: GLSL_CHUNKS.line?.frag,
+                    uniforms: {
+                        vResolution: { value: new THREE.Vector2() },
+                        vColor: { value: new THREE.Vector4() },
+                        fLineWidth: { value: 2 },
+                    },
+                }) :
             primitive === 'point-sprite' && (mat.opts.wgsl?.frag === 'fragMainColor' || mat.opts.wgsl?.frag === 'fragMainColorDash') ?
-                new SpriteMaterial({ transparent: true, depthTest: false, fragmentShader: GLSL_CHUNKS.line?.frag }) :
+                new THREE.ShaderMaterial({
+                    transparent: true,
+                    vertexShader:   GLSL_CHUNKS.sprite?.vert,
+                    fragmentShader: GLSL_CHUNKS.line?.frag,
+                    uniforms: {
+                        vResolution: { value: new THREE.Vector2() },
+                        vColor: { value: new THREE.Vector4() },
+                        tMap: { value: null },
+                    },
+                }) :
             primitive === 'fat-line-list' ?
-                new FatLineMaterial() :
+                new THREE.ShaderMaterial({
+                    vertexShader:   GLSL_CHUNKS.line?.vert,
+                    fragmentShader: GLSL_CHUNKS.line?.frag,
+                    uniforms: {
+                        vResolution: { value: new THREE.Vector2() },
+                        vColor: { value: new THREE.Vector4() },
+                        fLineWidth: { value: 2 },
+                    },
+                }) :
             primitive === 'point-sprite' ?
-                new SpriteMaterial() :
+                new THREE.ShaderMaterial({
+                    vertexShader:   GLSL_CHUNKS.sprite?.vert,
+                    fragmentShader: GLSL_CHUNKS.sprite?.frag,
+                    uniforms: {
+                        vResolution: { value: new THREE.Vector2() },
+                        vColor: { value: new THREE.Vector4() },
+                        tMap: { value: null },
+                    },
+                }) :
             mat.opts.wgsl?.frag === 'fragMainColor' ?
-                new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b) }) :
+                new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(r, g, b)
+                }) :
             mat.opts.wgsl?.frag === 'fragMainDepth' ?
-                new DepthMaterial() :
+                new THREE.ShaderMaterial({
+                    vertexShader:   GLSL_CHUNKS.depth?.vert,
+                    fragmentShader: GLSL_CHUNKS.depth?.frag,
+                    uniforms: { tDepth: { value: null } },
+                }) :
                 new THREE.MeshPhysicalMaterial({
                     color: new THREE.Color(r, g, b),
                     transparent: a < 1,
@@ -227,17 +220,12 @@ export default class ThreeRenderer extends Renderer {
                     mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null
                     const { width, height, devicePixelRatio } = this,
                         { lineWidth, metallic, roughness, r, g, b, a } = obj.mat.prop
-                    if (mat instanceof FatLineMaterial) {
-                        mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
-                        mat.uniforms.vColor!.value.set(r, g, b, a)
-                        mat.uniforms.fLineWidth!.value = lineWidth
-                    } else if (mat instanceof SpriteMaterial) {
-                        mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
-                        mat.uniforms.vColor!.value.set(r, g, b, a)
-                    } else if (mat instanceof ColorDashMaterial) {
-                        mat.uniforms.vResolution!.value.set(width * devicePixelRatio, height * devicePixelRatio)
-                        mat.uniforms.vColor!.value.set(r, g, b, a)
-                        mat.uniforms.vDash!.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
+                    if (mat instanceof THREE.ShaderMaterial) {
+                        const { uniforms: { vResolution, vColor, fLineWidth, vDash } } = mat
+                        vResolution?.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                        vColor?.value.set(r, g, b, a)
+                        vDash?.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
+                        fLineWidth && (fLineWidth.value = lineWidth)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                         mat.metalness = obj.mat.prop.metallic
                         mat.roughness = obj.mat.prop.roughness
@@ -245,10 +233,10 @@ export default class ThreeRenderer extends Renderer {
 
                     const tex = obj.mat.opts.texture
                     if (tex) {
-                        if (mat instanceof DepthMaterial) {
-                            mat.uniforms.tDepth!.value = this.dt(tex)
-                        } else if (mat instanceof SpriteMaterial) {
-                            mat.uniforms.tMap!.value = this.ct(tex)
+                        if (mat instanceof THREE.ShaderMaterial) {
+                            const { uniforms: { tDepth, tMap } } = mat
+                            tDepth && (tDepth.value = this.dt(tex))
+                            tMap && (tMap.value = this.ct(tex))
                         } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                             mat.map = this.ct(tex)
                         }
