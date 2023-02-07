@@ -8,39 +8,85 @@ export default ({ view, updateView }: {
     view: ViewOpts
     updateView: <K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) => void
 }) => {
+    // WIP
+    view
+    updateView
     return <>
-        <Group title="Home">
-            <ImageButton title={
-                view.pick?.mode ? `Picking ${view.pick.mode}` : 'Pick ...'
-            } menu={
-                <Menu>
-                    <MenuGroup>
-                        <MenuItem onClick={ () => updateView('pick', { mode: 'face' }) }>Face</MenuItem>
-                        <MenuItem onClick={ () => updateView('pick', { mode: 'edge' }) }>Edge</MenuItem>
-                        <MenuItem onClick={ () => updateView('pick', { mode: 'vert' }) }>Vertex</MenuItem>
-                        <MenuItem onClick={ () => updateView('pick', { mode: undefined }) }>None</MenuItem>
-                    </MenuGroup>
-                </Menu>
-            } />
-            <ImageButton title={ <span>good <br /> xxx</span> } />
-        </Group>
-        <Group title="Tool">
-            <ImageButton title="xx" />
+        <Group title="Clipboard">
+            <ImageButton title="Paste" />
             <div>
-                <IconButton title="button" />
-                <IconButton title="dropdown" menu={
+                <IconButton title="Delete" />
+                <IconButton title="Copy" />
+                <IconButton title="Copy View" menu={
                     <Menu>
                         <MenuGroup>
-                            <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
-                            <MenuItem>Cancel</MenuItem>
-                        </MenuGroup>
-                        <MenuGroup>
-                            <MenuItem onClick={ () => console.log('ok') }>OK</MenuItem>
-                            <MenuItem>Cancel</MenuItem>
+                            <MenuItem>Copy View</MenuItem>
+                            <MenuItem>Properties...</MenuItem>
                         </MenuGroup>
                     </Menu>
                 } />
             </div>
+        </Group>
+        <Group title="Settings">
+            <ImageButton title="Units" />
+        </Group>
+        <Group title="Simulation">
+            <ImageButton title={ <span>Simulation<br/>Project</span> } />
+            <ImageButton title={ <span>Setup<br/>Solver</span> } />
+            <ImageButton title={ <span>Start<br/>Simulation</span> } />
+            <div>
+                <IconButton title="Optimizer" />
+                <IconButton title="Par. Sweep" />
+                <IconButton title="Logfile" menu={
+                    <Menu>
+                        <MenuGroup>
+                            <MenuItem>...</MenuItem>
+                        </MenuGroup>
+                    </Menu>
+                } />
+            </div>
+        </Group>
+        <Group title="Mesh">
+            <ImageButton title={ <span>Mesh<br />View</span> } />
+            <ImageButton title={ <span>Global<br />Properties</span> } menu={
+                <Menu>
+                    <MenuGroup>
+                        <MenuItem>...</MenuItem>
+                    </MenuGroup>
+                </Menu>
+            } />
+        </Group>
+        <Group title="Edit">
+            <ImageButton title={ <span>Properties</span> } />
+            <ImageButton title={ <span>History<br />History</span> } />
+            <ImageButton title={ <span>Calculator</span> } />
+            <ImageButton title={ <span>Parametric<br />Update</span> } />
+            <div>
+                <IconButton title="Parameters" menu={
+                    <Menu>
+                        <MenuGroup>
+                            <MenuItem>...</MenuItem>
+                        </MenuGroup>
+                    </Menu>
+                } />
+                <IconButton title="Problem Type" menu={
+                    <Menu>
+                        <MenuGroup>
+                            <MenuItem>...</MenuItem>
+                        </MenuGroup>
+                    </Menu>
+                } />
+                <IconButton title="Information" />
+            </div>
+        </Group>
+        <Group title="Macros">
+            <ImageButton title="Macros" menu={
+                <Menu>
+                    <MenuGroup>
+                        <MenuItem>...</MenuItem>
+                    </MenuGroup>
+                </Menu>
+            } />
         </Group>
     </>
 }

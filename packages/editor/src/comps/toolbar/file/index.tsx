@@ -16,7 +16,7 @@ function OpenFile({ ents, setEnts }: { ents: Entity[], setEnts: (ents: Entity[])
                 <pre style={{ maxHeight: 300, overflow: 'hidden' }}>{ logs.join('\n') }</pre>
             </Modal>
         }
-        <ImageButton title="open"
+        <ImageButton title="Open"
             onClick={
                 () => upload(async files => {
                     setOpening(Array.from(files || []).map(item => item.name).join(', '))

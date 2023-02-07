@@ -2,7 +2,8 @@ import { CSSProperties } from "react"
 import { GoAlert } from "react-icons/go"
 import Dropdown from "../../utils/dropdown"
 
-export function IconButton({ active, icon, title, onClick, style, menu }: {
+export function IconButton({ active, disabled, icon, title, onClick, style, menu }: {
+    disabled?: boolean
     active?: boolean
     icon?: any
     title?: string | JSX.Element
@@ -11,8 +12,11 @@ export function IconButton({ active, icon, title, onClick, style, menu }: {
     style?: CSSProperties
 }) {
     return menu ?
-    <div className={ "icon-button flex cursor-pointer " + (active ? 'active' : '') }
-        style={{ marginLeft: -4, ...style }}>
+    <div style={{ marginLeft: -4, ...style }} className={
+            "icon-button flex cursor-pointer " +
+            (active ? 'active' : '') +
+            (disabled ? 'disabled ' : '')
+        }>
         <div className="button title px-1 py-1">
             { icon || <GoAlert style={{ display: 'inline' }} /> } { title } 
         </div>
@@ -20,9 +24,11 @@ export function IconButton({ active, icon, title, onClick, style, menu }: {
             ▼
         </Dropdown>
     </div> :
-    <div className={ "icon-button button flex cursor-pointer px-1 py-1 " + (active ? 'active' : '') }
-        style={ style }
-        onClick={ onClick }>
+    <div style={ style } className={
+            "icon-button button flex cursor-pointer px-1 py-1 " +
+            (active ? 'active ' : '') +
+            (disabled ? 'disabled ' : '')
+        } onClick={ onClick }>
         <div className="button title">
             { icon || <GoAlert style={{ display: 'inline' }} /> } { title }
         </div>

@@ -1,15 +1,20 @@
 import { GoAlert } from "react-icons/go"
 import Dropdown from "../../utils/dropdown"
 
-export function ImageButton({ active, icon, title, onClick, menu }: {
+export function ImageButton({ active, disabled, icon, title, onClick, menu }: {
     active?: boolean
+    disabled?: boolean
     icon?: any
     title?: string | JSX.Element
     onClick?: () => void
     menu?: any
 }) {
     return menu ?
-    <div className={ "icon-button flex flex-col cursor-pointer " + (active ? 'active' : '') }>
+    <div className={
+            "icon-button flex flex-col cursor-pointer " +
+            (active ? 'active ' : '') +
+            (disabled ? 'disabled ' : '')
+        }>
         <div className="button text-center">
             { icon || <GoAlert size={ 32 } style={{ margin: 4, display: 'inline' }} /> }
         </div>
@@ -17,7 +22,11 @@ export function ImageButton({ active, icon, title, onClick, menu }: {
             { title } ▼
         </Dropdown>
     </div> :
-    <div className={ "icon-button button flex flex-col cursor-pointer " + (active ? 'active' : '') } onClick={ onClick }>
+    <div className={
+            "icon-button button flex flex-col cursor-pointer " +
+            (active ? 'active ' : '') +
+            (disabled ? 'disabled ' : '')
+        } onClick={ onClick }>
         <div className="text-center">
             { icon || <GoAlert size={ 32 } style={{ margin: 4, display: 'inline' }} /> }
         </div>
