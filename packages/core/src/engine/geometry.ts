@@ -83,7 +83,7 @@ export class SpriteGeometry extends Geometry {
             norm = [] as number[]
         for (let i = 0; i < positions.length; i += 3) {
             const [x = 0, y = 0, z = 0] = positions.slice(i, i + 3),
-                start = pos.length
+                start = pos.length / 3
             pos.push(x, y, z, x, y, z, x, y, z, x, y, z)
             idx.push(...[0, 1, 2, 1, 3, 2].map(i => i + start))
             norm.push(
