@@ -170,7 +170,6 @@ export default class ThreeRenderer extends Renderer {
         this.renderer.setSize(this.renderSize.width, this.renderSize.height, false)
     }
     private readonly threeClearColor = new THREE.Color()
-    private readonly scene = new THREE.Scene()
     private revs = { } as Record<number, number>
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         super.render(scene, camera, opts)
@@ -198,9 +197,10 @@ export default class ThreeRenderer extends Renderer {
             c.updateProjectionMatrix()
         }
 
-        this.scene.clear()
+        const s = new THREE.Scene()
         scene.walk((obj, parent) => {
             const item = this.obj3(obj)
+            item.clear()
             item.position.set(obj.position.x, obj.position.y, obj.position.z)
             item.scale.set(obj.scaling.x, obj.scaling.y, obj.scaling.z)
             item.quaternion.set(obj.rotation.x, obj.rotation.y, obj.rotation.z, obj.rotation.w)
@@ -246,16 +246,16 @@ export default class ThreeRenderer extends Renderer {
             if (parent) {
                 this.obj3(parent).add(item)
             } else {
-                this.scene.add(item)
+                s.add(item)
             }
         })
 
         if (opts.depthTexture) {
             this.renderer.setRenderTarget(this.rt(opts.depthTexture))
-            this.renderer.render(this.scene, c)
+            this.renderer.render(s, c)
             this.renderer.setRenderTarget(null)
         }
         this.renderer.autoClear = !opts.keepFrame
-        this.renderer.render(this.scene, c)
+        this.renderer.render(s, c)
     }
 }
