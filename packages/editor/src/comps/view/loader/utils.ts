@@ -24,7 +24,8 @@ export const MATERIAL_SET = {
         metallic: 8, roughness: -2
     }),
     default:  new Engine.BasicMaterial({
-        color: [r,  g,  b,  1], lineWidth: devicePixelRatio * 3
+        color: [r,  g,  b,  1], lineWidth: devicePixelRatio * 3,
+        emissive: 0.5,
     }),
     dimmed:   new Engine.BasicMaterial({
         color: [r,  g,  b, .7], lineWidth: devicePixelRatio * 3
@@ -51,7 +52,7 @@ export function loadMatSet(attrs: Entity['attrs'], mats: ViewOpts['mats']) {
             key = [r, g, b, metal].join(','),
             { opts } = MATERIAL_SET.default
         return MATERIAL_CACHE.get(key) || MATERIAL_CACHE.set(key, {
-            default: new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 1.0] }),
+            default: new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 1.0], emissive: 0.5 }),
             dimmed:  new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 0.4] }),
         })
     } else {

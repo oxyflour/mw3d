@@ -24,7 +24,7 @@ struct MaterialUniforms {
   roughness: f32,
   metallic: f32,
   lineWidth: f32,
-  offset: f32,
+  emissive: f32,
   clipPlane: vec4<f32>,
 }
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
@@ -187,7 +187,7 @@ fn checkClip(input: FragInput) {
 
 @fragment
 fn fragMain(input: FragInput) -> @location(0) vec4<f32> {
-  var C = pbrRender(input);
+  var C = pbrRender(input) + material.emissive * material.color.rgb;
   checkClip(input);
   return vec4<f32>(C, material.color.a);
 }

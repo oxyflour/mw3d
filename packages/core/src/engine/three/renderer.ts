@@ -132,6 +132,7 @@ export default class ThreeRenderer extends Renderer {
                     opacity: a,
                     roughness: roughness,
                     metalness: metallic,
+                    emissive: new THREE.Color(r, g, b).multiplyScalar(mat.prop.emissive),
                 })
         return ret
     })
