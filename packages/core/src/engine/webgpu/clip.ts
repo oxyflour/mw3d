@@ -14,18 +14,20 @@ const CLIP_MATS = {
                 return material.color;
             }`
         },
-        primitive: {
-            cullMode: 'front',
-        },
-        depthStencil: {
-            depthWriteEnabled: false,
-            stencilBack: {
-                compare: 'always',
-                failOp: 'increment-clamp',
-                passOp: 'increment-clamp',
-                depthFailOp: 'increment-clamp',
+        webgpu: {
+            primitive: {
+                cullMode: 'front',
             },
-        },
+            depthStencil: {
+                depthWriteEnabled: false,
+                stencilBack: {
+                    compare: 'always',
+                    failOp: 'increment-clamp',
+                    passOp: 'increment-clamp',
+                    depthFailOp: 'increment-clamp',
+                },
+            },
+        }
     }),
     front: new BasicMaterial({
         color: [1, 1, 1, 0],
@@ -35,18 +37,20 @@ const CLIP_MATS = {
                 return material.color;
             }`
         },
-        primitive: {
-            cullMode: 'back',
-        },
-        depthStencil: {
-            depthWriteEnabled: false,
-            stencilFront: {
-                compare: 'always',
-                failOp: 'decrement-clamp',
-                passOp: 'decrement-clamp',
-                depthFailOp: 'decrement-clamp',
+        webgpu: {
+            primitive: {
+                cullMode: 'back',
             },
-        },
+            depthStencil: {
+                depthWriteEnabled: false,
+                stencilFront: {
+                    compare: 'always',
+                    failOp: 'decrement-clamp',
+                    passOp: 'decrement-clamp',
+                    depthFailOp: 'decrement-clamp',
+                },
+            },
+        }
     }),
     plane: new BasicMaterial({
         wgsl: {
@@ -95,23 +99,25 @@ const CLIP_MATS = {
                 return material.color;
             }`
         },
-        primitive: {
-            cullMode: 'none',
-        },
-        depthStencil: {
-            stencilFront: {
-                compare: 'equal',
-                failOp: 'zero',
-                passOp: 'zero',
-                depthFailOp: 'zero',
+        webgpu: {
+            primitive: {
+                cullMode: 'none',
             },
-            stencilBack: {
-                compare: 'equal',
-                failOp: 'zero',
-                passOp: 'zero',
-                depthFailOp: 'zero',
+            depthStencil: {
+                stencilFront: {
+                    compare: 'equal',
+                    failOp: 'zero',
+                    passOp: 'zero',
+                    depthFailOp: 'zero',
+                },
+                stencilBack: {
+                    compare: 'equal',
+                    failOp: 'zero',
+                    passOp: 'zero',
+                    depthFailOp: 'zero',
+                },
             },
-        },
+        }
     })
 }
 

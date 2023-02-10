@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@yff/ncc": "^2.0.11",
+    "@yff/ncc": "^2.0.12",
     "@yff/sn": "^1.0.27",
     "autoprefixer": "^10.4.8",
     "commander": "^9.4.0",

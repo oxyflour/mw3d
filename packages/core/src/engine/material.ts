@@ -16,7 +16,7 @@ export class MaterialProp extends MutableArray({
     roughness: 0.1,
     metallic: 1.0,
     lineWidth: 2.0,
-    emissive: 0,
+    zOffset: 0,
 }) {
     constructor(override readonly data = new Float32Array([1.0, 0.0, 0.0, 1.0, 0.1, 1.0, 2.0, 0])) {
         super(data)
@@ -38,9 +38,17 @@ export interface MatOpts {
     renderOrder?: number
     texture?: Texture
     sampler?: Sampler
-    multisample?: GPUMultisampleState
-    primitive?: GPUPrimitiveState
-    depthStencil?: Omit<GPUDepthStencilState, 'format'>
+    webgpu?: {
+        multisample?: GPUMultisampleState
+        primitive?: GPUPrimitiveState
+        depthStencil?: Omit<GPUDepthStencilState, 'format'>
+    }
+    webgl?: {
+        polygonOffset?: {
+            units?: number
+            factor?: number
+        }
+    }
 }
 
 export default class Material extends AutoIndex {

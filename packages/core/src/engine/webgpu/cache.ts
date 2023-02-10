@@ -251,15 +251,15 @@ export default class Cache {
                 primitive: {
                     topology,
                     cullMode: 'back',
-                    ...mat.opts.primitive,
+                    ...mat.opts.webgpu?.primitive,
                 },
                 depthStencil: {
                     depthWriteEnabled: mat.prop.a < 1 ? false : true,
                     depthCompare: 'greater',
                     format: this.opts.depthFormat,
-                    ...mat.opts.depthStencil,
+                    ...mat.opts.webgpu?.depthStencil,
                 },
-                multisample: mat.opts.multisample || this.opts.multisample
+                multisample: mat.opts.webgpu?.multisample || this.opts.multisample
             })
         return { pipeline, id }
     })

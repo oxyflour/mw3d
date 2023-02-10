@@ -59,7 +59,6 @@ export function EntityPicker({ mode, pickable, onSelect }: {
             // hide other faces for performance
             topos.map(item => (mode !== 'face' || hoverMesh?.id === item.id) &&
             <Mesh key={ item.id }
-                renderOrder={ item.id === hoverMesh?.id ? -100 : -5 }
                 geo={ item.geo }
                 mat={ item.id === hoverMesh?.id ? MATERIAL_SET.hover : item.mat }
                 offset={ item.offset }
@@ -78,7 +77,6 @@ export function TopoPicked({ entity, type, index }: {
         item = meshes[index]
     return item &&
         <Mesh
-            renderOrder={ -10 }
             geo={ item.geo }
             mat={ MATERIAL_SET.selected }
             offset={ item.offset }

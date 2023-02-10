@@ -48,11 +48,20 @@ export default class ThreeRenderer extends Renderer {
         return ret
     })
     private mat = cache((primitive: GeometryPrimitive, mat: Material) => {
-        const { r, g, b, a, roughness, metallic } = mat.prop
+        const { r, g, b, a, roughness, metallic } = mat.prop,
+            { polygonOffset } = mat.opts.webgl || { },
+            hasPolygonOffset = polygonOffset?.units !== undefined || polygonOffset?.factor !== undefined,
+            opts = {
+                ...(hasPolygonOffset ? {
+                    polygonOffset: true,
+                    polygonOffsetFactor: polygonOffset?.factor || 0,
+                    polygonOffsetUnits: polygonOffset?.units || 0,
+                } : null)
+            }
         const ret =
             primitive === 'triangle-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
                 new THREE.ShaderMaterial({
-                    transparent: true,
+                    ...opts,
                     vertexShader:   GLSL_CHUNKS.dash?.vert,
                     fragmentShader: GLSL_CHUNKS.dash?.frag,
                     uniforms: {
@@ -63,7 +72,7 @@ export default class ThreeRenderer extends Renderer {
                 }) :
             primitive === 'fat-line-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
                 new THREE.ShaderMaterial({
-                    transparent: true,
+                    ...opts,
                     vertexShader:   GLSL_CHUNKS.line?.vert,
                     fragmentShader: GLSL_CHUNKS.line?.frag,
                     uniforms: {
@@ -74,7 +83,7 @@ export default class ThreeRenderer extends Renderer {
                 }) :
             primitive === 'point-sprite' && (mat.opts.wgsl?.frag === 'fragMainColor' || mat.opts.wgsl?.frag === 'fragMainColorDash') ?
                 new THREE.ShaderMaterial({
-                    transparent: true,
+                    ...opts,
                     vertexShader:   GLSL_CHUNKS.sprite?.vert,
                     fragmentShader: GLSL_CHUNKS.line?.frag,
                     uniforms: {
@@ -85,6 +94,7 @@ export default class ThreeRenderer extends Renderer {
                 }) :
             primitive === 'fat-line-list' ?
                 new THREE.ShaderMaterial({
+                    ...opts,
                     vertexShader:   GLSL_CHUNKS.line?.vert,
                     fragmentShader: GLSL_CHUNKS.line?.frag,
                     uniforms: {
@@ -95,6 +105,7 @@ export default class ThreeRenderer extends Renderer {
                 }) :
             primitive === 'point-sprite' ?
                 new THREE.ShaderMaterial({
+                    ...opts,
                     vertexShader:   GLSL_CHUNKS.sprite?.vert,
                     fragmentShader: GLSL_CHUNKS.sprite?.frag,
                     uniforms: {
@@ -105,6 +116,7 @@ export default class ThreeRenderer extends Renderer {
                 }) :
             mat.opts.wgsl?.frag === 'fragMainColor' ?
                 new THREE.MeshBasicMaterial({
+                    ...opts,
                     color: new THREE.Color(r, g, b)
                 }) :
             mat.opts.wgsl?.frag === 'fragMainDepth' ?
@@ -114,12 +126,12 @@ export default class ThreeRenderer extends Renderer {
                     uniforms: { tDepth: { value: null } },
                 }) :
                 new THREE.MeshPhysicalMaterial({
+                    ...opts,
                     color: new THREE.Color(r, g, b),
                     transparent: a < 1,
                     opacity: a,
                     roughness: roughness,
                     metalness: metallic,
-                    emissive: new THREE.Color(r, g, b).multiplyScalar(0.5),
                 })
         return ret
     })
@@ -222,6 +234,7 @@ export default class ThreeRenderer extends Renderer {
                         { lineWidth, metallic, roughness, r, g, b, a } = obj.mat.prop
                     if (mat instanceof THREE.ShaderMaterial) {
                         const { uniforms: { vResolution, vColor, fLineWidth, vDash } } = mat
+                        mat.transparent = a < 1
                         vResolution?.value.set(width * devicePixelRatio, height * devicePixelRatio)
                         vColor?.value.set(r, g, b, a)
                         vDash?.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
