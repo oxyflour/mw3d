@@ -7,12 +7,15 @@ import Material from "./material"
 import Light from "./light"
 import Camera from "./camera"
 import RendererBase, { RendererOptions } from "./renderer"
+import WebGL2Renderer from "./webgl2/renderer"
 
 export class Renderer extends RendererBase {
     static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
+        ThreeRenderer
         return navigator.gpu ?
             await WebGPURenderer.create(canvas, opts) :
-            new ThreeRenderer(canvas, opts)
+            new WebGL2Renderer(canvas, opts)
+            //new ThreeRenderer(canvas, opts)
     }
 }
 
