@@ -9,7 +9,7 @@ DEPTH_RANGE_REMAP[14] = 1
 
 export default class Camera extends Obj3 {
     readonly viewProjection = mat4.create()
-    private viewMatrix = mat4.create()
+    readonly viewMatrix = mat4.create()
 
     readonly bindingGroup = 1
     readonly uniforms = [

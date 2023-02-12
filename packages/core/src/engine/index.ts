@@ -12,6 +12,7 @@ import WebGL2Renderer from "./webgl2/renderer"
 export class Renderer extends RendererBase {
     static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
         ThreeRenderer
+        WebGL2Renderer
         return navigator.gpu ?
             await WebGPURenderer.create(canvas, opts) :
             new WebGL2Renderer(canvas, opts)

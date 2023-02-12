@@ -5,7 +5,7 @@ import Geometry, { GeometryPrimitive, PlaneXY } from "../engine/geometry"
 import Material, { BasicMaterial } from "../engine/material"
 import Obj3, { Scene } from "../engine/obj3"
 import Camera, { PerspectiveCamera } from "../engine/camera"
-import { Mesh, Renderer, RendererOptions } from '../engine'
+import { Mesh, Renderer } from '../engine'
 import { Texture } from "../engine/uniform"
 
 import WorkerSelf from './picker?worker&inline'
@@ -84,10 +84,26 @@ export interface PickCamera {
 const DEPTH_PLANE = new Mesh(new PlaneXY({ size: 1 })),
     DEPTH_SCENE = new Scene([DEPTH_PLANE]),
     DEPTH_CAMERA = new Camera()
+
 const textureCache = {
     width: 0,
     height: 0,
     texture: undefined as undefined | Texture,
+    material: undefined as undefined | Material
+}
+function makeTextureCache(width: number, height: number) {
+    const texture = new Texture({
+        size: { width, height, depthOrArrayLayers: 1 },
+        usage: Texture.Usage.RENDER_ATTACHMENT | Texture.Usage.TEXTURE_BINDING,
+        format: 'depth24plus-stencil8',
+    }, {
+        aspect: 'depth-only'
+    })
+    const material = new BasicMaterial({
+        wgsl: { frag: 'fragMainDepth' },
+        texture
+    })
+    return { width, height, texture, material }
 }
 
 async function prepareScene(meshes: Record<number, PickMesh>,
@@ -142,20 +158,12 @@ async function renderDepth(meshes: Record<number, PickMesh>,
         throw Error(`picker support ${0xffff} meshes at max`)
     }
 
-    const { texture: depthTexture } = (textureCache.width === width && textureCache.height === height ?
-        textureCache : Object.assign(textureCache, {
-            width, height,
-            texture: new Texture({
-                size: { width: renderer.width, height: renderer.height, depthOrArrayLayers: 1 },
-                usage: Texture.Usage.RENDER_ATTACHMENT | Texture.Usage.TEXTURE_BINDING,
-                format: 'depth24plus-stencil8',
-            }, {
-                aspect: 'depth-only'
-            })
-        }))
+    const { texture: depthTexture, material } =
+        textureCache.width === width && textureCache.height === height ?
+        textureCache : Object.assign(textureCache, makeTextureCache(width, height))
 
     renderer.render(scene, camera, { depthTexture })
-    return { depthTexture, list, camera }
+    return { material, list, camera }
 }
 
 const runWithinMutex = queue((func: () => Promise<any>) => func())
@@ -220,8 +228,8 @@ const worker = wrap({
         return await next(args, transfer)
     },
     api: {
-        async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas, opts?: RendererOptions) {
-            const renderer = await Renderer.create(canvas, opts),
+        async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas) {
+            const renderer = await Renderer.create(canvas, { devicePixelRatio: 1 }),
                 ctx = pixels.getContext('2d', { willReadFrequently: true })
             if (!ctx) {
                 throw Error(`get context 2d failed`)
@@ -302,12 +310,12 @@ const worker = wrap({
                      geometries: Record<number, PickGeo>,
                      camera: PickCamera,
                      { width, height, x, y }: { x: number, y: number, width: number, height: number }) => {
-            const { depthTexture, list } = await renderDepth(meshes, geometries, camera, { width, height }),
+            const { material, list } = await renderDepth(meshes, geometries, camera, { width, height }),
                 { renderer, pixels } = await cache.context,
                 [idx = 0] = await readPixel({ x, y }),
                 { id } = list[idx - 1] || { id: 0 }
 
-            DEPTH_PLANE.mat = new BasicMaterial({ wgsl: { frag: 'fragMainDepth' }, texture: depthTexture }),
+            DEPTH_PLANE.mat = material
             renderer.render(DEPTH_SCENE, DEPTH_CAMERA)
             const [val = 0] = await readPixel({ x, y }),
                 d = val / 0xffffff,

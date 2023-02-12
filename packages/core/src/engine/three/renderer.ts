@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import cache from '../../utils/cache'
+import { parse } from '../../utils/chunk'
 import Camera, { PerspectiveCamera } from '../camera'
 import Geometry, { GeometryPrimitive } from '../geometry'
 import Light from '../light'
@@ -10,19 +11,7 @@ import Renderer, { RendererOptions, RenderOptions } from '../renderer'
 import { Texture } from '../uniform'
 
 import glsl from './shader.glsl?raw'
-
-const GLSL_CHUNKS = { } as Record<string, Record<string, string>>
-for (const chunk of (glsl as string).split('// @chunk:')) {
-    const name = chunk.slice(0, chunk.indexOf('\n')).trim(),
-        map = GLSL_CHUNKS[name] = { } as Record<string, string>
-    for (const part of chunk.split('// @')) {
-        const head = part.slice(0, part.indexOf('\n')),
-            name = head.trim()
-        if (name) {
-            map[name] = part.slice(head.length)
-        }
-    }
-}
+const GLSL_CHUNKS = parse(glsl)
 
 export default class ThreeRenderer extends Renderer {
     private readonly renderer: THREE.WebGLRenderer
@@ -65,9 +54,9 @@ export default class ThreeRenderer extends Renderer {
                     vertexShader:   GLSL_CHUNKS.dash?.vert,
                     fragmentShader: GLSL_CHUNKS.dash?.frag,
                     uniforms: {
-                        vResolution: { value: new THREE.Vector2() },
-                        vColor: { value: new THREE.Vector4() },
-                        vDash: { value: new THREE.Vector2() },
+                        renderCanvasSize: { value: new THREE.Vector2() },
+                        materialColor: { value: new THREE.Vector4() },
+                        materialProp: { value: new THREE.Vector4() },
                     },
                 }) :
             primitive === 'fat-line-list' && mat.opts.wgsl?.frag === 'fragMainColorDash' ?
@@ -76,9 +65,9 @@ export default class ThreeRenderer extends Renderer {
                     vertexShader:   GLSL_CHUNKS.line?.vert,
                     fragmentShader: GLSL_CHUNKS.line?.frag,
                     uniforms: {
-                        vResolution: { value: new THREE.Vector2() },
-                        vColor: { value: new THREE.Vector4() },
-                        fLineWidth: { value: 2 },
+                        renderCanvasSize: { value: new THREE.Vector2() },
+                        materialColor: { value: new THREE.Vector4() },
+                        materialProp: { value: new THREE.Vector4() },
                     },
                 }) :
             primitive === 'point-sprite' && (mat.opts.wgsl?.frag === 'fragMainColor' || mat.opts.wgsl?.frag === 'fragMainColorDash') ?
@@ -87,9 +76,9 @@ export default class ThreeRenderer extends Renderer {
                     vertexShader:   GLSL_CHUNKS.sprite?.vert,
                     fragmentShader: GLSL_CHUNKS.line?.frag,
                     uniforms: {
-                        vResolution: { value: new THREE.Vector2() },
-                        vColor: { value: new THREE.Vector4() },
-                        tMap: { value: null },
+                        renderCanvasSize: { value: new THREE.Vector2() },
+                        materialColor: { value: new THREE.Vector4() },
+                        materialMap: { value: null },
                     },
                 }) :
             primitive === 'fat-line-list' ?
@@ -98,9 +87,9 @@ export default class ThreeRenderer extends Renderer {
                     vertexShader:   GLSL_CHUNKS.line?.vert,
                     fragmentShader: GLSL_CHUNKS.line?.frag,
                     uniforms: {
-                        vResolution: { value: new THREE.Vector2() },
-                        vColor: { value: new THREE.Vector4() },
-                        fLineWidth: { value: 2 },
+                        renderCanvasSize: { value: new THREE.Vector2() },
+                        materialColor: { value: new THREE.Vector4() },
+                        materialProp: { value: new THREE.Vector4() },
                     },
                 }) :
             primitive === 'point-sprite' ?
@@ -109,9 +98,9 @@ export default class ThreeRenderer extends Renderer {
                     vertexShader:   GLSL_CHUNKS.sprite?.vert,
                     fragmentShader: GLSL_CHUNKS.sprite?.frag,
                     uniforms: {
-                        vResolution: { value: new THREE.Vector2() },
-                        vColor: { value: new THREE.Vector4() },
-                        tMap: { value: null },
+                        renderCanvasSize: { value: new THREE.Vector2() },
+                        materialColor: { value: new THREE.Vector4() },
+                        materialMap: { value: null },
                     },
                 }) :
             mat.opts.wgsl?.frag === 'fragMainColor' ?
@@ -123,7 +112,7 @@ export default class ThreeRenderer extends Renderer {
                 new THREE.ShaderMaterial({
                     vertexShader:   GLSL_CHUNKS.depth?.vert,
                     fragmentShader: GLSL_CHUNKS.depth?.frag,
-                    uniforms: { tDepth: { value: null } },
+                    uniforms: { materialMapDepth: { value: null } },
                 }) :
                 new THREE.MeshPhysicalMaterial({
                     ...opts,
@@ -232,25 +221,25 @@ export default class ThreeRenderer extends Renderer {
                     const mat = mesh.material = this.mat(obj.geo?.type || 'triangle-list', obj.mat)
                     mat.clippingPlanes = obj.mat.needsClip ? [this.clip(obj.mat)] : null
                     const { width, height, devicePixelRatio } = this,
-                        { lineWidth, metallic, roughness, r, g, b, a } = obj.mat.prop
+                        { lineWidth, metallic, roughness, emissive, r, g, b, a } = obj.mat.prop
+                    mat.transparent = a < 1
                     if (mat instanceof THREE.ShaderMaterial) {
-                        const { uniforms: { vResolution, vColor, fLineWidth, vDash } } = mat
-                        mat.transparent = a < 1
-                        vResolution?.value.set(width * devicePixelRatio, height * devicePixelRatio)
-                        vColor?.value.set(r, g, b, a)
-                        vDash?.value.set(metallic * devicePixelRatio, roughness * devicePixelRatio)
-                        fLineWidth && (fLineWidth.value = lineWidth)
+                        const { uniforms: { renderCanvasSize, materialColor, materialProp } } = mat
+                        renderCanvasSize?.value.set(width * devicePixelRatio, height * devicePixelRatio)
+                        materialColor?.value.set(r, g, b, a)
+                        materialProp?.value.set(roughness * devicePixelRatio, metallic * devicePixelRatio, lineWidth, emissive)
                     } else if (mat instanceof THREE.MeshPhysicalMaterial) {
-                        mat.metalness = obj.mat.prop.metallic
-                        mat.roughness = obj.mat.prop.roughness
+                        mat.metalness = metallic
+                        mat.roughness = roughness
+                        mat.emissive.setRGB(r * emissive, g * emissive, b * emissive)
                     }
 
                     const tex = obj.mat.opts.texture
                     if (tex) {
                         if (mat instanceof THREE.ShaderMaterial) {
-                            const { uniforms: { tDepth, tMap } } = mat
-                            tDepth && (tDepth.value = this.dt(tex))
-                            tMap && (tMap.value = this.ct(tex))
+                            const { uniforms: { materialMapDepth, materialMap } } = mat
+                            materialMapDepth && (materialMapDepth.value = this.dt(tex))
+                            materialMap && (materialMap.value = this.ct(tex))
                         } else if (mat instanceof THREE.MeshPhysicalMaterial) {
                             mat.map = this.ct(tex)
                         }

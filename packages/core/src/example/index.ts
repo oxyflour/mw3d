@@ -53,10 +53,12 @@ async function clickScene(evt: MouseEvent) {
     })
     buffer
     if ((window as any).DEBUG_SHOW_CLICK_BUFFER) {
+        /*
         const { buffer } = await Picker.clip(scene, camera, {
             width: elem.clientWidth,
             height: elem.clientHeight,
         })
+         */
         await showBuffer(buffer)
     }
     scene.walk(obj => {
@@ -202,6 +204,6 @@ requestAnimationFrame(function render() {
     handle.rotation.rotX(0.005)
     depthScene
     control.update()
-    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
+    renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
     renderer.render(scene, camera, { renderClips: true })
 })

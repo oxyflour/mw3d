@@ -8,9 +8,9 @@ void main() {
 // @frag
 #include <packing>
 varying vec4 vPos;
-uniform sampler2D tDepth;
+uniform sampler2D materialMapDepth;
 void main() {
-    float v = texture2D(tDepth, vPos.xy).x;
+    float v = texture2D(materialMapDepth, vPos.xy).x;
     v = 1. - v / 2.;
     uint i = uint(v * float(0x1000000));
     uint r = (i & 0x0000ffu);
@@ -25,14 +25,14 @@ void main() {
 
 // @chunk:line
 // @vert
-uniform vec2 vResolution;
-uniform float fLineWidth;
+uniform vec2 renderCanvasSize;
+uniform vec4 materialProp;
 void main() {
     vec4 p0 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     vec4 p1 = projectionMatrix * modelViewMatrix * vec4(normal, 1.0);
     vec4 dir = normalize(p0 - p1);
     int idx = gl_VertexID % 4;
-    float thickness = fLineWidth / vResolution.x * p0.w;
+    float thickness = materialProp.z / renderCanvasSize.x * p0.w;
     if (idx == 0 || idx == 3) {
         thickness *= -1.;
     }
@@ -41,20 +41,20 @@ void main() {
     gl_Position = p0;
 }
 // @frag
-uniform vec4 vColor;
+uniform vec4 materialColor;
 void main() {
-    gl_FragColor = vColor;
+    gl_FragColor = materialColor;
 }
 
 // @chunk:sprite
 // @vert
-uniform vec2 vResolution;
+uniform vec2 renderCanvasSize;
 varying vec2 vUv;
 void main() {
     vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     vec2 size = normal.xy;
     if (normal.z != 0.) {
-        size = size / vResolution * pos.w;
+        size = size / renderCanvasSize * pos.w;
     }
     int idx = gl_VertexID % 4;
     vec2 delta = vec2(0., 0.);
@@ -75,10 +75,10 @@ void main() {
 }
 // @frag
 varying vec2 vUv;
-uniform sampler2D tMap;
-uniform vec4 vColor;
+uniform sampler2D materialMap;
+uniform vec4 materialColor;
 void main() {
-    vec4 c = texture2D(tMap, vUv);
+    vec4 c = texture2D(materialMap, vUv);
     if (c.a == 0.) {
         discard;
     }
@@ -93,14 +93,14 @@ void main() {
     vPos = gl_Position;
 }
 // @frag
-uniform vec2 vDash;
-uniform vec4 vColor;
-uniform vec2 vResolution;
+uniform vec4 materialColor;
+uniform vec4 materialProp;
+uniform vec2 renderCanvasSize;
 varying vec4 vPos;
 void main() {
-    float n = vDash.x;
-    float v = vDash.y;
-    vec2 s = fract(vPos.xy / vPos.w * vResolution / n) * n;
+    float n = materialProp.y;
+    float v = materialProp.x;
+    vec2 s = fract(vPos.xy / vPos.w * renderCanvasSize / n) * n;
     if (v > 0.) {
         if (s.x > v || s.y > v) {
             discard;
@@ -110,5 +110,5 @@ void main() {
             discard;
         }
     }
-    gl_FragColor = vColor;
+    gl_FragColor = materialColor;
 }
