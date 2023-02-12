@@ -55,6 +55,8 @@ export default class WebGL2Renderer extends Renderer {
         const ret = { ...GLSL_CHUNKS.common }
         if (geo.type === 'fat-line-list') {
             Object.assign(ret, GLSL_CHUNKS.line)
+        } else if (geo.type === 'point-sprite') {
+            Object.assign(ret, GLSL_CHUNKS.sprite)
         }
         if (mat.opts.wgsl?.frag === 'fragMainColor') {
             ret.frag = GLSL_CHUNKS.line?.frag || ''
@@ -141,7 +143,11 @@ export default class WebGL2Renderer extends Renderer {
             type = WebGL2RenderingContext.UNSIGNED_BYTE,
             { width, height = width } = tex.opts.size as GPUExtent3DDict
         ctx.bindTexture(target, texture)
-        ctx.texImage2D(target, 0, format, width, height, 0, format, type, null)
+        ctx.texImage2D(target, 0, format, width, height, 0, format, type, tex.opts.source as any)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST)
         return texture
     })
     private dt = cache((tex: Texture) => {
@@ -154,6 +160,10 @@ export default class WebGL2Renderer extends Renderer {
             { width, height = width } = tex.opts.size as GPUExtent3DDict
         ctx.bindTexture(target, texture)
         ctx.texImage2D(target, 0, internal, width, height, 0, format, type, null)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST)
+        ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST)
         return texture
     })
     private rt = cache((color?: Texture, depth?: Texture) => {
@@ -165,19 +175,12 @@ export default class WebGL2Renderer extends Renderer {
             ctx.framebufferTexture2D(ctx.FRAMEBUFFER,
                 ctx.COLOR_ATTACHMENT0, ctx.TEXTURE_2D, texture, 0)
         }
-
-        const depthBuffer = ctx.createRenderbuffer()
-        ctx.bindRenderbuffer(ctx.RENDERBUFFER, depthBuffer)
         if (depth) {
             const texture = this.dt(depth)
             ctx.framebufferTexture2D(ctx.FRAMEBUFFER,
                 ctx.DEPTH_ATTACHMENT, ctx.TEXTURE_2D, texture, 0)
-        } else {
-            ctx.framebufferRenderbuffer(ctx.FRAMEBUFFER,
-                ctx.DEPTH_ATTACHMENT, ctx.RENDERBUFFER, depthBuffer)
         }
-
-        return { frameBuffer, depthBuffer }
+        return { frameBuffer }
     })
     private updateUniforms(prog: WebGLProgram, entity: Camera | Material | Mesh | Light[]) {
         const { ctx } = this,
@@ -206,14 +209,13 @@ export default class WebGL2Renderer extends Renderer {
             clip && ctx.uniform4fv(loc('materialClip'),  clip)
             const { texture, wgsl } = entity.opts
             if (texture) {
+                ctx.activeTexture(ctx.TEXTURE0)
                 if (wgsl?.frag === 'fragMainDepth') {
-                    ctx.uniform1i(loc('materialMapDepth'), 0)
-                    ctx.activeTexture(ctx.TEXTURE0)
                     ctx.bindTexture(ctx.TEXTURE_2D, this.dt(texture))
+                    ctx.uniform1i(loc('materialMapDepth'), 0)
                 } else {
-                    ctx.uniform1i(loc('materialMap'), 0)
-                    ctx.activeTexture(ctx.TEXTURE0)
                     ctx.bindTexture(ctx.TEXTURE_2D, this.tx(texture))
+                    ctx.uniform1i(loc('materialMap'), 0)
                 }
             }
         }
@@ -267,10 +269,8 @@ export default class WebGL2Renderer extends Renderer {
 
         const { lights, sorted } = this.prepare(scene, camera)
         if (opts.colorTexture || opts.depthTexture) {
-            const { frameBuffer, depthBuffer } = this.rt(opts.colorTexture, opts.depthTexture)
+            const { frameBuffer } = this.rt(opts.colorTexture, opts.depthTexture)
             ctx.bindFramebuffer(ctx.FRAMEBUFFER, frameBuffer)
-            ctx.bindRenderbuffer(ctx.RENDERBUFFER, depthBuffer)
-            ctx.renderbufferStorage(ctx.RENDERBUFFER, ctx.DEPTH_COMPONENT16, this.renderSize.width, this.renderSize.height)
             this.draw(lights, sorted, camera)
         }
         ctx.bindFramebuffer(ctx.FRAMEBUFFER, null)
