@@ -83,9 +83,9 @@ float G_SchlicksmithGGX(float dotNL, float dotNV, float roughness) {
   return GL * GV;
 }
 
-vec3 F_Schlick(float cosTheta, float metallic) {
+vec3 F_Schlick(float dotNV, float metallic) {
   vec3 F0 = mix(vec3(0.04), materialColor.rgb, metallic);
-  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+  return F0 + (1.0 - F0) * pow(1.0 - dotNV, 5.0);
 }
 
 vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness) {

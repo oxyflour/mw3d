@@ -74,10 +74,10 @@ export default class WebGL2Renderer extends Renderer {
         }
 
         for (const { type, src } of [{
-            type: WebGL2RenderingContext.VERTEX_SHADER,
+            type: ctx.VERTEX_SHADER,
             src: vert
         }, {
-            type: WebGL2RenderingContext.FRAGMENT_SHADER,
+            type: ctx.FRAGMENT_SHADER,
             src: frag
         }]) {
             const shader = ctx.createShader(type)
@@ -123,7 +123,7 @@ export default class WebGL2Renderer extends Renderer {
                 const buffer = ctx.createBuffer()
                 ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
                 ctx.bufferData(ctx.ARRAY_BUFFER, arr, ctx.STATIC_DRAW)
-                ctx.vertexAttribPointer(loc, 3, WebGL2RenderingContext.FLOAT, false, 0, 0)
+                ctx.vertexAttribPointer(loc, 3, ctx.FLOAT, false, 0, 0)
             }
         }
 
@@ -136,14 +136,13 @@ export default class WebGL2Renderer extends Renderer {
         return arr
     })
     private tx = cache((tex: Texture) => {
-        const { ctx } = this,
-            texture = ctx.createTexture(),
-            target = WebGL2RenderingContext.TEXTURE_2D,
-            format = WebGL2RenderingContext.RGBA,
-            type = WebGL2RenderingContext.UNSIGNED_BYTE,
+        const { ctx } = this
+        ctx.activeTexture(ctx.TEXTURE0)
+        const texture = ctx.createTexture(),
             { width, height = width } = tex.opts.size as GPUExtent3DDict
-        ctx.bindTexture(target, texture)
-        ctx.texImage2D(target, 0, format, width, height, 0, format, type, tex.opts.source as any)
+        ctx.bindTexture(ctx.TEXTURE_2D, texture)
+        ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA,
+            width, height, 0, ctx.RGBA, ctx.UNSIGNED_BYTE, tex.opts.source as any)
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE)
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE)
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST)
@@ -151,15 +150,13 @@ export default class WebGL2Renderer extends Renderer {
         return texture
     })
     private dt = cache((tex: Texture) => {
-        const { ctx } = this,
-            texture = ctx.createTexture(),
-            target = WebGL2RenderingContext.TEXTURE_2D,
-            internal = WebGL2RenderingContext.DEPTH_COMPONENT24,
-            format = WebGL2RenderingContext.DEPTH_COMPONENT,
-            type = WebGL2RenderingContext.UNSIGNED_INT,
+        const { ctx } = this
+        ctx.activeTexture(ctx.TEXTURE0)
+        const texture = ctx.createTexture(),
             { width, height = width } = tex.opts.size as GPUExtent3DDict
-        ctx.bindTexture(target, texture)
-        ctx.texImage2D(target, 0, internal, width, height, 0, format, type, null)
+        ctx.bindTexture(ctx.TEXTURE_2D, texture)
+        ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.DEPTH_COMPONENT24,
+            width, height, 0, ctx.DEPTH_COMPONENT, ctx.UNSIGNED_INT, null)
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE)
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE)
         ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST)
@@ -180,7 +177,11 @@ export default class WebGL2Renderer extends Renderer {
             ctx.framebufferTexture2D(ctx.FRAMEBUFFER,
                 ctx.DEPTH_ATTACHMENT, ctx.TEXTURE_2D, texture, 0)
         }
-        return { frameBuffer }
+        const status = ctx.checkFramebufferStatus(ctx.FRAMEBUFFER)
+        if (status !== ctx.FRAMEBUFFER_COMPLETE) {
+            throw Error(`frame buffer status: ${status}`)
+        }
+        return frameBuffer
     })
     private updateUniforms(prog: WebGLProgram, entity: Camera | Material | Mesh | Light[]) {
         const { ctx } = this,
@@ -207,15 +208,15 @@ export default class WebGL2Renderer extends Renderer {
             prop && ctx.uniform4fv(loc('materialColor'), prop, 0, 4)
             prop && ctx.uniform4fv(loc('materialProp'),  prop, 4, 4)
             clip && ctx.uniform4fv(loc('materialClip'),  clip)
-            const { texture, wgsl } = entity.opts
+            const { texture } = entity.opts
             if (texture) {
                 ctx.activeTexture(ctx.TEXTURE0)
-                if (wgsl?.frag === 'fragMainDepth') {
-                    ctx.bindTexture(ctx.TEXTURE_2D, this.dt(texture))
+                if (texture.opts.format.startsWith('depth')) {
                     ctx.uniform1i(loc('materialMapDepth'), 0)
+                    ctx.bindTexture(ctx.TEXTURE_2D, this.dt(texture))
                 } else {
-                    ctx.bindTexture(ctx.TEXTURE_2D, this.tx(texture))
                     ctx.uniform1i(loc('materialMap'), 0)
+                    ctx.bindTexture(ctx.TEXTURE_2D, this.tx(texture))
                 }
             }
         }
@@ -237,7 +238,7 @@ export default class WebGL2Renderer extends Renderer {
                 ctx.useProgram(prog)
                 this.updateUniforms(prog, camera)
                 this.updateUniforms(prog, lights)
-                this.updateUniforms(prog, item.mat)
+                this.updateUniforms(prog, mat = item.mat)
             }
             if (mat !== item.mat && (mat = item.mat)) {
                 this.updateUniforms(prog, mat)
@@ -248,11 +249,11 @@ export default class WebGL2Renderer extends Renderer {
             if (geo !== item.geo && (geo = item.geo)) {
                 ctx.bindVertexArray(this.vao(prog, geo))
             }
-            const mode = PRIMITIVE_MODES[geo.type] || WebGL2RenderingContext.TRIANGLES,
+            const mode = PRIMITIVE_MODES[geo.type] || ctx.TRIANGLES,
                 count = mesh.count > 0 ? mesh.count : geo.count
             if (geo.indices) {
                 const type = geo.indices instanceof Uint16Array ?
-                    WebGL2RenderingContext.UNSIGNED_SHORT : WebGL2RenderingContext.UNSIGNED_INT
+                    ctx.UNSIGNED_SHORT : ctx.UNSIGNED_INT
                 ctx.drawElements(mode, count, type, mesh.offset)
             } else {
                 ctx.drawArrays(mode, mesh.offset, count)
@@ -269,8 +270,8 @@ export default class WebGL2Renderer extends Renderer {
 
         const { lights, sorted } = this.prepare(scene, camera)
         if (opts.colorTexture || opts.depthTexture) {
-            const { frameBuffer } = this.rt(opts.colorTexture, opts.depthTexture)
-            ctx.bindFramebuffer(ctx.FRAMEBUFFER, frameBuffer)
+            ctx.bindFramebuffer(ctx.FRAMEBUFFER, this.rt(opts.colorTexture, opts.depthTexture))
+            ctx.clear(ctx.DEPTH_BUFFER_BIT)
             this.draw(lights, sorted, camera)
         }
         ctx.bindFramebuffer(ctx.FRAMEBUFFER, null)
