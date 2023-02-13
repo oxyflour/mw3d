@@ -61,7 +61,7 @@ export default class WebGL2Renderer extends Renderer {
         if (mat.opts.wgsl?.frag === 'fragMainColor') {
             ret.frag = GLSL_CHUNKS.line?.frag || ''
         } else if (mat.opts.wgsl?.frag === 'fragMainDepth') {
-            Object.assign(ret, GLSL_CHUNKS.depth)
+            Object.assign(ret, GLSL_CHUNKS.depthGL2)
         }
         return ret
     })

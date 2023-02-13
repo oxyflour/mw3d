@@ -22,6 +22,30 @@ void main() {
         float(b) / 255.,
         1.);
 }
+// @chunk:depthGL2
+// @vert
+varying vec4 vPos;
+void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vPos = (gl_Position + 1.) * .5;
+}
+// @frag
+#include <packing>
+varying vec4 vPos;
+uniform sampler2D materialMapDepth;
+void main() {
+    float v = texture2D(materialMapDepth, vPos.xy).x;
+    v = 1.5 - v;
+    uint i = uint(v * float(0x1000000));
+    uint r = (i & 0x0000ffu);
+    uint g = (i & 0x00ff00u) >> 8u;
+    uint b = (i & 0xff0000u) >> 16u;
+    gl_FragColor = vec4(
+        float(r) / 255.,
+        float(g) / 255.,
+        float(b) / 255.,
+        1.);
+}
 
 // @chunk:line
 // @vert
