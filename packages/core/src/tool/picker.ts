@@ -29,7 +29,7 @@ const cache = {
     inited: undefined as undefined | Promise<void>,
     context: new Promise<PickContext>(resolve => resolveContext = resolve),
 
-    geoMap: { } as Record<number, Geometry>,
+    geoMap: { } as Record<number, Geometry & { accessedAt?: number }>,
     matMap: [] as Material[],
     meshMap: [] as Mesh[],
 }
@@ -71,6 +71,7 @@ export interface PickGeo {
     indices?: Uint16Array | Uint32Array
     min: number[]
     max: number[]
+    accessedAt?: number
 }
 
 export interface PickCamera {
@@ -120,7 +121,8 @@ async function prepareScene(meshes: Record<number, PickMesh>,
     Object.assign(camera, { fov, aspect, near, far })
     camera.setWorldMatrix(worldMatrix)
 
-    const list = Object.values(meshes)
+    const list = Object.values(meshes),
+        accessedAt = Date.now()
     for (const [index, { worldMatrix, geoId, offset, count, clipPlane, lineWidth }] of list.entries()) {
         if (!geometries[geoId] && !geoMap[geoId]) {
             throw Error(`geometry ${geoId} is not found`)
@@ -132,6 +134,7 @@ async function prepareScene(meshes: Record<number, PickMesh>,
                 color: new Uint8Array([idx, idx >> 8, idx >> 16]),
             })),
             mesh = meshMap[idx] || (meshMap[idx] = new Mesh())
+        Object.assign(geo, { accessedAt })
         mat.prop.lineWidth = lineWidth
         if (clipPlane) {
             mat.clip.assign(clipPlane)
@@ -208,7 +211,7 @@ class Bound {
 }
 const vec = vec4.create(),
     tmp = vec3.create()
-function getGeoBound(geo: PickGeo, mat: mat4, bound = new Bound()) {
+function getGeoBound(geo: { min: number[], max: number[] }, mat: mat4, bound = new Bound()) {
     for (const [a, b, c] of expandBound(geo.min, geo.max)) {
         vec4.set(vec, a, b, c, 1.)
         vec4.transformMat4(vec, vec, mat)
@@ -237,7 +240,25 @@ const worker = wrap({
             resolveContext({ canvas, pixels, renderer, ctx })
         },
         async test({ geometries }: { geometries: number[] }) {
-            return { geometries: geometries.filter(id => !cache.geoMap[id]) }
+            const required = [] as number[],
+                now = Date.now(),
+                timeout = now - 60 * 1000
+            for (const id of geometries) {
+                const item = cache.geoMap[id]
+                if (item) {
+                    item.accessedAt = now
+                } else {
+                    required.push(id)
+                }
+            }
+            for (const key of Object.keys(cache.geoMap)) {
+                const id = parseInt(key),
+                    current = cache.geoMap[id]?.accessedAt || now
+                if (current < timeout) {
+                    delete cache.geoMap[id]
+                }
+            }
+            return { geometries: required }
         },
         clip: makeMutexFunc(async (meshes: Record<number, PickMesh>,
                    geometries: Record<number, PickGeo>,
