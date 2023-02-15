@@ -1,11 +1,26 @@
-import { Engine, Mesh, Obj3, useCanvas } from "@ttk/react"
+import { CanvasContextValue, Engine, Mesh, Obj3, useCanvas } from "@ttk/react"
 import { useEffect, useRef, useState } from "react"
 import { debounce } from "../../../utils/common/debounce"
 import { Entity } from "../../../utils/data/entity"
 import { ViewPickMode } from "../../../utils/data/view"
 import { useAsync } from "../../../utils/react/hooks"
-import { MATERIAL_SET } from "../loader/utils"
-import { loadTopo, Obj3WithEntity, pick } from "./utils"
+import { loadGeom, MATERIAL_SET } from "../loader/utils"
+import { loadVertGeom, loadTopo, Obj3WithEntity, pick } from "./utils"
+
+async function pickTopo(topos: Engine.Mesh[], ctx: CanvasContextValue, position: { clientX: number, clientY: number }) {
+    const res = await pick({ scene: new Engine.Scene(topos), ...ctx }, position)
+    return topos.find(mesh => mesh.id === res.id)
+}
+async function loadSelection(mode: ViewPickMode, entity: Entity) {
+    const topos = await loadTopo(mode, entity),
+        geom =
+            mode === 'edge' ? (entity.geom?.url ?
+                (await loadGeom(entity.geom.url)).edges : undefined) :
+            mode === 'vert' ? (entity.topo?.verts?.url ?
+                (await loadVertGeom(entity.topo.verts.url)).geo : undefined) :
+            undefined
+    return { topos, geom }
+}
 
 export function EntityPicker({ mode, pickable, onSelect }: {
     mode: ViewPickMode
@@ -15,8 +30,9 @@ export function EntityPicker({ mode, pickable, onSelect }: {
     const { scene, ...ctx } = useCanvas(),
         { canvas } = ctx,
         [{ entity, ...position }, setHoverEntity] = useState({ entity: undefined as undefined | Entity, clientX: 0, clientY: 0 }),
-        [hoverMesh, setHoverMesh] = useState<Engine.Mesh>(),
-        [{ value: topos = [] }] = useAsync(async () => entity ? await loadTopo(mode, entity) : [], [mode, entity]),
+        [{ value: selection }] = useAsync(async () => entity ? await loadSelection(mode, entity) : undefined, [mode, entity]),
+        [{ value: hoverMesh }, { setValue: setHoverMesh }] = useAsync(async () => topos && await pickTopo(topos, ctx, position), [selection?.topos, position.clientX, position.clientY]),
+        { topos, geom } = selection || { },
         callback = useRef(onSelect),
         onMouseMove = useRef<(evt: MouseEvent) => any>(),
         onDblClick = useRef<(evt: MouseEvent) => any>()
@@ -24,21 +40,17 @@ export function EntityPicker({ mode, pickable, onSelect }: {
     onMouseMove.current = async ({ clientX, clientY }) => {
         const meshes = (Array.from(scene || []) as Obj3WithEntity[])
                 .filter(item => pickable ? item.entity?.nodes?.some(node => pickable[node]) : item.entity)
-                .concat(topos.map(mesh => Object.assign(mesh, { entity }))),
+                .concat(topos?.map(mesh => Object.assign(mesh, { entity })) || []),
             map = Object.fromEntries(meshes.map(mesh => [mesh.id, mesh.entity!])),
             ret = await pick({ scene: new Engine.Scene(meshes), ...ctx }, { clientX, clientY })
         setHoverEntity({ entity: map[ret.id], clientX, clientY })
     }
     onDblClick.current = async ({ clientX, clientY }) => {
         const ret = await pick({ ...ctx, scene: new Engine.Scene(topos) }, { clientX, clientY }),
-            index = topos.findIndex(mesh => mesh.id === ret.id)
+            index = (topos || []).findIndex(mesh => mesh.id === ret.id)
         entity && index >= 0 && onSelect?.({ entity, index })
-        setHoverEntity({ entity: undefined, clientX, clientY })
+        setHoverMesh(undefined)
     }
-    useEffect(() => {
-        pick({ scene: new Engine.Scene(topos), ...ctx }, position)
-            .then(res => setHoverMesh(topos.find(mesh => mesh.id === res.id)))
-    }, [topos, position.clientX, position.clientY])
     useEffect(() => {
         if (canvas) {
             const onHover = debounce((evt: MouseEvent) => onMouseMove.current?.(evt), 50),
@@ -53,16 +65,19 @@ export function EntityPicker({ mode, pickable, onSelect }: {
             return () => { }
         }
     }, [canvas])
-    return entity && topos.length &&
+    return entity &&
         <Obj3 matrix={ entity.trans }>
         {
-            // hide other faces for performance
-            topos.map(item => (mode !== 'face' || hoverMesh?.id === item.id) &&
-            <Mesh key={ item.id }
-                geo={ item.geo }
-                mat={ item.id === hoverMesh?.id ? MATERIAL_SET.hover : item.mat }
-                offset={ item.offset }
-                count={ item.count } />)
+            geom && <Mesh
+                geo={ geom }
+                mat={ MATERIAL_SET.select } />
+        }
+        {
+            hoverMesh && <Mesh
+                geo={ hoverMesh.geo }
+                mat={ MATERIAL_SET.hover }
+                offset={ hoverMesh.offset }
+                count={ hoverMesh.count } />
         }
         </Obj3> ||
         null

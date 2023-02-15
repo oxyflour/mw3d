@@ -66,8 +66,14 @@ export default class WebGL2Renderer extends Renderer {
             Object.assign(ret, GLSL_CHUNKS.line)
         } else if (type === 'point-sprite') {
             Object.assign(ret, GLSL_CHUNKS.sprite)
-        }
-        if (mat.opts.wgsl?.frag === 'fragMainColor') {
+        } 
+        if (mat.opts.wgsl?.frag === 'fragMainColorDash') {
+            if (type === 'triangle-list') {
+                Object.assign(ret, GLSL_CHUNKS.dash)
+            } else {
+                ret.frag = GLSL_CHUNKS.line?.frag || ''
+            }
+        } else if (mat.opts.wgsl?.frag === 'fragMainColor') {
             ret.frag = GLSL_CHUNKS.line?.frag || ''
         } else if (mat.opts.wgsl?.frag === 'fragMainDepth') {
             Object.assign(ret, GLSL_CHUNKS.depthGL2)
@@ -203,7 +209,7 @@ export default class WebGL2Renderer extends Renderer {
             }
         } else if (entity instanceof Camera) {
             const [[viewProjection, worldPosition] = []] = entity.uniforms
-            // Note: webgl view projection range is different
+            // Note: webgl view projection range is different in WebGL and WebGPU
             mat4.multiply(MAT4_TMP, entity.projection, entity.viewMatrix)
             viewProjection && ctx.uniformMatrix4fv(loc('cameraViewProjection'), false, MAT4_TMP)
             worldPosition  && ctx.uniform4fv(loc('cameraWorldPosition'), worldPosition)

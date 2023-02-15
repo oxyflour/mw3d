@@ -11,6 +11,7 @@ import { select } from '../../../../utils/data/tree'
 import { useEntities } from '..'
 import { Group } from '../../../../comps/toolbar/utils/group'
 import { ImageButton } from '../../../../comps/toolbar/utils/image-button'
+import { IconButton } from '../../../../comps/toolbar/utils/icon-button'
 
 const DEFAULT_VIEWOPTS = {
     mats: {
@@ -37,6 +38,15 @@ export default ({ params }: RouteMatch<'sess' | 'commit'>) => {
                 <Group title="Tool">
                     <ImageButton title="TODO" />
                 </Group>
+                <div>
+                    <IconButton icon={ <></> } title={
+                        <label>
+                            <input type="checkbox"
+                                onChange={ evt => (window as any).DEBUG_SHOW_PICK_BUFFER = evt.target.checked }
+                            /> Show Pick Buffer
+                        </label>
+                    } />
+                </div>
             </div>
         </Toolbar>
         <Resize className="grow">

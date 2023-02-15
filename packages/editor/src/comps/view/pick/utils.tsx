@@ -49,7 +49,7 @@ async function loadEdges(url: string) {
         slices = [] as { offset: number, count: number }[]
     let offset = 0
     for (const edge of edges) {
-        const count = edge.positions.length
+        const count = (edge.positions.length / 3 - 1) * 3 * 2
         slices.push({ offset, count })
         offset += count
     }
@@ -78,24 +78,28 @@ async function loadFaces(url: string) {
     })
     return slices.map(({ offset, count }) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset, count }))
 }
-async function loadVerts(url: string) {
+export async function loadVertGeom(url: string) {
     const verts = url ? unpack(await lambda.assets.get(url)) as Vert[] : [],
         positions = verts.map(item => item.position).flat(),
         geo = new Engine.SpriteGeometry({ positions, width: 50, height: 50, fixed: true })
+    return { verts, geo }
+}
+async function loadVerts(url: string) {
+    const { verts, geo } = await loadVertGeom(url)
     return verts.map((_, idx) => new Engine.Mesh(geo, MATERIAL_SET.select, { offset: idx * 6, count: 6 }))
 }
 
-const PICK_CACHE = new Utils.LRU<Engine.Mesh[]>(100)
-export async function loadTopo(type: ViewPickMode, entity: Entity) {
+const PICK_CACHE = new Utils.LRU<Promise<Engine.Mesh[]>>(100)
+export function loadTopo(type: ViewPickMode, entity: Entity) {
     if (type === 'edge') {
         const url = entity.topo?.edges?.url || ''
-        return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadEdges(url))
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url, loadEdges(url))
     } else if (type === 'face') {
         const url = entity.topo?.faces?.url || ''
-        return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadFaces(url))
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url, loadFaces(url))
     } else if (type === 'vert') {
         const url = entity.topo?.verts?.url || ''
-        return PICK_CACHE.get(url) || PICK_CACHE.set(url, await loadVerts(url))
+        return PICK_CACHE.get(url) || PICK_CACHE.set(url, loadVerts(url))
     } else {
         throw Error(`loading ${type} not implemented yet`)
     }

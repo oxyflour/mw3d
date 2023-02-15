@@ -54,14 +54,14 @@ uniform vec4 materialProp;
 void main() {
     vec4 p0 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     vec4 p1 = projectionMatrix * modelViewMatrix * vec4(normal, 1.0);
-    vec4 dir = normalize(p0 - p1);
+    vec2 dir = normalize(p0.xy - p1.xy);
+    dir = vec2(dir.y, -dir.x);
     int idx = gl_VertexID % 4;
     float thickness = materialProp.z / renderCanvasSize.x * p0.w;
     if (idx == 0 || idx == 3) {
         thickness *= -1.;
     }
-    p0.y -= thickness * dir.x;
-    p0.x += thickness * dir.y;
+    p0.xy += thickness * dir;
     gl_Position = p0;
 }
 // @frag
@@ -91,10 +91,8 @@ void main() {
     } else if (idx == 3) {
         delta = vec2( .5,  .5);
     }
-    pos.x += size.x * delta.x;
-    pos.y += size.y * delta.y;
-    vUv.x = delta.x + 0.5;
-    vUv.y = delta.y + 0.5;
+    pos.xy += size * delta;
+    vUv = delta + 0.5;
     gl_Position = pos;
 }
 // @frag
