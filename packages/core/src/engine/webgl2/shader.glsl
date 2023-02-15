@@ -130,5 +130,5 @@ vec3 pbrRender() {
 }
 
 void main() {
-    gl_FragColor = vec4(pbrRender(), 1.);
+    gl_FragColor = vec4(pbrRender(), materialColor.a);
 }

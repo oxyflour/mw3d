@@ -178,7 +178,7 @@ const camera = new PerspectiveCamera({
         }
     })
 
-const mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random()] })
+const mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.5] })
 mat.clip.assign(CLIP_PLANE)
 for (let i = 0; i < 10; i ++) {
     const { geo } = cube,

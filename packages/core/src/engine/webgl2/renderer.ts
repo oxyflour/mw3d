@@ -1,11 +1,17 @@
-import { Camera, Geometry, Light, Material, Mesh, RendererOptions, Scene, Texture } from '..'
 import { mat4 } from 'gl-matrix'
 
-import Renderer, { RenderMesh, RenderOptions } from '../renderer'
+import Renderer, { RendererOptions, RenderMesh, RenderOptions } from '../renderer'
 import cache from '../../utils/cache'
 import glsl from './shader.glsl?raw'
 import threeGlsl from '../three/shader.glsl?raw'
+import Geometry, { GeometryPrimitive } from '../geometry'
+import Material from '../material'
+import Camera from '../camera'
+import Mesh from '../mesh'
+import Light from '../light'
 import { parse } from '../../utils/chunk'
+import { Texture } from '../uniform'
+import { Scene } from '../obj3'
 
 const MAT4_TMP = mat4.create(),
     GLSL_CHUNKS = parse(glsl)
@@ -50,12 +56,15 @@ export default class WebGL2Renderer extends Renderer {
         this.ctx = ctx
         ctx.enable(ctx.DEPTH_TEST)
         ctx.enable(ctx.CULL_FACE)
+        ctx.enable(ctx.BLEND)
+        ctx.enable(ctx.POLYGON_OFFSET_FILL)
+        ctx.blendFunc(ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA)
     }
-    private code = cache((mat: Material, geo: Geometry) => {
+    private code = cache((type: GeometryPrimitive, mat: Material) => {
         const ret = { ...GLSL_CHUNKS.common }
-        if (geo.type === 'fat-line-list') {
+        if (type === 'fat-line-list') {
             Object.assign(ret, GLSL_CHUNKS.line)
-        } else if (geo.type === 'point-sprite') {
+        } else if (type === 'point-sprite') {
             Object.assign(ret, GLSL_CHUNKS.sprite)
         }
         if (mat.opts.wgsl?.frag === 'fragMainColor') {
@@ -65,9 +74,8 @@ export default class WebGL2Renderer extends Renderer {
         }
         return ret
     })
-    private prog = cache((code: string) => {
-        const [vert = '', frag = ''] = code.split('###CODE###'),
-            { ctx } = this,
+    private prog = cache((vert = '', frag = '') => {
+        const { ctx } = this,
             prog = ctx.createProgram()
         if (!prog) {
             throw Error(`create webgl2 program failed`)
@@ -208,7 +216,7 @@ export default class WebGL2Renderer extends Renderer {
             prop && ctx.uniform4fv(loc('materialColor'), prop, 0, 4)
             prop && ctx.uniform4fv(loc('materialProp'),  prop, 4, 4)
             clip && ctx.uniform4fv(loc('materialClip'),  clip)
-            const { texture } = entity.opts
+            const { texture, webgl } = entity.opts
             if (texture) {
                 ctx.activeTexture(ctx.TEXTURE0)
                 if (texture.opts.format.startsWith('depth')) {
@@ -219,6 +227,8 @@ export default class WebGL2Renderer extends Renderer {
                     ctx.bindTexture(ctx.TEXTURE_2D, this.tx(texture))
                 }
             }
+            const { polygonOffset } = webgl || { }
+            ctx.polygonOffset(polygonOffset?.factor || 0, polygonOffset?.units || 0)
         }
     }
     override resize() {
@@ -232,8 +242,8 @@ export default class WebGL2Renderer extends Renderer {
             mesh = null as Mesh | null,
             geo = null as Geometry | null
         for (const item of sorted) {
-            const code = this.code(item.mat, item.geo),
-                program = this.prog(code?.vert + '###CODE###' + code?.frag)
+            const code = this.code(item.geo.type, item.mat),
+                program = this.prog(code?.vert, code?.frag)
             if (prog !== program && (prog = program)) {
                 ctx.useProgram(prog)
                 this.updateUniforms(prog, camera)
@@ -252,9 +262,10 @@ export default class WebGL2Renderer extends Renderer {
             const mode = PRIMITIVE_MODES[geo.type] || ctx.TRIANGLES,
                 count = mesh.count > 0 ? mesh.count : geo.count
             if (geo.indices) {
-                const type = geo.indices instanceof Uint16Array ?
-                    ctx.UNSIGNED_SHORT : ctx.UNSIGNED_INT
-                ctx.drawElements(mode, count, type, mesh.offset)
+                const { type, bytes } = geo.indices instanceof Uint16Array ?
+                    { type: ctx.UNSIGNED_SHORT, bytes: 2 } :
+                    { type: ctx.UNSIGNED_INT,   bytes: 4 }
+                ctx.drawElements(mode, count, type, mesh.offset * bytes)
             } else {
                 ctx.drawArrays(mode, mesh.offset, count)
             }

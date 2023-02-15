@@ -145,7 +145,7 @@ export default class WebGPURenderer extends Renderer {
                 }
             }
             pass.setBindGroup(...this.cache.bind(pipeline, mesh))
-            const count = mesh.count > 0 ? mesh.count : mesh.geo.count
+            const count = mesh.count > 0 ? mesh.count : (mesh.geo.count - mesh.offset)
             if (geo.indices) {
                 pass.drawIndexed(count, 1, mesh.offset, 0)
             } else {
