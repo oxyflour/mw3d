@@ -92,7 +92,8 @@ void main() {
         delta = vec2( .5,  .5);
     }
     pos.xy += size * delta;
-    vUv = delta + 0.5;
+    vUv.x = delta.x + 0.5;
+    vUv.y = 0.5 - delta.y;
     gl_Position = pos;
 }
 // @frag
