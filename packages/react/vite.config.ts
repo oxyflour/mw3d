@@ -59,7 +59,8 @@ export default defineConfig({
         sourcemap: true,
         lib: {
             entry: './src',
-            name: 'react'
+            name: 'react',
+            formats: ['es']
         },
         rollupOptions: {
             external: ['react'],

@@ -5,13 +5,13 @@ import Toolbar from '../../../../comps/toolbar'
 import Nav from '../../../../comps/nav'
 import View from '../../../../comps/view'
 import Resize from '../../../../comps/utils/resize'
-import { parse, remove, TreeEnts } from '../../../../utils/data/entity'
+import { Entity, parse, remove, TreeEnts } from '../../../../utils/data/entity'
 import { ViewOpts } from '../../../../utils/data/view'
 import { select } from '../../../../utils/data/tree'
-import { useEntities } from '..'
 import { Group } from '../../../../comps/toolbar/utils/group'
 import { ImageButton } from '../../../../comps/toolbar/utils/image-button'
 import { IconButton } from '../../../../comps/toolbar/utils/icon-button'
+import { EntityStore } from '..'
 
 const DEFAULT_VIEWOPTS = {
     mats: {
@@ -28,11 +28,12 @@ const DEFAULT_VIEWOPTS = {
 } as ViewOpts
 
 export default ({ params }: RouteMatch<'sess' | 'commit'>) => {
-    const [ents, setEnts] = useEntities(params.sess, params.commit),
+    const [ents, setEnts] = useState([] as Entity[]),
         [tree, setTree] = useState({ } as TreeEnts),
         [view, setView] = useState(DEFAULT_VIEWOPTS)
     useEffect(() => { setTree(parse(ents, tree)) }, [ents])
     return <div className="app flex flex-col h-full">
+        <EntityStore { ...{ entities: ents, setEntities: setEnts, params } } />
         <Toolbar { ...{ ents, tree, view, setEnts, setView } }>
             <div title="Debug">
                 <Group title="Tool">

@@ -401,7 +401,7 @@ export interface Size {
     height: number
 }
 
-const Picker = {
+export default {
     async query(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.query(meshes, geoms, view, opts)
@@ -419,4 +419,3 @@ const Picker = {
         return await worker.bound(meshes, geoms, view)
     },
 }
-export default Picker

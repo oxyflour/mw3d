@@ -16,7 +16,16 @@ export default defineConfig({
         sourcemap: true,
         lib: {
             entry: './src',
-            name: 'core'
+            name: 'core',
+            formats: ['es']
+        },
+        rollupOptions: {
+            external: ['three'],
+            output: {
+                globals: {
+                    three: 'three'
+                }
+            }
         }
     },
     server: {
