@@ -33,8 +33,8 @@ function merge(code: string, rest: string) {
 }
 for (const [name, { vert = '', frag = '' }] of Object.entries(parse(threeGlsl))) {
     GLSL_CHUNKS[name] = {
-        vert: merge(GLSL_CHUNKS.common?.vert || '', vert),
-        frag: merge(GLSL_CHUNKS.common?.frag || '', frag),
+        vert: merge(GLSL_CHUNKS.base?.vert || '', vert),
+        frag: merge(GLSL_CHUNKS.base?.frag || '', frag),
     }
 }
 
@@ -61,7 +61,7 @@ export default class WebGL2Renderer extends Renderer {
         ctx.blendFunc(ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA)
     }
     private code = cache((type: GeometryPrimitive, mat: Material) => {
-        const ret = { ...GLSL_CHUNKS.common }
+        const ret = { ...GLSL_CHUNKS.base }
         if (type === 'fat-line-list') {
             Object.assign(ret, GLSL_CHUNKS.line)
         } else if (type === 'point-sprite') {

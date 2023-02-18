@@ -1,4 +1,4 @@
-// @chunk:common
+// @chunk:base
 // @vert
 #version 300 es
 
@@ -23,12 +23,12 @@ uniform mat4 meshModelMatrix;
 uniform vec4 meshWorldPosition;
 
 uniform vec4 materialColor;
-// x: roughness
-// y: metallic
-// z: lineWidth
-// w: emissive
 uniform vec4 materialProp;
 uniform vec4 materialClip;
+#define materialRoughness materialProp.x
+#define materialMetallic  materialProp.y
+#define materialLineWidth materialProp.z
+#define materialEmissive  materialProp.w
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -63,6 +63,10 @@ uniform vec4 cameraWorldPosition;
 
 uniform vec4 materialColor;
 uniform vec4 materialProp;
+#define materialRoughness materialProp.x
+#define materialMetallic  materialProp.y
+#define materialLineWidth materialProp.z
+#define materialEmissive  materialProp.w
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -112,19 +116,19 @@ vec3 pbrRender() {
   vec3 C = vec3(0.0, 0.0, 0.0);
   if (renderLightNum > 0) {
     vec3 L = normalize(renderLightPosition0.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialProp.y, materialProp.x);
+    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
   }
   if (renderLightNum > 1) {
     vec3 L = normalize(renderLightPosition1.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialProp.y, materialProp.x);
+    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
   }
   if (renderLightNum > 2) {
     vec3 L = normalize(renderLightPosition2.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialProp.y, materialProp.x);
+    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
   }
   if (renderLightNum > 3) {
     vec3 L = normalize(renderLightPosition3.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialProp.y, materialProp.x);
+    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
   }
   return C;
 }

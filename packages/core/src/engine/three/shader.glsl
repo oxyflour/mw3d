@@ -1,3 +1,17 @@
+// @chunk:common
+uniform vec4 materialProp;
+#define materialRoughness materialProp.x
+#define materialMetallic  materialProp.y
+#define materialLineWidth materialProp.z
+#define materialEmissive  materialProp.w
+// @vert
+uniform vec4 materialProp;
+#define materialRoughness materialProp.x
+#define materialMetallic  materialProp.y
+#define materialLineWidth materialProp.z
+#define materialEmissive  materialProp.w
+// @frag
+
 // @chunk:depth
 // @vert
 varying vec4 vPos;
@@ -57,7 +71,7 @@ void main() {
     vec2 dir = normalize(p0.xy - p1.xy);
     dir = vec2(dir.y, -dir.x);
     int idx = gl_VertexID % 4;
-    float thickness = materialProp.z / renderCanvasSize.x * p0.w;
+    float thickness = materialLineWidth / renderCanvasSize.x * p0.w;
     if (idx == 0 || idx == 3) {
         thickness *= -1.;
     }
@@ -117,12 +131,39 @@ void main() {
 }
 // @frag
 uniform vec4 materialColor;
+uniform vec2 renderCanvasSize;
+varying vec4 vPos;
+void main() {
+    float n = materialMetallic;
+    float v = materialRoughness;
+    vec2 s = fract(vPos.xy / vPos.w * renderCanvasSize / n) * n;
+    if (v > 0.) {
+        if (s.x > v || s.y > v) {
+            discard;
+        }
+    } else if (v < 0.) {
+        if (s.x < -v || s.y < -v) {
+            discard;
+        }
+    }
+    gl_FragColor = materialColor;
+}
+
+// @chunk:clipPlane
+// @vert
+varying vec4 vPos;
+void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vPos = gl_Position;
+}
+// @frag
+uniform vec4 materialColor;
 uniform vec4 materialProp;
 uniform vec2 renderCanvasSize;
 varying vec4 vPos;
 void main() {
-    float n = materialProp.y;
-    float v = materialProp.x;
+    float n = materialMetallic;
+    float v = materialRoughness;
     vec2 s = fract(vPos.xy / vPos.w * renderCanvasSize / n) * n;
     if (v > 0.) {
         if (s.x > v || s.y > v) {

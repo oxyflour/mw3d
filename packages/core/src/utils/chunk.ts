@@ -7,7 +7,8 @@ export function parse(code: string) {
             const head = part.slice(0, part.indexOf('\n')),
                 name = head.trim()
             if (name) {
-                map[name] = part.slice(head.length + 1)
+                const prefix = chunks.common?.[name] ? chunks.common?.[name] + '\n' : ''
+                map[name] = prefix + part.slice(head.length + 1)
             }
         }
     }
