@@ -38,7 +38,7 @@ export default function Dropdown({ menu, children, ...rest }: {
         onClick={ toggle }>
         { children }
         {
-            position && <div className="absolute text-left" style={ position }>
+            position && <div className="absolute text-left" style={{ ...position, zIndex: 1 }}>
                 { menu }
             </div>
         }
