@@ -137,7 +137,9 @@ export default class ThreeRenderer extends Renderer {
                 0, 0, image.width, image.height,
                 0, 0, canvas.width, canvas.height)
         }
-        return new THREE.CanvasTexture(canvas)
+        const ret = new THREE.CanvasTexture(canvas)
+        ret.flipY = false
+        return ret
     })
     private dt = cache((tex: Texture) => {
         const { width, height = width } = tex.opts.size as GPUExtent3DDictStrict,

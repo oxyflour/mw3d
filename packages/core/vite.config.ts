@@ -16,7 +16,7 @@ export default defineConfig({
         sourcemap: true,
         lib: {
             entry: './src',
-            name: 'umd'
+            name: 'core'
         }
     },
     server: {

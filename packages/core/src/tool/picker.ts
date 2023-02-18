@@ -232,7 +232,7 @@ const worker = wrap({
     },
     api: {
         async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas) {
-            const renderer = await Renderer.create(canvas, { devicePixelRatio: 1 }),
+            const renderer = await Renderer.create(canvas, { devicePixelRatio: 1, sampleCount: 1 }),
                 ctx = pixels.getContext('2d', { willReadFrequently: true })
             if (!ctx) {
                 throw Error(`get context 2d failed`)

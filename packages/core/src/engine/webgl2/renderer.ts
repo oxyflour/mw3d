@@ -48,7 +48,7 @@ export default class WebGL2Renderer extends Renderer {
     private ctx: WebGL2RenderingContext
     constructor(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
         super(canvas, opts)
-        const ctx = canvas.getContext('webgl2')
+        const ctx = canvas.getContext('webgl2', { antialias: opts.sampleCount! > 1 })
         if (!ctx || !(ctx instanceof WebGL2RenderingContext)) {
             throw Error(`create webgl2 context failed`)
         }
