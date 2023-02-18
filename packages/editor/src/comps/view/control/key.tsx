@@ -7,16 +7,18 @@ import { KeyBinding, KeyMap } from "../../../utils/dom/keys"
 import { Obj3WithEntity } from "../pick/utils"
 import { Entity, remove, TreeEnts } from "../../../utils/data/entity"
 
-async function alignCamera(scene: Engine.Scene, camera: Engine.PerspectiveCamera) {
+export async function alignCamera(scene: Engine.Scene, camera: Engine.PerspectiveCamera) {
     const objs = new Engine.Scene(Array.from(scene).filter(item => (item as Obj3WithEntity).entity)),
         { world: { center }, ndc: { size } } = await Tool.Picker.bound(objs, camera),
-        scale = Math.max(size[0] / 2, size[1] / 2),
-        dir = vec3.sub(vec3.create(), center, camera.worldPosition as vec3),
-        source = vec3.normalize(vec3.create(), dir),
-        target = camera.getWorldDirFromNDC(vec3.fromValues(0, 0, -1)),
-        next = vec3.scaleAndAdd(vec3.create(), center, dir, -scale)
-    camera.rotateInWorld(source, target)
-    camera.targetToWorld(center, next)
+        scale = Math.max(size[0] / 2, size[1] / 2) * 1.2
+    if (isFinite(scale)) {
+        const dir = vec3.sub(vec3.create(), center, camera.worldPosition as vec3),
+            source = vec3.normalize(vec3.create(), dir),
+            target = camera.getWorldDirFromNDC(vec3.fromValues(0, 0, -1)),
+            next = vec3.scaleAndAdd(vec3.create(), center, dir, -scale)
+        camera.rotateInWorld(source, target)
+        camera.targetToWorld(center, next)
+    }
 }
 
 export function KeyControl({ view, ents, tree, setView, setEnts }: {
@@ -47,6 +49,14 @@ export function KeyControl({ view, ents, tree, setView, setEnts }: {
         Escape: down => !down && updatePick({ mode: undefined }),
         Delete: down => !down && setEnts(remove(ents, tree, Object.keys(tree.$selected?.children || { })))
     } as KeyMap)
+    useEffect(() => {
+        setTimeout(() => {
+            scene && camera && alignCamera(scene, camera)
+            if (!view.camera?.resetAt) {
+                setView({ ...view, camera: { ...view.camera, resetAt: Date.now() } })
+            }
+        }, 500)
+    }, [view.camera?.resetAt])
     return null
 }
 

@@ -1,11 +1,13 @@
 import { mat4, vec3 } from 'gl-matrix'
 
-import { KeyMap } from "../dom/keys"
 import { Entity } from "./entity"
 
 export type ViewPickMode = 'face' | 'edge' | 'vert'
 
 export interface ViewOpts {
+    camera?: {
+        resetAt?: number
+    }
     transform?: {
         entities?: Record<number, Entity>
         action?: 'translate' | 'rotate' | 'scale'
@@ -32,9 +34,6 @@ export interface ViewOpts {
     }
     mouseControl?: {
         mode?: 'zoom' | 'pan'
-    }
-    config?: {
-        keyMap?: KeyMap
     }
     clipPlane?: {
         enabled?: boolean

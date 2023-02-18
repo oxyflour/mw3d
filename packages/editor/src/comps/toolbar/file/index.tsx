@@ -2,18 +2,27 @@ import { useState } from "react"
 import { CgSpinnerTwo } from "react-icons/cg"
 import lambda from "../../../lambda"
 import { Entity } from "../../../utils/data/entity"
+import { ViewOpts } from "../../../utils/data/view"
 import { upload } from "../../../utils/dom/upload"
 import { Modal } from "../../utils/model"
 import { Group } from "../utils/group"
 import { ImageButton } from "../utils/image-button"
 
-function OpenFile({ ents, setEnts }: { ents: Entity[], setEnts: (ents: Entity[]) => void }) {
+function OpenFile({ ents, setEnts, updateView }: {
+    ents: Entity[]
+    setEnts: (ents: Entity[]) => void
+    updateView: <K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) => void
+}) {
     const [opening, setOpening] = useState(''),
         [logs, setLogs] = useState([] as string[])
     return <>
         {
             opening && <Modal title={ <><CgSpinnerTwo className="icon-spin inline" /> Opening {opening}</> }>
                 <pre style={{ maxHeight: 300, overflow: 'hidden' }}>{ logs.join('\n') }</pre>
+                {
+                    logs[logs.length - 1]?.startsWith('ERROR: ') &&
+                    <button onClick={ () => setOpening('') }>close</button>
+                }
             </Modal>
         }
         <ImageButton title="Open"
@@ -32,23 +41,26 @@ function OpenFile({ ents, setEnts }: { ents: Entity[], setEnts: (ents: Entity[])
                             }
                         }
                         setEnts(ret)
-                    } catch (err) {
+                        updateView('camera', { resetAt: Date.now() })
+                        setOpening('')
+                    } catch (err: any) {
                         // TODO
                         console.error(err)
+                        setLogs(logs.concat(`ERROR: ${err.message || err}`))
                     }
-                    setOpening('')
                 })
             } />
     </>
 }
 
-export default ({ ents, setEnts }: {
+export default ({ ents, setEnts, updateView }: {
     ents: Entity[]
     setEnts: (ents: Entity[]) => void
+    updateView: <K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) => void
 }) => {
     return <>
         <Group title="Home">
-            <OpenFile { ...{ ents, setEnts } } />
+            <OpenFile { ...{ ents, setEnts, updateView } } />
         </Group>
     </>
 }

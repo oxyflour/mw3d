@@ -26,7 +26,7 @@ export async function saveSolid(solid: Shape, file: string) {
         bound: [min.x, min.y, min.z, max.x, max.y, max.z] as Entity['bound'],
         attrs: {
             ...solid.meta,
-            $n: solid.meta['ManifoldSolidBrep']?.replace(/\|/g, '/') || path.basename(file) + '/' + data,
+            $n: solid.meta['ManifoldSolidBrep']?.replace(/\|/g, '/') || path.basename(file) + '/' + Math.random().toString(16).slice(2, 10),
             $m: solid.meta['LayerDescription'] || solid.meta['LayerName'],
             $rgb: solid.meta['ColorRGB'] && rgb(solid.meta['ColorRGB']),
         },

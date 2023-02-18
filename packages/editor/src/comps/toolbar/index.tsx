@@ -22,7 +22,7 @@ export default ({ className, ents, view, tree, setEnts, setView, children }: {
     }
     return <Tabs initActive="Home" className={ `toolbar ${className || ''}` }>
         <div title="File">
-            <File ents={ ents } setEnts={ setEnts } />
+            <File { ...{ ents, setEnts, updateView } } />
         </div>
         <div title="Home">
             <Home view={ view } updateView={ updateView } />
