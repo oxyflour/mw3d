@@ -158,9 +158,13 @@ fn pbrRender(input: FragInput) -> vec3<f32> {
   var N = normalize(input.normal);
   var V = normalize(camera.worldPosition.xyz - input.worldPosition.xyz);
   var C = vec3<f32>(0.0, 0.0, 0.0);
-  for (var i = 0; i < lightNum && i < MAX_LIGHTS; i = i + 1) {
-    var L = normalize(lights[i].worldPosition.xyz - input.worldPosition.xyz);
-    C = C + BRDF(L, V, N, material.metallic, material.roughness);
+  if (length(N) > 0.) {
+    for (var i = 0; i < lightNum && i < MAX_LIGHTS; i = i + 1) {
+      var L = normalize(lights[i].worldPosition.xyz - input.worldPosition.xyz);
+      C = C + BRDF(L, V, N, material.metallic, material.roughness);
+    }
+  } else {
+    C = material.color.rgb;
   }
   return C;
 }

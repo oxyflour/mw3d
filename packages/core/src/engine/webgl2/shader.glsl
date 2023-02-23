@@ -114,21 +114,25 @@ vec3 pbrRender() {
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraWorldPosition.xyz - vWorldPosition.xyz);
   vec3 C = vec3(0.0, 0.0, 0.0);
-  if (renderLightNum > 0) {
-    vec3 L = normalize(renderLightPosition0.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
-  }
-  if (renderLightNum > 1) {
-    vec3 L = normalize(renderLightPosition1.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
-  }
-  if (renderLightNum > 2) {
-    vec3 L = normalize(renderLightPosition2.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
-  }
-  if (renderLightNum > 3) {
-    vec3 L = normalize(renderLightPosition3.xyz - vWorldPosition.xyz);
-    C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
+  if (length(N) > 0.) {
+    if (renderLightNum > 0) {
+      vec3 L = normalize(renderLightPosition0.xyz - vWorldPosition.xyz);
+      C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
+    }
+    if (renderLightNum > 1) {
+      vec3 L = normalize(renderLightPosition1.xyz - vWorldPosition.xyz);
+      C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
+    }
+    if (renderLightNum > 2) {
+      vec3 L = normalize(renderLightPosition2.xyz - vWorldPosition.xyz);
+      C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
+    }
+    if (renderLightNum > 3) {
+      vec3 L = normalize(renderLightPosition3.xyz - vWorldPosition.xyz);
+      C = C + BRDF(L, V, N, materialMetallic, materialRoughness);
+    }
+  } else {
+    C = materialColor.rgb;
   }
   return C;
 }
