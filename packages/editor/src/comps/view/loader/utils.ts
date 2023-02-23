@@ -8,20 +8,20 @@ export const MATERIAL_SET = {
     select:   new Engine.BasicMaterial({
         color: [1, .7, .7,  1], lineWidth: devicePixelRatio * 5,
         webgpu: { depthStencil: { depthBias: 1 } },
-        webgl: { polygonOffset: { units: -0.5 } },
+        webgl: { polygonOffset: { units: 1 } },
         wgsl: { frag: 'fragMainColor' },
     }),
     selected: new Engine.BasicMaterial({
         color: [1,  0,  0,  1], lineWidth: devicePixelRatio * 5,
         webgpu: { depthStencil: { depthBias: 2 } },
-        webgl: { polygonOffset: { units: -2 } },
+        webgl: { polygonOffset: { units: 2 } },
         metallic: 8, roughness: 6,
         wgsl: { frag: 'fragMainColorDash' },
     }),
     hover:    new Engine.BasicMaterial({
         color: [1,  1,  0,  1], lineWidth: devicePixelRatio * 3,
         webgpu: { depthStencil: { depthBias: 3 } },
-        webgl: { polygonOffset: { units: -3 } },
+        webgl: { polygonOffset: { units: 3 } },
         metallic: 8, roughness: -2,
         wgsl: { frag: 'fragMainColorDash' },
     }),

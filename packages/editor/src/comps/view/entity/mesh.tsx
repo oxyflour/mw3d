@@ -14,7 +14,7 @@ const CLIP_DIRS = {
     '-z': [0, 0, -1],
 } as Record<string, number[]>
 
-export const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3 })
+export const EDGE_MAT = new Engine.BasicMaterial({ color: [0, 0, 0], lineWidth: devicePixelRatio * 3, webgl: { polygonOffset: { units: 2 } } })
 export function EntityMesh(props: EntityProps) {
     const [{ value: geom }] = useAsync(async url => url ? await loadGeom(url) : { }, [props.data.geom?.url]),
         mats = useMemo(() => loadMatSet(props.data.attrs, props.view.mats), [props.data.attrs, props.view.mats]),

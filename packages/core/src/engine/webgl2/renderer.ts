@@ -1,5 +1,3 @@
-import { mat4 } from 'gl-matrix'
-
 import Renderer, { RendererOptions, RenderMesh, RenderOptions } from '../renderer'
 import cache from '../../utils/cache'
 import glsl from './shader.glsl?raw'
@@ -13,8 +11,7 @@ import { parse } from '../../utils/chunk'
 import { Texture } from '../uniform'
 import { Scene } from '../obj3'
 
-const MAT4_TMP = mat4.create(),
-    GLSL_CHUNKS = parse(glsl)
+const GLSL_CHUNKS = parse(glsl)
 function split(code: string) {
     const [head = '', body = '{}'] = code.split(/void\s+main\(\)/),
         vars = head.split('\n')
@@ -59,6 +56,10 @@ export default class WebGL2Renderer extends Renderer {
         ctx.enable(ctx.BLEND)
         ctx.enable(ctx.POLYGON_OFFSET_FILL)
         ctx.blendFunc(ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA)
+
+        // reverse-z
+        ctx.depthFunc(ctx.GREATER)
+        ctx.clearDepth(0)
     }
     private code = cache((type: GeometryPrimitive, mat: Material) => {
         const ret = { ...GLSL_CHUNKS.base }
@@ -209,9 +210,7 @@ export default class WebGL2Renderer extends Renderer {
             }
         } else if (entity instanceof Camera) {
             const [[viewProjection, worldPosition] = []] = entity.uniforms
-            // Note: webgl view projection range is different in WebGL and WebGPU
-            mat4.multiply(MAT4_TMP, entity.projection, entity.viewMatrix)
-            viewProjection && ctx.uniformMatrix4fv(loc('cameraViewProjection'), false, MAT4_TMP)
+            viewProjection && ctx.uniformMatrix4fv(loc('cameraViewProjection'), false, entity.viewProjection)
             worldPosition  && ctx.uniform4fv(loc('cameraWorldPosition'), worldPosition)
         } else if (entity instanceof Mesh) {
             const [[modelMatrix, worldPosition] = []] = entity.uniforms

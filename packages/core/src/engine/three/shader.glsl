@@ -48,7 +48,6 @@ varying vec4 vPos;
 uniform sampler2D materialMapDepth;
 void main() {
     float v = texture2D(materialMapDepth, vPos.xy).x;
-    v = 1.5 - v;
     uint i = uint(v * float(0x1000000));
     uint r = (i & 0x0000ffu);
     uint g = (i & 0x00ff00u) >> 8u;
