@@ -75,7 +75,7 @@ async function clickScene(evt: MouseEvent) {
     })
 }
 
-const CLIP_PLANE = vec4.fromValues(0, 0, 0, 20)
+const CLIP_PLANE = vec4.fromValues(1, 0, 0, 20)
 
 const tex = document.createElement('canvas'),
     ctx = tex.getContext('2d')

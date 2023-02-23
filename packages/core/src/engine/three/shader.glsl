@@ -74,10 +74,12 @@ void main() {
     }
     p0.xy += thickness * dir;
     gl_Position = p0;
+    vWorldPosition = (meshModelMatrix * vec4(position, 1.0)).xyz;
 }
 // @frag
 uniform vec4 materialColor;
 void main() {
+    checkClip();
     gl_FragColor = materialColor;
 }
 
@@ -112,6 +114,7 @@ varying vec2 vUv;
 uniform sampler2D materialMap;
 uniform vec4 materialColor;
 void main() {
+    checkClip();
     vec4 c = texture2D(materialMap, vUv);
     if (c.a == 0.) {
         discard;
@@ -131,6 +134,7 @@ uniform vec4 materialColor;
 uniform vec2 renderCanvasSize;
 varying vec4 vPos;
 void main() {
+    checkClip();
     float n = materialMetallic;
     float v = materialRoughness;
     vec2 s = fract(vPos.xy / vPos.w * renderCanvasSize / n) * n;
@@ -154,6 +158,7 @@ void main() {
 }
 // @frag
 void main() {
+    checkClip();
     float n = materialMetallic;
     gl_FragColor = materialColor;
 }

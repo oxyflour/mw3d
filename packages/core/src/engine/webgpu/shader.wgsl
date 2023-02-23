@@ -180,7 +180,7 @@ fn preventLayoutChange() {
 
 fn checkClip(input: FragInput) {
   preventLayoutChange();
-  if (any(material.clipPlane != vec4<f32>())) {
+  if (material.clipPlane.x != 0. || material.clipPlane.y != 0. || material.clipPlane.z != 0.) {
     var c = material.clipPlane;
     var p = input.worldPosition;
     if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {

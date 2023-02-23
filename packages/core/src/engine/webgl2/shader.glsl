@@ -61,7 +61,10 @@ uniform vec4 renderLightPosition3;
 
 uniform vec4 cameraWorldPosition;
 
+uniform vec4 meshWorldPosition;
+
 uniform vec4 materialColor;
+uniform vec4 materialClip;
 uniform vec4 materialProp;
 #define materialRoughness materialProp.x
 #define materialMetallic  materialProp.y
@@ -70,6 +73,16 @@ uniform vec4 materialProp;
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
+
+void checkClip() {
+  if (materialClip.x != 0. || materialClip.y != 0. || materialClip.z != 0.) {
+    vec4 c = materialClip;
+    vec3 p = vWorldPosition;
+    if (p.x * c.x + p.y * c.y + p.z * c.z + c.w < 0.) {
+      discard;
+    }
+  }
+}
 
 const float PI = 3.14159;
 float D_GGX(float dotNH, float roughness) {
@@ -138,5 +151,6 @@ vec3 pbrRender() {
 }
 
 void main() {
+    checkClip();
     gl_FragColor = vec4(pbrRender() + materialEmissive * materialColor.rgb, materialColor.a);
 }
