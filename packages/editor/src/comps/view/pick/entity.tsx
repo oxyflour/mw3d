@@ -1,5 +1,6 @@
-import { CanvasContextValue, Engine, Mesh, Obj3, useCanvas } from "@ttk/react"
+import { CanvasContextValue, Engine, Mesh, useCanvas } from "@ttk/react"
 import { useEffect, useRef, useState } from "react"
+import { mat4 } from 'gl-matrix'
 import { debounce } from "../../../utils/common/debounce"
 import { Entity } from "../../../utils/data/entity"
 import { ViewPickMode } from "../../../utils/data/view"
@@ -12,13 +13,20 @@ async function pickTopo(topos: Engine.Mesh[], ctx: CanvasContextValue, position:
     return topos.find(mesh => mesh.id === res.id)
 }
 async function loadSelection(mode: ViewPickMode, entity: Entity) {
-    const topos = await loadTopo(mode, entity),
+    const cache = await loadTopo(mode, entity),
+        topos = cache.map(({ geo, mat, offset, count }) => new Engine.Mesh(geo, mat, { offset, count })),
         geom =
             mode === 'edge' ? (entity.geom?.url ?
                 (await loadGeom(entity.geom.url)).edges : undefined) :
             mode === 'vert' ? (entity.topo?.verts?.url ?
                 (await loadVertGeom(entity.topo.verts.url)).geo : undefined) :
             undefined
+    if (entity.trans) {
+        const mat = mat4.clone(entity.trans as any)
+        for (const topo of topos) {
+            topo.setWorldMatrix(mat)
+        }
+    }
     return { topos, geom }
 }
 
@@ -65,22 +73,22 @@ export function EntityPicker({ mode, pickable, onSelect }: {
             return () => { }
         }
     }, [canvas])
-    return entity &&
-        <Obj3 matrix={ entity.trans }>
+    return entity && <>
         {
             geom && <Mesh
+                matrix={ entity.trans }
                 geo={ geom }
                 mat={ MATERIAL_SET.select } />
         }
         {
             hoverMesh && <Mesh
+                matrix={ hoverMesh.worldMatrix }
                 geo={ hoverMesh.geo }
                 mat={ MATERIAL_SET.hover }
                 offset={ hoverMesh.offset }
                 count={ hoverMesh.count } />
         }
-        </Obj3> ||
-        null
+        </> || null
 }
 
 export function TopoPicked({ entity, type, index }: {
@@ -92,6 +100,7 @@ export function TopoPicked({ entity, type, index }: {
         item = meshes[index]
     return item &&
         <Mesh
+            matrix={ entity.trans }
             geo={ item.geo }
             mat={ MATERIAL_SET.selected }
             offset={ item.offset }

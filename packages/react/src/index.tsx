@@ -165,7 +165,7 @@ export function useObj3() {
 
 export function Obj3({ children, create, matrix, position, rotation, scaling }: {
     children?: any
-    matrix?: number[]
+    matrix?: number[] | mat4
     position?: [number, number, number]
     rotation?: [number, number, number]
     scaling?: [number, number, number]
@@ -197,8 +197,12 @@ export function Obj3({ children, create, matrix, position, rotation, scaling }: 
             const [x, y, z] = scaling
             obj.scaling.set(x, y, z)
         }
-        if (obj && matrix) {
-            mat4.copy(obj.worldMatrix, matrix as any)
+        if (obj) {
+            if (matrix) {
+                mat4.copy(obj.worldMatrix, matrix as any)
+            } else {
+                mat4.identity(obj.worldMatrix)
+            }
             obj.setWorldMatrix(obj.worldMatrix)
         }
     }, [obj, matrix, position, rotation, scaling])
