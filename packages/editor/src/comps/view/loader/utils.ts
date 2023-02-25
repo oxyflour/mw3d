@@ -1,7 +1,7 @@
 import { Engine, Utils } from "@ttk/react"
 import { Entity } from "../../../utils/data/entity"
 import { ViewOpts } from "../../../utils/data/view"
-import worker from "../../../utils/data/worker"
+import worker from "../../../utils/dom/worker"
 
 const [r = 0, g = 0, b = 0] = [1, 2, 3].map(() => Math.random())
 export const MATERIAL_SET = {

@@ -5,7 +5,7 @@ import { ViewOpts } from "../../../utils/data/view"
 import { withMouseDown } from "../../../utils/dom/mouse"
 import { CAMERA_PIVOT, Obj3WithEntity, pick } from "../pick/utils"
 
-async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
+export async function showBuffer(buffer: ArrayBuffer, canvas: HTMLCanvasElement) {
     const image = document.createElement('img')
     image.src = URL.createObjectURL(new Blob([buffer]))
     await image.decode()

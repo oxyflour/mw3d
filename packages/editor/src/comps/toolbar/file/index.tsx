@@ -18,10 +18,10 @@ function OpenFile({ ents, setEnts, updateView }: {
     return <>
         {
             opening && <Modal title={ <><CgSpinnerTwo className="icon-spin inline" /> Opening {opening}</> }>
-                <pre style={{ maxHeight: 300, overflow: 'hidden' }}>{ logs.join('\n') }</pre>
+                <pre style={{ maxWidth: 500, maxHeight: 300, overflow: 'auto' }}>{ logs.join('\n') }</pre>
                 {
                     logs[logs.length - 1]?.startsWith('ERROR: ') &&
-                    <button onClick={ () => setOpening('') }>close</button>
+                    <button className="btn" onClick={ () => setOpening('') }>close</button>
                 }
             </Modal>
         }

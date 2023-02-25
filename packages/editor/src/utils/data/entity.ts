@@ -7,7 +7,7 @@ export interface BufferData {
 }
 
 export interface Entity {
-    data?: BufferData
+    data?: BufferData & { idx?: number }
     attrs?: {
         $n?: string
         $m?: string

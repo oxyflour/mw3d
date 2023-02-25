@@ -6,6 +6,7 @@ import { TreeData, TreeNode } from '../../utils/data/tree'
 import { ViewOpts } from '../../utils/data/view'
 import { KeyControl } from './control/key'
 import { MouseControl } from './control/mouse'
+import Clip from './entity/clip'
 import { EntityMesh } from './entity/mesh'
 
 import './index.less'
@@ -72,6 +73,10 @@ export default ({ tree, ents, view, setView, setEnts, children, onSelect }: {
                 !view.pick?.mode && onSelect?.(obj?.entity?.nodes, obj, evt)
             }
         } />
+        {
+            view.clipPlane?.enabled &&
+            <Clip view={ view } />
+        }
         {
             view.pick?.mode &&
             <EntityPicker mode={ view.pick.mode }
