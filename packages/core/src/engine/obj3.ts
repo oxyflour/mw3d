@@ -1,6 +1,6 @@
 /// <reference path="../typing.d.ts" />
 //import loader from '@assemblyscript/loader'
-import { mat4, vec3, vec4 } from 'gl-matrix'
+import { mat4, vec3, vec4, quat } from 'gl-matrix'
 import { AutoIndex } from '../utils/common'
 import { Vec3, Quat } from '../utils/math'
 
@@ -22,6 +22,12 @@ export interface ObjOpts {
     children?: Obj3[]
 }
 
+const axis = vec3.create(),
+    src = vec3.create(),
+    dst = vec3.create(),
+    tran = mat4.create(),
+    rotation = mat4.create(),
+    rot = quat.create()
 export default class Obj3 extends AutoIndex {
     readonly position = new Vec3()
     readonly rotation = new Quat()
@@ -157,4 +163,48 @@ export default class Obj3 extends AutoIndex {
         Obj3.wasmMod?.update(this.ptrs, objs.size)
     }
      */
+
+    /**
+     * Note: remember to update camera first
+     */
+    rotateInWorld(source: vec3, target: vec3) {
+        vec3.cross(axis, source, target)
+        if (!axis[0] && !axis[1] && !axis[2]) {
+            vec3.set(axis, source[0] + 1, source[1] + 1, source[2] + 1)
+            vec3.cross(axis, axis, target)
+        }
+        vec3.normalize(axis, axis)
+        const rad = vec3.angle(source, target)
+        mat4.identity(rotation)
+        mat4.rotate(rotation, rotation, -rad, axis)
+
+        mat4.getRotation(rot, this.worldMatrix)
+        mat4.fromQuat(tran, rot)
+        mat4.multiply(tran, rotation, tran)
+        mat4.fromTranslation(rotation, this.worldPosition as vec3)
+        mat4.multiply(tran, rotation, tran)
+
+        this.setWorldMatrix(tran)
+    }
+    /**
+     * 
+     */
+    targetToWorld(pivot: vec3, target: vec3) {
+        vec3.sub(src, this.worldPosition as vec3, pivot)
+        vec3.sub(dst, target, pivot)
+        vec3.cross(axis, dst, src)
+        vec3.normalize(axis, axis)
+        if (vec3.len(axis)) {
+            const rad = vec3.angle(dst, src)
+            mat4.fromRotation(rotation, -rad, axis)
+
+            mat4.getRotation(rot, this.worldMatrix)
+            mat4.fromQuat(tran, rot)
+            mat4.multiply(tran, rotation, tran)
+            mat4.fromTranslation(rotation, target)
+            mat4.multiply(tran, rotation, tran)
+
+            this.setWorldMatrix(tran)
+        }
+    }
 }

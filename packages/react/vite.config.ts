@@ -63,10 +63,11 @@ export default defineConfig({
             formats: ['es']
         },
         rollupOptions: {
-            external: ['react'],
+            external: ['react', 'three'],
             output: {
                 globals: {
-                    react: 'react'
+                    react: 'react',
+                    three: 'three'
                 }
             }
         }

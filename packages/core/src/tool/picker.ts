@@ -75,10 +75,10 @@ export interface PickGeo {
 }
 
 export interface PickCamera {
-    fov: number
-    aspect: number
-    near: number
-    far: number
+    fov?: number
+    aspect?: number
+    near?: number
+    far?: number
     worldMatrix: mat4
 }
 
@@ -334,7 +334,8 @@ const worker = wrap({
             const { material, list } = await renderDepth(meshes, geometries, camera, { width, height }),
                 { renderer, pixels } = await cache.context,
                 [idx = 0] = await readPixel({ x, y }),
-                { id } = list[idx - 1] || { id: 0 }
+                { id } = list[idx - 1] || { id: 0 },
+                { near = 0, far = 1, fov = 1, aspect = 1 } = camera
 
             DEPTH_PLANE.mat = material
             renderer.render(DEPTH_SCENE, DEPTH_CAMERA)
@@ -343,11 +344,11 @@ const worker = wrap({
                 // convert from webgpu range (0, 1) to opengl range(-1, 1)
                 v = d * 2 - 1,
                 // https://stackoverflow.com/a/66928245
-                depth = 1 / (v * (1 / camera.near - 1 / camera.far) + 1 / camera.far)
+                depth = 1 / (v * (1 / near - 1 / far) + 1 / far)
             
-            const [hw, hh, hf] = [width / 2, height / 2, camera.fov / 2],
+            const [hw, hh, hf] = [width / 2, height / 2, fov / 2],
                 position = vec3.fromValues(
-                    Math.tan(hf * camera.aspect) * (x - hw) / hw,
+                    Math.tan(hf * aspect) * (x - hw) / hw,
                     Math.tan(hf) * (y - hh) / -hh,
                     -1),
                 distance = depth * vec3.len(position)
@@ -370,7 +371,7 @@ async function init() {
         pixels.transferControlToOffscreen() as WebGPUOffscreenCanvas)
 }
 
-async function prepare(scene: Set<Obj3>, camera: PerspectiveCamera) {
+async function prepare(scene: Set<Obj3>, camera: Camera) {
     await (cache.inited || (cache.inited = init()))
     const meshes = { } as Record<number, PickMesh>,
         geometries = { } as Record<number, PickGeo>
@@ -389,7 +390,7 @@ async function prepare(scene: Set<Obj3>, camera: PerspectiveCamera) {
             }
         })
     }
-    const { fov, aspect, near, far, worldMatrix } = camera,
+    const { fov, aspect, near, far, worldMatrix } = camera as PerspectiveCamera,
         view = { fov, aspect, near, far, worldMatrix },
         cached = await worker.test({ geometries: Object.keys(geometries).map(parseFloat) }),
         geoms = Object.fromEntries(cached.geometries.map(id => [id, geometries[id]!]))
@@ -402,19 +403,19 @@ export interface Size {
 }
 
 export default {
-    async query(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
+    async query(scene: Set<Obj3>, camera: Camera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.query(meshes, geoms, view, opts)
     },
-    async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size & {x: number, y: number }) {
+    async pick(scene: Set<Obj3>, camera: Camera, opts: Size & {x: number, y: number }) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.pick(meshes, geoms, view, opts)
     },
-    async clip(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
+    async clip(scene: Set<Obj3>, camera: Camera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.clip(meshes, geoms, view, opts)
     },
-    async bound(scene: Set<Obj3>, camera: PerspectiveCamera) {
+    async bound(scene: Set<Obj3>, camera: Camera) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.bound(meshes, geoms, view)
     },
