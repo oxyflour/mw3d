@@ -6,7 +6,6 @@ import store from "../../utils/node/store"
 import { Entity } from "../../utils/data/entity"
 import { fork } from "../../utils/node/fork"
 import { Chunks } from "../../utils/node/chunks"
-import worker from "../../utils/node/worker"
 
 const SCRIPT_PATH = path.join(__dirname, '..', '..', '..', 'dist', 'cli', 'index.js')
 export async function *open(files: { name: string, arrayBuffer?: () => Promise<ArrayBuffer> }[]) {
@@ -30,11 +29,6 @@ export async function *open(files: { name: string, arrayBuffer?: () => Promise<A
         }
 
         yield { message: `parsing ${name}` }
-        async function saveBuffer(buf: Buffer) {
-            const hash = await worker.sha256(new Uint8Array(buf)),
-                url = 'd/' + hash + '.' + ext
-            return await store.library.set(url, buf)
-        }
         const json = await readFile(save, 'utf-8'),
             { entities } = JSON.parse(json) as { entities: Entity[] },
             chunks = await Chunks.read(save + '.data'),
@@ -42,9 +36,9 @@ export async function *open(files: { name: string, arrayBuffer?: () => Promise<A
             tasks = entities.map(async (entity, idx) => {
                 const { topo, geom, data } = entity
                 if (data) {
-                    entity.data = { url: await saveBuffer(chunks.slice(data)) }
+                    entity.data = { url: await store.library.save(chunks.slice(data), 'd/', '.' + ext) }
                 } else {
-                    const save = cache.hash || (cache.hash = saveBuffer(buf))
+                    const save = cache.hash || (cache.hash = store.library.save(buf, 'd/', '.' + ext))
                     entity.data = { url: await save, idx }
                 }
                 const dataUrl = entity.data?.url || Math.random().toString(16).slice(2, 10)

@@ -75,10 +75,10 @@ export interface PickGeo {
 }
 
 export interface PickCamera {
-    fov?: number
-    aspect?: number
-    near?: number
-    far?: number
+    fov: number
+    aspect: number
+    near: number
+    far: number
     worldMatrix: mat4
 }
 
@@ -136,8 +136,10 @@ async function prepareScene(meshes: Record<number, PickMesh>,
             mesh = meshMap[idx] || (meshMap[idx] = new Mesh())
         Object.assign(geo, { accessedAt })
         mat.prop.lineWidth = lineWidth
-        if (clipPlane) {
+        if (clipPlane?.[0] || clipPlane?.[1] || clipPlane?.[2]) {
             mat.clip.assign(clipPlane)
+        } else if (mat.needsClip) {
+            mat.clip.assign([0, 0, 0, 0])
         }
         Object.assign(mesh, { geo, mat, offset, count })
         mesh.setWorldMatrix(worldMatrix)
@@ -150,7 +152,7 @@ async function renderClip(meshes: Record<number, PickMesh>,
         pick: PickCamera,
         { width, height }: { width: number, height: number }) {
     const { scene, camera, renderer } = await prepareScene(meshes, geometries, pick, { width, height })
-    renderer.render(scene, camera, { renderClips: true })
+    renderer.render(scene, camera, { renderClips: false })
 }
 async function renderDepth(meshes: Record<number, PickMesh>,
         geometries: Record<number, PickGeo>,
@@ -403,19 +405,19 @@ export interface Size {
 }
 
 export default {
-    async query(scene: Set<Obj3>, camera: Camera, opts: Size) {
+    async query(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.query(meshes, geoms, view, opts)
     },
-    async pick(scene: Set<Obj3>, camera: Camera, opts: Size & {x: number, y: number }) {
+    async pick(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size & {x: number, y: number }) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.pick(meshes, geoms, view, opts)
     },
-    async clip(scene: Set<Obj3>, camera: Camera, opts: Size) {
+    async clip(scene: Set<Obj3>, camera: PerspectiveCamera, opts: Size) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.clip(meshes, geoms, view, opts)
     },
-    async bound(scene: Set<Obj3>, camera: Camera) {
+    async bound(scene: Set<Obj3>, camera: PerspectiveCamera) {
         const { meshes, geoms, view } = await prepare(scene, camera)
         return await worker.bound(meshes, geoms, view)
     },

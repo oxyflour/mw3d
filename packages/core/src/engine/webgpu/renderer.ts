@@ -181,9 +181,9 @@ export default class WebGPURenderer extends Renderer {
 
     readonly clipCache = new WeakMap<Mesh, ClipMeshes>()
     prepareClips(scene: Scene, camera: Camera) {
-        const { lights, updated, sorted } = super.prepare(scene, camera),
-            clipCaps = [] as typeof sorted
-        for (const item of sorted) {
+        const { lights, updated, sorted: meshes } = super.prepare(scene, camera),
+            sorted = [] as typeof meshes
+        for (const item of meshes) {
             if (item.mat.needsClip && item.geo.type === 'triangle-list') {
                 let clip = this.clipCache.get(item)
                 if (!clip) {
@@ -192,10 +192,9 @@ export default class WebGPURenderer extends Renderer {
                 clip.update(item)
                 this.addToUpdated(clip.back.mat, clip.front.mat, clip.plane.mat)
                 this.addToUpdated(clip.back, clip.front, clip.plane)
-                //clipCaps.push(clip.back, clip.front, clip.plane)
+                sorted.push(clip.back, clip.front, clip.plane)
             }
         }
-        sorted.unshift(...clipCaps)
         return { lights, updated, sorted }
     }
 

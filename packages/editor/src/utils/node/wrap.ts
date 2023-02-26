@@ -1,4 +1,5 @@
-import { Worker, isMainThread, parentPort, threadId } from "worker_threads"
+import os from 'os'
+import { Worker, isMainThread, parentPort } from "worker_threads"
 import { pack, unpack } from "../common/pack"
 
 export type AsyncFunction<T> = (...args: any[]) => Promise<T>
@@ -23,6 +24,11 @@ export function hookFunc<M extends ApiDefinition>(
     })
 }
 
+const root = globalThis as { __worker_pool__?: Worker[] },
+    workers = root.__worker_pool__ || (root.__worker_pool__ = []),
+    maxThreads = os.cpus().length
+process.stdout.setMaxListeners(maxThreads * 2)
+process.stderr.setMaxListeners(maxThreads * 2)
 export default function wrap<T extends ApiDefinition>({ num, api, fork, send, recv }: {
     api: T
     fork: () => Worker
@@ -30,10 +36,8 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
     send?: (args: any[], next: (args: any[], transfer: any[]) => Promise<any>) => Promise<any>
     recv?: (args: any[], next: (args: any[]) => Promise<any>) => Promise<any>
 }) {
-    const workers = [] as Worker[],
-        calls = { } as Record<string, { resolve: Function, reject: Function }>
+    const calls = { } as Record<string, { resolve: Function, reject: Function }>
     if (!isMainThread) {
-        console.log(`[WORKER ${threadId}] starting`)
         parentPort?.addListener('message', async data => {
             const { id, entry, args } = unpack(data) as { id: string, entry: string[], args: any[] },
                 [func, obj] = entry.reduce(([api], key) => [api?.[key], api], [api as any, null])
@@ -55,10 +59,11 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
                 parentPort?.postMessage(data, [data.buffer])
             }
         })
-        console.log(`[WORKER ${threadId}] started`)
     } else {
         function start(idx: number) {
-            const worker = fork()
+            const worker = fork(),
+                { threadId } = worker
+            console.log(`[WORKER ${threadId}] start`)
             worker.addListener('message', msg => {
                 const { id, err, ret } = unpack(msg) as any,
                     call = calls[id]
@@ -68,14 +73,25 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
                 }
             })
             worker.addListener('exit', () => {
-                workers[idx] = start(idx)
+                console.log(`[WORKER ${threadId}] quit`)
+                worker.stdout?.unpipe(process.stdout)
+                worker.stderr?.unpipe(process.stderr)
+                clearInterval(pollAlive)
+                if (workers[idx] === worker) {
+                    workers[idx] = start(idx)
+                }
             })
+            const pollAlive = setInterval(() => {
+                if (workers[idx] !== worker) {
+                    worker.terminate()
+                }
+            }, 1000)
             worker.stdout?.pipe(process.stdout)
             worker.stderr?.pipe(process.stderr)
             return worker
         }
         for (let idx = 0; idx < num; idx ++) {
-            workers.push(start(idx))
+            workers[idx] = start(idx)
         }
     }
     return hookFunc(api, (...stack) => {

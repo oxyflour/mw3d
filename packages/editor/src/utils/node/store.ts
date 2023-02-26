@@ -4,9 +4,9 @@ import os from 'os'
 import { deflate as deflateRaw, unzip as unzipRaw } from 'zlib'
 import { promisify } from 'node:util'
 import { asyncCache } from "../common/cache"
-import { sha256 } from "./common"
 import { mkdir, readFile, writeFile } from "fs/promises"
 import { Entity } from "../data/entity"
+import worker from "./worker"
 
 const opts = {
         host: process.env.STORE_REDIS_HOST,
@@ -70,10 +70,10 @@ class Store {
         await redis.expire(this.prefix + key, ex)
         return buf
     }
-    async save(buf: Buffer, prefix = '', ex = this.ex) {
+    async save(buf: Buffer, prefix = '', suffix = '', ex = this.ex) {
         const redis = await getRedis(),
             zipped = await deflate(buf),
-            key = prefix + sha256(buf)
+            key = prefix + await worker.sha256(buf) + suffix
         if (this.persistent) {
             const dest = path.join(this.persistent, this.prefix + key)
             mkdir(path.dirname(dest), { recursive: true })

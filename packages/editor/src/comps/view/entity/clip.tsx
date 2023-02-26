@@ -1,10 +1,8 @@
-import { Texture } from "@ttk/core/dist/engine"
-import { Engine, Mesh, Tool, useCanvas } from "@ttk/react"
+import { Engine, Tool, useCanvas } from "@ttk/react"
 import { vec3, mat4 } from 'gl-matrix'
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { ViewOpts } from "../../../utils/data/view"
-import { useAsync } from "../../../utils/react/hooks"
 import { showBuffer } from "../control/mouse"
 import { Obj3WithEntity } from "../pick/utils"
 
@@ -17,36 +15,78 @@ export const CLIP_DIRS = {
     '-z': [0, 0, -1],
 } as Record<string, [number, number, number]>
 
-const CLIP_GEO = new Engine.PlaneXY({ size: 100 }),
+const CLIP_GEO = new Engine.PlaneXY(),
     CLIP_MAT = new Engine.BasicMaterial({
-        // wgsl: { frag: 'fragMainClip' },
+        texture: new Engine.Texture({
+            size: { width: 500, height: 500 },
+            format: 'rgba8snorm',
+            usage: Engine.Texture.Usage.TEXTURE_BINDING
+        }),
+        wgsl: {
+            vert: `
+                fn vertMainClip(input: VertexInput) -> VertexOutput {
+                    var output: VertexOutput;
+                    output.position = camera.viewProjection * mesh.modelMatrix * input.position;
+                    output.normal = input.position.xyz;
+                    output.worldPosition = mesh.modelMatrix * input.position;
+                    return output;
+                }
+            `,
+            frag: `
+                fn fragMainClip(input: FragInput) -> @location(0) vec4<f32> {
+                    preventLayoutChange();
+                    var C = textureSample(imageTexture, materialSampler, input.normal.xy);
+                    return vec4(C.rgb, 1.);
+                }
+            `
+        }
     }),
-    CLIP_CAMERA = new Engine.Camera()
+    CLIP_CAMERA = new Engine.PerspectiveCamera()
 export default function Clip({ view }: {
     view: ViewOpts
 }) {
     const { dir, pos } = view.clipPlane || { },
         { scene, canvas } = useCanvas(),
-        [trans, setTrans] = useState<mat4>()
-    useAsync(async () => {
-        const [x, y, z] = CLIP_DIRS[dir || '+x'] || [0, 0, 0],
-            src = vec3.fromValues(0, 0, -1),
-            dst = vec3.fromValues(x, y, z),
-            scale = -(pos || 0) / (x * x + y * y + z * z),
-            offset = vec3.fromValues(x * scale, y * scale, z * scale),
-            mat = mat4.fromTranslation(mat4.create(), offset)
-        CLIP_CAMERA.setWorldMatrix(mat)
-        CLIP_CAMERA.rotateInWorld(dst, src)
-        setTrans(mat4.copy(mat, CLIP_CAMERA.worldMatrix))
-
+        [mesh, setMesh] = useState<Engine.Mesh>()
+    useEffect(() => {
+        const mesh = new Engine.Mesh(CLIP_GEO, CLIP_MAT, { scaling: [100, 100, 100] })
+        scene?.add(mesh)
+        setMesh(mesh)
+        return () => {
+            scene?.delete(mesh)
+        }
+    }, [scene])
+    async function show() {
         if (canvas) {
             const list = new Engine.Scene(Array.from(scene || []).filter((item: Obj3WithEntity) => item.entity)),
-                { ndc: { min, max } } = await Tool.Picker.bound(list, CLIP_CAMERA)
-            console.log(min, max)
-
-            const { buffer } = await Tool.Picker.clip(list, CLIP_CAMERA, { width: 500, height: 500 })
-            await showBuffer(buffer, canvas)
+                { ndc: { center, size } } = await Tool.Picker.bound(list, CLIP_CAMERA),
+                { buffer } = await Tool.Picker.clip(list, CLIP_CAMERA, { width: 500, height: 500 }),
+                { texture } = CLIP_MAT.opts
+            if (texture) {
+                texture.opts.source = await createImageBitmap(new Blob([buffer]))
+            }
+            //await showBuffer(buffer, canvas)
+            center
+            size
+            buffer
+            showBuffer
         }
-    }, [dir, pos])
-    return <Mesh matrix={ trans } geo={ CLIP_GEO } mat={ CLIP_MAT } />
+    }
+    useEffect(() => {
+        const [x, y, z] = CLIP_DIRS[dir || '+x'] || [0, 0, 0],
+            target = vec3.fromValues(0, 0, -1),
+            xyz = vec3.fromValues(x, y, z),
+            source = vec3.normalize(xyz, xyz),
+            offset = vec3.scale(vec3.create(), source, - (pos || 0) / Math.hypot(x, y, z)),
+            delta = vec3.scale(vec3.create(), source, (-500 - (pos || 0)) / Math.hypot(x, y, z)),
+            mat = mat4.fromTranslation(mat4.create(), offset)
+        mesh?.setWorldMatrix(mat)
+        mesh?.rotateInWorld(source, target)
+        mesh?.scaling.set(100, 100, 100)
+        mesh?.updateIfNecessary({ })
+        CLIP_CAMERA.setWorldMatrix(mat4.fromTranslation(mat4.create(), delta))
+        CLIP_CAMERA.rotateInWorld(source, target)
+        show()
+    }, [dir, pos, mesh])
+    return null
 }
