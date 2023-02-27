@@ -38,16 +38,27 @@ export default ({ params }: RouteMatch<'sess' | 'commit'>) => {
             <div title="Debug">
                 <Group title="Tool">
                     <ImageButton title="TODO" />
+                    <div>
+                        <IconButton icon={ <></> } title={
+                            <label>
+                                <input type="checkbox"
+                                    onChange={ evt => (window as any).DEBUG_SHOW_PICK_BUFFER = evt.target.checked }
+                                /> Show Pick Buffer
+                            </label>
+                        } />
+                    </div>
                 </Group>
-                <div>
-                    <IconButton icon={ <></> } title={
-                        <label>
-                            <input type="checkbox"
-                                onChange={ evt => (window as any).DEBUG_SHOW_PICK_BUFFER = evt.target.checked }
-                            /> Show Pick Buffer
-                        </label>
-                    } />
-                </div>
+                <Group title="Tool">
+                    <div>
+                        <div>{ Object.keys(tree.$selected?.children || { }).length } selected</div>
+                        <div>{ view.pick?.topos?.length || 0 } picked</div>
+                    </div>
+                    <div>
+                        { view.pick?.topos?.map((topo, idx) => <div key={ idx }>
+                            { topo.type }@{ topo.index }
+                        </div>) }
+                    </div>
+                </Group>
             </div>
         </Toolbar>
         <Resize className="grow">
