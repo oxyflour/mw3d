@@ -2,6 +2,7 @@
 .cache/
 deps/
 dist/
+build/
 node_modules/
 tmp/
 packages/editor/sn.config.js

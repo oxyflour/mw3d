@@ -28,6 +28,7 @@
     "./packages/core",
     "./packages/react",
     "./packages/tool",
-    "./packages/editor"
+    "./packages/editor",
+    "./packages/solver"
   ]
 }

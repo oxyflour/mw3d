@@ -53,11 +53,6 @@ export default ({ params }: RouteMatch<'sess' | 'commit'>) => {
                         <div>{ Object.keys(tree.$selected?.children || { }).length } selected</div>
                         <div>{ view.pick?.topos?.length || 0 } picked</div>
                     </div>
-                    <div>
-                        { view.pick?.topos?.map((topo, idx) => <div key={ idx }>
-                            { topo.type }@{ topo.index }
-                        </div>) }
-                    </div>
                 </Group>
             </div>
         </Toolbar>
