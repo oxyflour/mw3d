@@ -1,6 +1,6 @@
 import cache from "../../utils/cache"
 import { BasicMaterial, Camera, Light, Material, Mesh, Scene, SpriteGeometry, Texture, WebGPURenderer } from ".."
-import { RendererOptions, RenderOptions } from "../renderer"
+import { RenderOptions } from "../renderer"
 
 import wgsl from './tracer.wgsl?raw'
 
@@ -34,9 +34,6 @@ export default class WebGPUTracer extends WebGPURenderer {
         scene: new Scene([this.fullScreenQuad]),
         camera: new Camera()
     }
-    static override async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
-        return await new WebGPUTracer(canvas, opts).init()
-    }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
             disableBundle?: boolean
@@ -67,8 +64,9 @@ export default class WebGPUTracer extends WebGPURenderer {
         if (opts.webgpu?.commandEncoder) {
             throw Error(`should not use opts.webgpu.commandEncoder with tracer`)
         } else {
-            const { scene, camera } = this.renderSetup
-            opts.webgpu = { ...opts.webgpu, commandEncoder: cmd }
+            const { scene, camera } = this.renderSetup,
+                webgpu = opts.webgpu || (opts.webgpu = { })
+            webgpu.commandEncoder = cmd
             super.render(scene, camera, opts)
         }
     }

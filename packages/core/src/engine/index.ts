@@ -11,11 +11,19 @@ import WebGL2Renderer from "./webgl2/renderer"
 import ThreeRenderer from "./three/renderer"
 
 export class Renderer extends RendererBase {
-    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions & { useThree?: boolean }) {
+    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions & {
+        useThree?: boolean
+        useWebGL2?: boolean
+        useTracer?: boolean
+    }) {
         return opts.useThree ?
                 new ThreeRenderer(canvas, opts) :
-            navigator.gpu ?
+            opts.useWebGL2 ?
+                new WebGL2Renderer(canvas, opts) :
+            opts.useTracer ?
                 await WebGPUTracer.create(canvas, opts) :
+            navigator.gpu ?
+                await WebGPURenderer.create(canvas, opts) :
                 new WebGL2Renderer(canvas, opts)
     }
 }

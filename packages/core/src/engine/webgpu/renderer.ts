@@ -13,7 +13,7 @@ import Renderer, { RendererOptions, RenderMesh, RenderOptions } from "../rendere
 const MAX_LIGHTS = 4
 
 export default class WebGPURenderer extends Renderer {
-    constructor(
+    protected constructor(
         canvas: HTMLCanvasElement | OffscreenCanvas,
         override readonly opts: RendererOptions & {
             webgpu?: {
@@ -67,7 +67,7 @@ export default class WebGPURenderer extends Renderer {
         return this
     }
     static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
-        return await new WebGPURenderer(canvas, opts).init()
+        return await new this(canvas, opts).init()
     }
 
     override resize() {

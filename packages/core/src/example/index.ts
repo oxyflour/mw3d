@@ -17,7 +17,12 @@ document.body.appendChild(elem)
 document.body.style.margin = document.body.style.padding = '0'
 document.body.style.background = 'linear-gradient(45deg, black, transparent)'
 
-const renderer = await Renderer.create(elem, { sampleCount: 4, useThree: location.search.includes('use-three') })
+const renderer = await Renderer.create(elem, {
+    sampleCount: 4,
+    useThree: location.search.includes('use-three'),
+    useWebGL2: location.search.includes('use-webgl2'),
+    useTracer: location.search.includes('use-tracer'),
+})
 
 async function updatePivot({ x, y }: { x: number, y: number }) {
     const { id, position } = await Picker.pick(scene, camera, {
