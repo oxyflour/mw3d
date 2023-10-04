@@ -6,7 +6,6 @@ file(GLOB SOURCE_FILES "src/*.cc")
 cuda_add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} ${CMAKE_JS_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
-message("x" ${CMAKE_JS_LIB})
 
 # Include N-API wrappers
 execute_process(COMMAND node -p "require('node-addon-api').include"

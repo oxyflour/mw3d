@@ -6,6 +6,7 @@ import Light from "./light"
 import Camera from "./camera"
 import RendererBase, { RendererOptions } from "./renderer"
 import WebGPURenderer from "./webgpu/renderer"
+import WebGPUTracer from "./tracer/renderer"
 import WebGL2Renderer from "./webgl2/renderer"
 import ThreeRenderer from "./three/renderer"
 
@@ -14,7 +15,7 @@ export class Renderer extends RendererBase {
         return opts.useThree ?
                 new ThreeRenderer(canvas, opts) :
             navigator.gpu ?
-                await WebGPURenderer.create(canvas, opts) :
+                await WebGPUTracer.create(canvas, opts) :
                 new WebGL2Renderer(canvas, opts)
     }
 }

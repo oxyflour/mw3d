@@ -25,11 +25,11 @@ export default class WebGPURenderer extends Renderer {
     ) {
         super(canvas, opts)
     }
-    private cache!: Cache
-    private device!: GPUDevice
-    private format!: GPUTextureFormat
-    private context!: GPUCanvasContext
-    private async init() {
+    protected cache!: Cache
+    protected device!: GPUDevice
+    protected format!: GPUTextureFormat
+    protected context!: GPUCanvasContext
+    protected async init() {
         const opts = this.opts.webgpu || { },
             adaptor = await navigator.gpu.requestAdapter(opts.adaptorOptions)
         if (!adaptor) {
@@ -205,6 +205,7 @@ export default class WebGPURenderer extends Renderer {
         webgpu?: {
             disableBundle?: boolean
             depthStencilAttachment?: Partial<GPURenderPassDepthStencilAttachment>
+            commandEncoder?: GPUCommandEncoder
         }
     }) {
         super.render(scene, camera, opts)
@@ -218,7 +219,7 @@ export default class WebGPURenderer extends Renderer {
             this.updateUniforms(this.cache.bindings(obj))
         }
 
-        const cmd = this.device.createCommandEncoder(),
+        const cmd = opts.webgpu?.commandEncoder || this.device.createCommandEncoder(),
             colorTexture = opts.colorTexture ? this.cache.texture(opts.colorTexture) : this.context.getCurrentTexture(),
             depthTexture = opts.depthTexture ? this.cache.texture(opts.depthTexture) : this.cache.depthTexture,
             pass = cmd.beginRenderPass({

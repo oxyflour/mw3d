@@ -204,5 +204,5 @@ requestAnimationFrame(function render() {
     handle.rotation.rotX(0.005)
     control.update()
     renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
-    renderer.render(scene, camera, { renderClips: true })
+    renderer.render(scene, camera, { })
 })

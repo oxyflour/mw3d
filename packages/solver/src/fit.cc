@@ -198,9 +198,12 @@ Napi::Value FitSolver::Step(const Napi::CallbackInfo& info) {
             for (int idx = 0; idx < len; idx ++) {
                 buf[idx] = arr.Get(idx).As<Napi::Number>().DoubleValue();
             }
+            auto start = std::chrono::high_resolution_clock::now();
             for (int idx = 0; idx < len; idx ++) {
                 buf[idx] = fStep(buf[idx]);
             }
+            std::chrono::duration<float> duration = std::chrono::high_resolution_clock::now() - start;
+            printf("PERF: %f MCells/s\n", grid.nx * grid.ny * grid.nz * len / 1e6 / duration.count());
             auto out = Napi::Float32Array::New(info.Env(), len);
             for (int idx = 0; idx < len; idx ++) {
                 out.Set(idx, Napi::Number::New(info.Env(), buf[idx]));

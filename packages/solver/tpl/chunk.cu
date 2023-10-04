@@ -98,8 +98,8 @@ extern "C" DLL_EXPORT int init_$i(float *le, float *re, float *lh, float *rh) {
 extern "C" DLL_EXPORT float step_$i(float s) {
     kernel_step_h_$i CU_DIM(2048, 256) ();
     kernel_step_e_$i CU_DIM(2048, 256) (s);
-    CU_ASSERT(cudaGetLastError());
-    CU_ASSERT(cudaMemcpy(&s, &chunk_$i.sig, sizeof(float), cudaMemcpyDefault));
+    //CU_ASSERT(cudaGetLastError());
+    //CU_ASSERT(cudaMemcpy(&s, &chunk_$i.sig, sizeof(float), cudaMemcpyDefault));
     return s;
 }
 

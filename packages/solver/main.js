@@ -11,11 +11,11 @@ function makeSrc(proj, dt, tn) {
     return src
 }
 
-"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 const { fit: { Solver }, occ: { Mesher }, cst: { Project } } = require('.'),
     proj = new Project('D:\\Projects\\cst-demo\\dipole-1.cst', 2019),
     grid = proj.getHexGrid(),
-    { dt, tn } = proj.getMeta(),
+    { dt, tn: tn0 } = proj.getMeta(),
+    tn = tn0 * 10,
     src = makeSrc(proj, dt, tn),
     mats = { eps: proj.getMatrix(100), mue: proj.getMatrix(101) },
     port = { src: [25e-3, 0, 2e-3], dst: [25e-3, 0, -2e-3] },

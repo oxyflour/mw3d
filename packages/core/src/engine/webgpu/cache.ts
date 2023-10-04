@@ -154,7 +154,7 @@ export default class Cache {
         })
     })
 
-    bind = cache((pipeline: GPURenderPipeline, obj: { uniforms: Uniform[], bindingGroup: number, layout?: GPUBindGroupLayoutDescriptor }) => {
+    bind = cache((pipeline: GPURenderPipeline | GPUComputePipeline, obj: { uniforms: Uniform[], bindingGroup: number, layout?: GPUBindGroupLayoutDescriptor }) => {
         const bindings = this.bindings(obj),
             index = obj.bindingGroup,
             layout = obj.layout ?
