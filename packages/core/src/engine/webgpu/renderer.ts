@@ -81,7 +81,7 @@ export default class WebGPURenderer extends Renderer {
         })
     }
 
-    private updateUniforms(bindings: BindingResource[]) {
+    protected updateUniforms(bindings: BindingResource[]) {
         for (const binding of bindings) {
             const { uniforms } = binding,
                 { buffer, offset = -1 } = binding as GPUBufferBinding
@@ -106,7 +106,7 @@ export default class WebGPURenderer extends Renderer {
         }
     }
 
-    private cachedRenderPass = {
+    protected cachedRenderPass = {
         objs: [] as { mesh: Mesh, mat: Material, geo: Geometry, offset: number, count: number }[],
         bundles: [] as GPURenderBundle[],
         compare(sorted: Mesh[]) {

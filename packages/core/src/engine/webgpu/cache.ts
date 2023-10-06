@@ -113,12 +113,13 @@ export default class Cache {
 
     private cachedUniformBuffer = { buffer: { } as GPUBuffer, size: 0, offset: 0 }
     private makeUniformBuffer(size: number) {
-        if (this.cachedUniformBuffer.offset + size > this.cachedUniformBuffer.size) {
-            const size = this.opts.uniformBufferBatchSize || 256 * 16
+        const bufferSize = size
+        if (this.cachedUniformBuffer.offset + bufferSize > this.cachedUniformBuffer.size) {
+            const size = Math.max(bufferSize || 256 * 16)
             this.cachedUniformBuffer = {
                 buffer: this.device.createBuffer({
                     size,
-                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
                 }),
                 offset: 0,
                 size,

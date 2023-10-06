@@ -80,7 +80,7 @@ async function clickScene(evt: MouseEvent) {
     })
 }
 
-const CLIP_PLANE = vec4.fromValues(1, 0, 0, 20)
+const CLIP_PLANE = vec4.fromValues(0, 0, 0, 20)
 
 const tex = document.createElement('canvas'),
     ctx = tex.getContext('2d')
@@ -208,6 +208,7 @@ requestAnimationFrame(function render() {
     cube.rotation.rotX(0.02).rotY(0.03)
     handle.rotation.rotX(0.005)
     control.update()
-    renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
+    depthScene
+    //renderer.render(depthScene, camera, { depthTexture: depthMaterial.opts.texture, webgpu: { disableBundle: true } })
     renderer.render(scene, camera, { })
 })

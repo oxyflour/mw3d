@@ -5,7 +5,7 @@ import { RenderOptions } from "../renderer"
 import wgsl from './tracer.wgsl?raw'
 import { BindingResource } from "../webgpu/cache"
 
-export default class WebGPUTracer extends WebGPURenderer {
+export default class WebRTXRenderer extends WebGPURenderer {
     private pipeline = cache((device: GPUDevice) => device.createComputePipeline({
         layout: 'auto',
         compute: {

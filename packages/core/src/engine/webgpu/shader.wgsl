@@ -10,6 +10,7 @@ struct Light {
 struct CameraUniforms {
   viewProjection: mat4x4<f32>,
   worldPosition: vec4<f32>,
+  worldMatrix: mat4x4<f32>,
 }
 @group(1) @binding(0) var<uniform> camera: CameraUniforms;
 

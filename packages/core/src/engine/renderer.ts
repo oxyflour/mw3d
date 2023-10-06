@@ -68,7 +68,9 @@ export default class Renderer {
         mesh
         return 0
     }
-    prepare(scene: Scene, camera: Camera) {
+    prepare(scene: Scene, camera: Camera, opts = { } as {
+        disableTransparent?: boolean
+    }) {
         const { revs, list, updated } = this.cachedRenderList
         list.length = 0
         updated.clear()
@@ -88,7 +90,7 @@ export default class Renderer {
                 if (revs[mat.id] !== mat.rev && (revs[mat.id] = mat.rev)) {
                     this.addToUpdated(mat)
                 }
-                if (obj.mat.prop.a < 1) {
+                if (obj.mat.prop.a < 1 && !opts.disableTransparent) {
                     translucent.push(obj as any)
                 } else {
                     opaque.push(obj as any)

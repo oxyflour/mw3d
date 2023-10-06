@@ -11,5 +11,5 @@ export class Sampler {
     }
 }
 
-export type UniformValue = mat4 | vec4 | Uint32Array | Int32Array
+export type UniformValue = mat4 | vec4 | Uint32Array | Int32Array | Float32Array | Uint16Array
 export type Uniform = UniformValue[] | Texture | Sampler
