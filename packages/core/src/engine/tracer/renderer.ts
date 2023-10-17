@@ -6,13 +6,18 @@ import wgsl from './tracer.wgsl?raw'
 import { BindingResource } from "../webgpu/cache"
 
 export default class WebGPUTracer extends WebGPURenderer {
-    private pipeline = cache((device: GPUDevice) => device.createComputePipeline({
-        layout: 'auto',
-        compute: {
-            module: device.createShaderModule({ code: wgsl }),
-            entryPoint: 'main'
-        }
-    }))
+    private pipeline!: GPUComputePipeline
+    protected override async init() {
+        const { device } = await super.init()
+        this.pipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({ code: wgsl }),
+                entryPoint: 'main'
+            }
+        })
+        return this
+    }
     private cameraPropUniform = new Float32Array([1, 1])
     private binding = cache((tex: GPUTexture) => {
         const texture = new Texture({
@@ -27,17 +32,17 @@ export default class WebGPUTracer extends WebGPURenderer {
             ],
             bindingGroup: 0,
         }
-        const material = new BasicMaterial({ texture })
-        return { output, material }
+        this.fullScreenQuad.mat = new BasicMaterial({ texture })
+        return output
     })
+    private meshesObject = {
+        uniforms: [] as Uniform[],
+        bindingGroup: 2,
+    }
     private fullScreenQuad = new Mesh(new SpriteGeometry({ positions: [0, 0, 0], width: 2, height: 2 }))
     private renderSetup = {
         scene: new Scene([this.fullScreenQuad]),
         camera: new Camera()
-    }
-    private meshesObject = {
-        uniforms: [] as Uniform[],
-        bindingGroup: 2,
     }
     private meshesTransformBinding = {} as {
         map: Record<number, {
@@ -77,7 +82,9 @@ export default class WebGPUTracer extends WebGPURenderer {
                 [new Float32Array(verts)],
                 [new Uint32Array(faces)],
                 sorted.map(mesh => mesh.worldMatrix),
-            ]
+            ].map(item => Object.assign(item, {
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+            }))
             const bindings = this.cache.bindings(this.meshesObject)
             this.updateUniforms(bindings)
             const { uniforms = [] } = bindings[3] as BindingResource,
@@ -88,23 +95,23 @@ export default class WebGPUTracer extends WebGPURenderer {
             }
         }
 
-        const cmd = this.device.createCommandEncoder(),
-            pass = cmd.beginComputePass(),
-            pipeline = this.pipeline(this.device),
-            { width, height } = this.cache.fragmentTexture,
-            { output, material } = this.binding(this.cache.fragmentTexture)
         if (camera instanceof PerspectiveCamera) {
             const hf = camera.fov / 2
             this.cameraPropUniform[0] =  Math.tan(hf * camera.aspect)
             this.cameraPropUniform[1] = -Math.tan(hf)
         }
-        this.fullScreenQuad.mat = material
+
+        const cmd = this.device.createCommandEncoder(),
+            pass = cmd.beginComputePass(),
+            { pipeline, cache } = this,
+            { width, height } = cache.fragmentTexture,
+            output = this.binding(cache.fragmentTexture)
         pass.setPipeline(pipeline)
-        pass.setBindGroup(...this.cache.bind(pipeline, output))
-        pass.setBindGroup(...this.cache.bind(pipeline, camera))
-        pass.setBindGroup(...this.cache.bind(pipeline, this.meshesObject))
-        this.updateUniforms(this.cache.bindings(output))
-        this.updateUniforms(this.cache.bindings(camera))
+        pass.setBindGroup(...cache.bind(pipeline, output))
+        pass.setBindGroup(...cache.bind(pipeline, camera))
+        pass.setBindGroup(...cache.bind(pipeline, this.meshesObject))
+        this.updateUniforms(cache.bindings(output))
+        this.updateUniforms(cache.bindings(camera))
         {
             const { buffer, offset, map } = this.meshesTransformBinding,
                 uniforms = Array.from(updated).map(item => map[item.id]!).filter(item => item)

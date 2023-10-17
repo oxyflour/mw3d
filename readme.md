@@ -1,5 +1,10 @@
 # TODOs
 
+## Installation behind proxy
+```
+git config --global url."https://".insteadOf ssh://
+```
+
 ## Design Problem
 - [ ] Support Browsers without WebGPU
   - [ ] WebGL2 renderer (threejs or from scratch?)

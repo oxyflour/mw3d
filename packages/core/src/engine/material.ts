@@ -5,6 +5,7 @@ import { AutoIndex } from '../utils/common'
 import { MutableArray } from '../utils/math'
 import { GeometryPrimitive } from './geometry'
 import { Sampler, Texture, Uniform } from './uniform'
+import type { MaterialDescription } from './webrtx/loader'
 
 export type ProgramEntry = Partial<{ [k in GeometryPrimitive]: string }> | string
 
@@ -49,6 +50,7 @@ export interface MatOpts {
             factor?: number
         }
     }
+    webrtx?: MaterialDescription
 }
 
 export default class Material extends AutoIndex {
@@ -77,10 +79,8 @@ export default class Material extends AutoIndex {
     } & MatOpts) {
         super()
         if (opts.texture) {
-            this.uniforms.push(
-                opts.texture,
-                opts.sampler || Material.DEFAULT_SAMPLER
-            )
+            this.uniforms[1] = opts.texture
+            this.uniforms[2] = opts.sampler || Material.DEFAULT_SAMPLER
         }
         if (opts.renderOrder !== undefined) {
             this.renderOrder = opts.renderOrder
@@ -93,25 +93,14 @@ export default class Material extends AutoIndex {
 }
 
 export class BasicMaterial extends Material {
-    static defaultEntry = {
-        vert: 'vertMain',
-        frag: {
-            'point-list': 'fragMainColor',
-            'line-list': 'fragMainColor',
-            'line-strip': 'fragMainColor',
-            'triangle-list': 'fragMain',
-            'triangle-strip': 'fragMain',
-        } as ProgramEntry
-    }
     constructor(opts = { } as {
         wgsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
         glsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
+        rtx?: MaterialDescription,
         color?: Float32Array | Uint8Array | number[]
         clipPlane?: vec4 | number[]
     } & Partial<MaterialProp> & MatOpts) {
-        const wgsl = BasicMaterial.defaultEntry,
-            { vert = wgsl.vert, frag = wgsl.frag } = opts.wgsl || { }
-        super({ ...opts, wgsl: { vert, frag } })
+        super(opts)
         let [r = Math.random(), g = Math.random(), b = Math.random(), a = 1] = opts.color || []
         if (opts.color instanceof Uint8Array) {
             r /= 255

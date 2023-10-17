@@ -28,10 +28,14 @@ struct MaterialUniforms {
   emissive: f32,
   clipPlane: vec4<f32>,
 }
+struct PixelBuffer {
+  pixels: array<vec4<f32>>,
+}
 @group(3) @binding(0) var<uniform> material: MaterialUniforms;
 @group(3) @binding(1) var depthTexture: texture_depth_2d;
 @group(3) @binding(1) var depthMultiTexture: texture_depth_multisampled_2d;
 @group(3) @binding(1) var imageTexture: texture_2d<f32>;
+@group(3) @binding(1) var<storage, read> pixelBuffer: PixelBuffer;
 @group(3) @binding(2) var materialSampler: sampler;
 
 // vert

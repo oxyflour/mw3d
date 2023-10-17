@@ -112,15 +112,12 @@ export default class Cache {
     })
 
     private cachedUniformBuffer = { buffer: { } as GPUBuffer, size: 0, offset: 0 }
-    private makeUniformBuffer(size: number) {
+    private makeUniformBuffer(size: number, usage = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST) {
         const bufferSize = size
         if (this.cachedUniformBuffer.offset + bufferSize > this.cachedUniformBuffer.size) {
             const size = Math.max(bufferSize || 256 * 16)
             this.cachedUniformBuffer = {
-                buffer: this.device.createBuffer({
-                    size,
-                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE
-                }),
+                buffer: this.device.createBuffer({ size, usage }),
                 offset: 0,
                 size,
             }
@@ -131,7 +128,10 @@ export default class Cache {
     }
     bindings = cache((obj: { uniforms: Uniform[] }) => {
         return obj.uniforms.map(item => {
-            if (Array.isArray(item)) {
+            const resource = item as BindingResource
+            if (resource.uniforms) {
+                return resource
+            } else if (Array.isArray(item)) {
                 const list = { size: 0, uniforms: [] as { value: UniformValue, offset: number }[] }
                 for (const value of item) {
                     const offset = list.size
@@ -143,8 +143,8 @@ export default class Cache {
                     }
                 }
                 const { uniforms, size } = list,
-                    { buffer, offset } = this.makeUniformBuffer(size)
-                return { uniforms, buffer, offset, size }
+                    { buffer, offset } = this.makeUniformBuffer(size, item.usage)
+                return { uniforms, buffer, offset, size } as BindingResource
             } else if (item instanceof Sampler) {
                 return this.sampler(item)
             } else if (item instanceof Texture) {
@@ -189,17 +189,29 @@ export default class Cache {
         const match = wgsl.trim().match(/^fn ([^\(]+)/)
         return match ? { name: match[1]!, code: wgsl } : { name: wgsl, code: '' }
     }
-    buildPipeline = cache((primitive: GeometryPrimitive, mat: Material) => {
-        const { wgsl: { vert = { }, frag = { } } = { } } = mat.opts,
+    static defaultEntry = {
+        vert: 'vertMain',
+        frag: {
+            'point-list': 'fragMainColor',
+            'line-list': 'fragMainColor',
+            'line-strip': 'fragMainColor',
+            'triangle-list': 'fragMain',
+            'triangle-strip': 'fragMain',
+        }
+    }
+    private buildPipeline = cache((primitive: GeometryPrimitive, mat: Material) => {
+        const { wgsl: { vert, frag } = { } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
             vertEntry = Cache.parseShaderEntry(
+                typeof vert === 'string' ? vert :
                 primitive === 'fat-line-list' ? 'vertLineMain' :
                 primitive === 'point-sprite' ? 'vertSpriteMain' :
-                typeof vert === 'string' ? vert : (vert[primitive] || 'vertMain')),
+                (vert?.[primitive] || Cache.defaultEntry.vert)),
             fragEntry = Cache.parseShaderEntry(
+                typeof frag === 'string' ? frag :
                 primitive === 'fat-line-list' ? 'fragMainColor' :
                 primitive === 'point-sprite' ? (mat.opts.texture ? 'fragMainSprite' : 'fragMainColor') :
-                typeof frag === 'string' ? frag : (frag[primitive] || 'fragMainColor')),
+                ((frag || Cache.defaultEntry.frag)[primitive] || 'fragMainColor')),
             topology =
                 primitive === 'fat-line-list' ? 'triangle-list' :
                 primitive === 'point-sprite' ? 'triangle-list' :
