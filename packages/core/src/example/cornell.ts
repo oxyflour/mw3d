@@ -117,7 +117,7 @@ const camera = new PerspectiveCamera({
                     "data": [0, 0, 0, 0] /* vec3(light radiance), float(inv_area) */
                 }, {
                     "type": "vec3" as 'vec3',
-                    "data": [0.65, 0.65, 0.65] /* albedo */
+                    "data": [1.0, 0.0, 0.0] /* albedo */
                 }]
             }, /* shadow ray */ {
                 "rahit": shadowRahit

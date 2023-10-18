@@ -21,7 +21,7 @@ pinhole;
 vec3 sampleRayDirection(float vfov, mat4 transform_to_world, const vec2 pixel) {
   vec2 iplane = getImagePlaneSize(vfov);
   vec2 ixy = (vec2(-0.5, -0.5) + pixel / gl_LaunchSizeEXT.xy) * iplane;
-  vec3 local_dir = normalize(vec3(-ixy.x, -ixy.y, 1.0));  // flip x(pixel.x)
+  vec3 local_dir = normalize(vec3(ixy.x, -ixy.y, -1.0));  // flip x(pixel.x)
   return (transform_to_world * vec4(local_dir, 0.)).xyz;
 }
 
@@ -44,9 +44,6 @@ void main() {
                     gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x;
   const float SPEED_ROTATE = 0.2;
   float frameNum = pixelBuffer.pixels[pixelIndex].w;
-  if (frameNum >= MAX_SPP) {
-    return;
-  }
   payload.done = false;
   payload.alpha = vec3(1.);
 
@@ -141,5 +138,7 @@ void main() {
     rayTmax = RT_DEFAULT_MAX;
   }
 
-  pixelBuffer.pixels[pixelIndex] += vec4(res, 1.0);
+  vec4 color = pixelBuffer.pixels[pixelIndex];
+  res = mix(res * 1024., color.xyz, 0.1);
+  pixelBuffer.pixels[pixelIndex] = vec4(res, mod(color.w + 1., 1e6));
 }

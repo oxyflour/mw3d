@@ -87,20 +87,20 @@ function transformComputedValue(ts?: TransformDescription | TransformDescription
   return result;
 }
 
-interface ScalarShaderRecord {
+export interface ScalarShaderRecord {
   type: 'float';
   data: number;
 }
-interface VectorShaderRecord {
+export interface VectorShaderRecord {
   type: 'vec2' | 'vec3' | 'vec4';
   data: number[];
 }
-interface MatrixShaderRecord {
+export interface MatrixShaderRecord {
   type: 'mat4';
   data: TransformDescription | TransformDescription[];
 }
 
-type ShaderRecord = ScalarShaderRecord | VectorShaderRecord | MatrixShaderRecord;
+export type ShaderRecord = ScalarShaderRecord | VectorShaderRecord | MatrixShaderRecord;
 
 interface HitGroupMaterialShadersDescription {
   rchit?: string;
@@ -460,7 +460,7 @@ async function visitSceneInstanceAsync(sceneDescription: SceneDescription, visit
   parallel && (await Promise.all(promises));
 }
 
-function writeShaderRecords(dvSbtBuffer: DataView, records: ShaderRecord[] | undefined, byteOffset: number) {
+export function writeShaderRecords(dvSbtBuffer: DataView, records: ShaderRecord[] | undefined, byteOffset: number) {
   if (!records || !records.length) {
     return;
   }
@@ -734,7 +734,7 @@ export default class SceneLoader {
     const alignedSbtSize = alignTo(sbt.rayHit.start + sbt.rayHit.size, device.ShaderGroupBaseAlignment);
     sbt.buffer = device.createBuffer({
       size: alignedSbtSize,
-      usage: GPUBufferUsageRTX.SHADER_BINDING_TABLE,
+      usage: GPUBufferUsageRTX.SHADER_BINDING_TABLE | GPUBufferUsage.COPY_DST,
       mappedAtCreation: true,
     });
     {

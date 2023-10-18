@@ -1,14 +1,15 @@
 import 'webrtx'
 
 import cache from "../../utils/cache"
-import { BasicMaterial, Camera, Mesh, Scene, SphereGeometry, SpriteGeometry, WebGPURenderer } from ".."
+import { BasicMaterial, Camera, Mesh, PerspectiveCamera, Scene, SphereGeometry, SpriteGeometry, WebGPURenderer } from ".."
 import { RendererOptions, RenderMesh, RenderOptions } from "../renderer"
 
 import raygenGlsl from './raygen.glsl?raw'
 import raymissGlsl from './raymiss.glsl?raw'
 // @ts-ignore
 import sphereRint from './sphere.rint?raw'
-import SceneLoader, { LoadedSceneResult, SceneDescription } from './loader'
+import SceneLoader, { LoadedSceneResult, ScalarShaderRecord, SceneDescription, ShaderRecord, writeShaderRecords } from './loader'
+import { mat4 } from 'gl-matrix'
 
 const loader = new SceneLoader()
 const quadFrag = `
@@ -56,24 +57,26 @@ export default class WebRTXRenderer extends WebGPURenderer {
         scene: new Scene([this.fullScreenQuad]),
         camera: new Camera()
     }
-    private bvhScene = { } as Partial<LoadedSceneResult> & { bindGroup?: GPUBindGroup }
-    private async load(sorted: RenderMesh[]) {
+    private rtxScene = { } as Partial<LoadedSceneResult> & {
+        updateRayGen?: (camera: Camera, fov: number) => void
+        bindGroup?: GPUBindGroup
+    }
+    private async load(sorted: RenderMesh[], camera: Camera) {
+        const rayGenRowMajorMatrix = mat4.create(),
+            rayGenFov = {
+                "type": "float", // vfov radians
+                "data": 0.343 //  39.3077'
+            } as ScalarShaderRecord,
+            rayGenShaderRecords = [{
+                "type": "mat4",
+                "data": [{ // initial_transform_to_world
+                    rowMajorMatrix: mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix),
+                }]
+            }, rayGenFov] as ShaderRecord[]
         const scene = {
             rayGen: {
                 shader: raygenGlsl,
-                shaderRecord: [{
-                    "type": "mat4",
-                    "data": [{ // initial_transform_to_world
-                        "lookAt": {
-                            "origin": [278, 273, -800],
-                            "target": [278, 273, -799],
-                            "up": [0, 1, 0]
-                        }
-                    }]
-                }, {
-                    "type": "float", // vfov radians
-                    "data": 0.343 //  39.3077'
-                }]
+                shaderRecord: rayGenShaderRecords
             },
             rayMiss: raymissGlsl,
             rayTypes: 2,
@@ -102,7 +105,7 @@ export default class WebRTXRenderer extends WebGPURenderer {
                 scene.tlas.push({
                     blas: 'unit-sphere',
                     material: `${mat.id}`,
-                    // TODO: use worldMatrix
+                    // FIXME: It says "transform is not affine" using world matrix
                     transformToWorld: [{
                         translate: worldPosition.slice(0, 3) as any,
                     }, {
@@ -125,36 +128,46 @@ export default class WebRTXRenderer extends WebGPURenderer {
         }
         const binding = this.binding(this.cache.fragmentTexture),
             [resource] = this.cache.bindings(binding),
-            { pipeline, tlas, userBindGroupEntries } = this.bvhScene = await loader.load(this.device, scene)
-        this.bvhScene.bindGroup = this.device.createBindGroup({
+            { pipeline, tlas, userBindGroupEntries, sbt } = this.rtxScene = await loader.load(this.device, scene)
+        this.rtxScene.bindGroup = this.device.createBindGroup({
             layout: pipeline.getBindGroupLayout(0),
             entries: [{
                 binding: 0,
-                // any ok: acceleration container is a new resource type introduced in WebRTX
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 resource: tlas as any,
             }, {
                 binding: 1,
                 resource,
             }].concat(userBindGroupEntries),
         })
+        const buf = new Float32Array(16 + 1),
+            view = new DataView(buf.buffer)
+        this.rtxScene.updateRayGen = (camera, fov) => {
+            mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix)
+            rayGenFov.data = fov
+            writeShaderRecords(view, rayGenShaderRecords, 0)
+            this.device.queue.writeBuffer(sbt.buffer, this.device.ShaderGroupHandleSize + sbt.rayGen.start, buf)
+        }
     }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions) {
         const { sorted } = this.prepare(scene, camera, { disableTransparent: true })
         if (this.cachedRenderPass.compare(sorted)) {
             this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
-            this.load(sorted)
+            this.load(sorted, camera)
         }
 
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginRayTracingPass(),
-            { sbt, pipeline, bindGroup } = this.bvhScene
+            { sbt, pipeline, bindGroup } = this.rtxScene
         if (sbt && bindGroup && pipeline) {
             pass.setPipeline(pipeline)
             pass.setBindGroup(0, bindGroup)
-            pass.traceRays(this.device, sbt,
-                Math.floor(this.renderSize.width / 8) * 8,
-                Math.floor(this.renderSize.height / 8) * 8)
+            camera.updateIfNecessary({ })
+            const fov = camera instanceof PerspectiveCamera ? camera.fov / 2 : 0.5
+            this.rtxScene.updateRayGen?.(camera, fov)
+            // Note: it requires rounded by 8
+            const { width, height } = this.renderSize,
+                [w = 1, h = 1] = [width, height].map(val => Math.floor(val / 8) * 8)
+            pass.traceRays(this.device, sbt, w, h)
         }
         pass.end()
         {
