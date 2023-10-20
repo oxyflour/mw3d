@@ -4,11 +4,15 @@ import cache from "../../utils/cache"
 import { BasicMaterial, Camera, Mesh, PerspectiveCamera, Scene, SphereGeometry, SpriteGeometry, WebGPURenderer } from ".."
 import { RendererOptions, RenderMesh, RenderOptions } from "../renderer"
 
-import raygenGlsl from './raygen.glsl?raw'
-import raymissGlsl from './raymiss.glsl?raw'
-// @ts-ignore
-import sphereRint from './sphere.rint?raw'
-import SceneLoader, { LoadedSceneResult, ScalarShaderRecord, SceneDescription, ShaderRecord, writeShaderRecords } from './loader'
+import raygenGlsl   from './shaders/raygen.glsl?raw'
+import raymissGlsl  from './shaders/raymiss.glsl?raw'
+import diffuseRchit from './shaders/diffuse.rchit?raw'
+import shadowRahit  from './shaders/shadow.rahit?raw'
+import mirrorRchit  from './shaders/mirror.rchit?raw'
+import glassRchit   from './shaders/glass.rchit?raw'
+import sphereRint   from './shaders/sphere.rint?raw'
+
+import SceneLoader, { LoadedSceneResult, SceneDescription, ShaderRecord, writeShaderRecords } from './loader'
 import { mat4 } from 'gl-matrix'
 
 const loader = new SceneLoader()
@@ -23,6 +27,52 @@ fn main(@builtin(position) coord : vec4<f32>) -> @location(0) vec4<f32> {
 }`
 
 export default class WebRTXRenderer extends WebGPURenderer {
+    public static Builtin = {
+        diffuse: ({
+            albedo = [0, 0, 0] as [number, number, number],
+            light = [0, 0, 0, 0] as [number, number, number, number],
+        } = { }) => [ /* radiance ray */ {
+            rchit: diffuseRchit,
+            shaderRecord: [{
+                type: 'vec4' as 'vec4',
+                data: light /* vec3(light radiance), float(inv_area) */
+            }, {
+                type: 'vec3' as 'vec3',
+                data: albedo /* albedo */
+            }]
+        }, /* shadow ray */ {
+            rahit: shadowRahit
+        }],
+        mirror: ({
+            reflection = [0.65, 0.65, 0.65] as [number, number, number],
+        } = { }) => [ /* radiance ray */ {
+            rchit: mirrorRchit,
+            shaderRecord: [{
+                type: 'vec3' as 'vec3', // KR
+                data: reflection
+            }]
+        }, /* shadow ray */ {
+            rahit: shadowRahit
+        }],
+        glass: ({
+            reflection = [0.65, 0.65, 0.65],
+            transmission = [0.65, 0.65, 0.65],
+        } = { }) => [ /* radiance ray */ {
+            rchit: glassRchit,
+            shaderRecord: [{
+                type: 'vec3' as 'vec3', // KR
+                data: reflection
+            }, {
+                type: 'vec3' as 'vec3', // KT
+                data: transmission
+            }, {
+                type: 'vec2' as 'vec2',
+                data: [1.0, 1.5] // etai, etat
+            }]
+        }, /* shadow ray */ {
+            rahit: shadowRahit
+        }]
+    }
     constructor(canvas: HTMLCanvasElement | OffscreenCanvas, override readonly opts: RendererOptions & {
         webgpu?: {
             adaptorOptions?: GPURequestAdapterOptions
@@ -63,16 +113,12 @@ export default class WebRTXRenderer extends WebGPURenderer {
     }
     private async load(sorted: RenderMesh[], camera: Camera) {
         const rayGenRowMajorMatrix = mat4.create(),
-            rayGenFov = {
-                "type": "float", // vfov radians
-                "data": 0.343 //  39.3077'
-            } as ScalarShaderRecord,
+            rayGenFov = { type: 'float', data: 0.343 },
+            rayGenReset = { type: 'float', data: 0 },
             rayGenShaderRecords = [{
-                "type": "mat4",
-                "data": [{ // initial_transform_to_world
-                    rowMajorMatrix: mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix),
-                }]
-            }, rayGenFov] as ShaderRecord[]
+                type: 'mat4',
+                data: { rowMajorMatrix: mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix) }
+            }, rayGenFov, rayGenReset] as ShaderRecord[]
         const scene = {
             rayGen: {
                 shader: raygenGlsl,
@@ -82,11 +128,11 @@ export default class WebRTXRenderer extends WebGPURenderer {
             rayTypes: 2,
             materials: { },
             blas: {
-                "unit-sphere": {
-                    "geometries": [{
-                        "type": "aabb",
-                        "intersection": sphereRint,
-                        "aabb": [
+                'unit-sphere': {
+                    geometries: [{
+                        type: 'aabb',
+                        intersection: sphereRint,
+                        aabb: [
                             [-1, -1, -1],
                             [1, 1, 1]
                         ]
@@ -97,32 +143,33 @@ export default class WebRTXRenderer extends WebGPURenderer {
             version: '',
             ...this.opts.webrtx
         } as SceneDescription
-        for (const { mat, geo, worldPosition, scaling } of sorted) {
-            if (mat.opts.webrtx) {
-                scene.materials[mat.id] = mat.opts.webrtx
-            }
+        for (const { mat, geo, worldMatrix } of sorted) {
+            const { r, g, b, emissive } = mat.prop
+            scene.materials[mat.id] = mat.opts.webrtx || (mat.prop.a !== 1 ?
+                WebRTXRenderer.Builtin.glass() :
+                WebRTXRenderer.Builtin.diffuse({
+                    albedo: [r, g, b],
+                    light: emissive ? [emissive, emissive, emissive, 7.33e-5] : [0, 0, 0, 0]
+                }))
+            const rowMajorMatrix = mat4.transpose(mat4.create(), worldMatrix)
             if (geo instanceof SphereGeometry) {
                 scene.tlas.push({
                     blas: 'unit-sphere',
                     material: `${mat.id}`,
-                    // FIXME: It says "transform is not affine" using world matrix
-                    transformToWorld: [{
-                        translate: worldPosition.slice(0, 3) as any,
-                    }, {
-                        scale: scaling.data.slice(0, 3) as any
-                    }]
+                    transformToWorld: { rowMajorMatrix }
                 })
             } else {
                 scene.blas[geo.id] = {
                     geometries: [{
                         type: 'triangles',
                         vertices: geo.positions,
-                        index: geo.indices instanceof Uint16Array ? new Uint32Array(geo.indices) : geo.indices
+                        index: geo.indices
                     }],
                 }
                 scene.tlas.push({
                     blas: `${geo.id}`,
-                    material: `${mat.id}`
+                    material: `${mat.id}`,
+                    transformToWorld: { rowMajorMatrix }
                 })
             }
         }
@@ -139,11 +186,15 @@ export default class WebRTXRenderer extends WebGPURenderer {
                 resource,
             }].concat(userBindGroupEntries),
         })
-        const buf = new Float32Array(16 + 1),
-            view = new DataView(buf.buffer)
+        const buf = new Float32Array(16 + 1 + 1),
+            view = new DataView(buf.buffer),
+            cameraWorldMatrix = mat4.create()
         this.rtxScene.updateRayGen = (camera, fov) => {
             mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix)
             rayGenFov.data = fov
+            if (rayGenReset.data = mat4.equals(cameraWorldMatrix, camera.worldMatrix) ? 0 : 1) {
+                mat4.copy(cameraWorldMatrix, camera.worldMatrix)
+            }
             writeShaderRecords(view, rayGenShaderRecords, 0)
             this.device.queue.writeBuffer(sbt.buffer, this.device.ShaderGroupHandleSize + sbt.rayGen.start, buf)
         }
@@ -162,8 +213,7 @@ export default class WebRTXRenderer extends WebGPURenderer {
             pass.setPipeline(pipeline)
             pass.setBindGroup(0, bindGroup)
             camera.updateIfNecessary({ })
-            const fov = camera instanceof PerspectiveCamera ? camera.fov / 2 : 0.5
-            this.rtxScene.updateRayGen?.(camera, fov)
+            this.rtxScene.updateRayGen?.(camera, camera instanceof PerspectiveCamera ? camera.fov / 2 : 0.5)
             // Note: it requires rounded by 8
             const { width, height } = this.renderSize,
                 [w = 1, h = 1] = [width, height].map(val => Math.floor(val / 8) * 8)

@@ -15,6 +15,7 @@ pixelBuffer;
 layout(shaderRecordEXT) buffer Pinhole {
   mat4 initial_transform_to_world;
   float vfov_radian;
+  float camera_reset;
 }
 pinhole;
 
@@ -138,7 +139,8 @@ void main() {
     rayTmax = RT_DEFAULT_MAX;
   }
 
-  vec4 color = pixelBuffer.pixels[pixelIndex];
-  res = mix(res * 1024., color.xyz, 0.1);
-  pixelBuffer.pixels[pixelIndex] = vec4(res, mod(color.w + 1., 1e6));
+  if (pinhole.camera_reset != 0.) {
+    pixelBuffer.pixels[pixelIndex] = vec4(0.);
+  }
+  pixelBuffer.pixels[pixelIndex] += vec4(res, 1.);
 }

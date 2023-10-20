@@ -2,29 +2,13 @@ import { mat4, quat } from 'gl-matrix'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import WebRTXRenderer from '../engine/webrtx/renderer'
 
-// @ts-ignore
 import cBoxBack from './assets/cbox_back.obj?raw'
-// @ts-ignore
 import cBoxCeiling from './assets/cbox_ceiling.obj?raw'
-// @ts-ignore
 import cBoxFloor from './assets/cbox_floor.obj?raw'
-// @ts-ignore
 import cBoxGreenWall from './assets/cbox_greenwall.obj?raw'
-// @ts-ignore
 import cBoxLargeBox from './assets/cbox_largebox.obj?raw'
-// @ts-ignore
 import cBoxLuminaire from './assets/cbox_luminaire.obj?raw'
-// @ts-ignore
 import cBoxRedWall from './assets/cbox_redwall.obj?raw'
-
-// @ts-ignore
-import diffuseRchit from './shaders/diffuse.rchit?raw'
-// @ts-ignore
-import shadowRahit from './shaders/shadow.rahit?raw'
-// @ts-ignore
-import mirrorRchit from './shaders/mirror.rchit?raw'
-// @ts-ignore
-import glassRchit from './shaders/glass.rchit?raw'
 
 import { BasicMaterial, Geometry, Mesh, PerspectiveCamera, Renderer, Scene, SphereGeometry } from '../engine'
 import { Control, Picker } from '../tool'
@@ -81,103 +65,24 @@ const camera = new PerspectiveCamera({
     }),
     scene = new Scene(),
     materials = {
-        box: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": diffuseRchit,
-                "shaderRecord": [{
-                    "type": "vec4",
-                    "data": [0, 0, 0, 0] /* vec3(light radiance), float(inv_area) */
-                }, {
-                    "type": "vec3",
-                    "data": [0.65, 0.65, 0.65] /* albedo */
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
-        }),
         white: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": diffuseRchit,
-                "shaderRecord": [{
-                    "type": "vec4" as 'vec4',
-                    "data": [0, 0, 0, 0] /* vec3(light radiance), float(inv_area) */
-                }, {
-                    "type": "vec3" as 'vec3',
-                    "data": [0.65, 0.65, 0.65] /* albedo */
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
+            color: [0.65, 0.65, 0.65]
         }),
         red: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": diffuseRchit,
-                "shaderRecord": [{
-                    "type": "vec4" as 'vec4',
-                    "data": [0, 0, 0, 0] /* vec3(light radiance), float(inv_area) */
-                }, {
-                    "type": "vec3" as 'vec3',
-                    "data": [1.0, 0.0, 0.0] /* albedo */
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
+            color: [1, 0, 0]
         }),
         green: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": diffuseRchit,
-                "shaderRecord": [{
-                    "type": "vec4",
-                    "data": [0, 0, 0, 0] /* vec3(light radiance), float(inv_area) */
-                }, {
-                    "type": "vec3",
-                    "data": [0.0, 1.0, 0.0] /* albedo */
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
+            color: [0, 1, 0]
         }),
         light: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": diffuseRchit,
-                "shaderRecord": [{
-                    "type": "vec4",
-                    "data": [15.6, 15.6, 15.6, 7.33e-5] /* vec3(light radiance), float(inv_area) */
-                }, {
-                    "type": "vec3",
-                    "data": [0.78, 0.78, 0.78] /* albedo */
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
+            color: [0.78, 0.78, 0.78],
+            emissive: 15.6
         }),
         mirror: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": mirrorRchit,
-                "shaderRecord": [{
-                    "type": "vec3", // KR
-                    "data": [0.65, 0.65, 0.65]
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
+            webrtx: WebRTXRenderer.Builtin.mirror()
         }),
         glass: new BasicMaterial({
-            webrtx: [ /* radiance ray */ {
-                "rchit": glassRchit,
-                "shaderRecord": [{
-                    "type": "vec3", // KR
-                    "data": [0.65, 0.65, 0.65]
-                }, {
-                    "type": "vec3", // KT
-                    "data": [0.65, 0.65, 0.65]
-                }, {
-                    "type": "vec2",
-                    "data": [1.0, 1.5] // etai, etat
-                }]
-            }, /* shadow ray */ {
-                "rahit": shadowRahit
-            }]
+            webrtx: WebRTXRenderer.Builtin.glass()
         })
     }
 

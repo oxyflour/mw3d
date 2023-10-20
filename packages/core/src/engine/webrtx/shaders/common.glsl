@@ -178,7 +178,7 @@ vec2 yup_spherical_uv(const vec3 w) {
 // at distance 1
 vec2 getImagePlaneSize(float vfov) {
   float y = 2.0 * tan(vfov);
-  float aspect_ratio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
+  float aspect_ratio = 1. * gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
   return vec2(aspect_ratio * y, y);
 }
 

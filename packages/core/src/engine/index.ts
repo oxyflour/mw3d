@@ -4,24 +4,30 @@ import Geometry from "./geometry"
 import Material from "./material"
 import Light from "./light"
 import Camera from "./camera"
-import RendererBase, { RendererOptions } from "./renderer"
+import RendererBase, { RendererOptions as RendererOptionsBase } from "./renderer"
 import WebGPURenderer from "./webgpu/renderer"
 import WebGPUTracer from "./tracer/renderer"
 import WebGL2Renderer from "./webgl2/renderer"
 import ThreeRenderer from "./three/renderer"
+import WebRTXRenderer from "./webrtx/renderer"
+
+interface RendererOptions extends RendererOptionsBase {
+    useThree?: boolean
+    useWebGL2?: boolean
+    useTracer?: boolean
+    useWebRTX?: boolean
+}
 
 export class Renderer extends RendererBase {
-    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions & {
-        useThree?: boolean
-        useWebGL2?: boolean
-        useTracer?: boolean
-    }) {
+    static async create(canvas: HTMLCanvasElement | OffscreenCanvas, opts = { } as RendererOptions) {
         return opts.useThree ?
                 new ThreeRenderer(canvas, opts) :
             opts.useWebGL2 ?
                 new WebGL2Renderer(canvas, opts) :
             opts.useTracer ?
                 await WebGPUTracer.create(canvas, opts) :
+            opts.useWebRTX ?
+                await WebRTXRenderer.create(canvas, opts) :
             navigator.gpu ?
                 await WebGPURenderer.create(canvas, opts) :
                 new WebGL2Renderer(canvas, opts)

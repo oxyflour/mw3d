@@ -19,7 +19,7 @@ export class MaterialProp extends MutableArray({
     lineWidth: 2.0,
     emissive: 0,
 }) {
-    constructor(override readonly data = new Float32Array([1.0, 0.0, 0.0, 1.0, 0.1, 1.0, 2.0, 0.2])) {
+    constructor(override readonly data = new Float32Array([1.0, 0.0, 0.0, 1.0, 0.1, 1.0, 2.0, 0.0])) {
         super(data)
     }
 }

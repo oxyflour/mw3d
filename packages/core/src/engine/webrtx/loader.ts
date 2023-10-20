@@ -1,7 +1,7 @@
 import { mat4 } from 'gl-matrix'
 import type { _GPUShaderStageRTX } from 'webrtx';
 
-import commonGlsl from './common.glsl?raw'
+import commonGlsl from './shaders/common.glsl?raw'
 
 // https://github.com/codedhead/shadowray/blob/237b47948935657e6ac4f263715dfa9ace2ff5b9/src/scene_loader.ts
 export const LITTLE_ENDIAN = true;
@@ -113,7 +113,7 @@ export type MaterialDescription = HitGroupMaterialShadersDescription | HitGroupM
 interface TrianglesListGeometryDescription {
   type: 'triangles';
   vertices: number[] | Float32Array;
-  index?: number[] | Uint32Array;
+  index?: number[] | Uint32Array | Uint16Array;
 }
 
 type TriangleGeometryDescription = TrianglesListGeometryDescription;
@@ -220,7 +220,7 @@ async function loadGeometryButWithoutGPUBuffer(desc: GeometryDescription): Promi
     case 'triangles': {
       _assert(desc.vertices && desc.vertices.length >= 3, 'missing triangle vertices');
       const buffer = desc.vertices instanceof Float32Array ? desc.vertices : new Float32Array(desc.vertices); // TODO: check length against stride
-      const index = desc.index instanceof Uint32Array  ? desc.index  : desc.index && new Uint32Array(desc.index); // TODO: check length against stride
+      const index = desc.index instanceof Uint32Array ? desc.index : desc.index && new Uint32Array(desc.index); // TODO: check length against stride
       return {
         usage: GPURayTracingAccelerationGeometryUsage.NONE,
         type: 'triangles',
@@ -230,7 +230,7 @@ async function loadGeometryButWithoutGPUBuffer(desc: GeometryDescription): Promi
           stride: 3 * 4,
         },
         index: index && {
-          buffer: buffer as unknown as GPUBuffer,
+          buffer: index as unknown as GPUBuffer,
           format: 'uint32',
         }
       };
