@@ -172,8 +172,8 @@ const camera = new PerspectiveCamera({
         pivot: new Mesh(new SphereGeometry(), new BasicMaterial()),
         zoom: {
             distance: {
-                min: camera.near + 2000,
-                max: camera.far - 2000,
+                min: camera.near + (camera.far - camera.near) * 0.1,
+                max: camera.far  - (camera.far - camera.near) * 0.1,
             }
         },
         hooks: {
@@ -193,7 +193,7 @@ scene.background = hdrUrl
 
 const mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.5] })
 mat.clip.assign(CLIP_PLANE)
-for (let i = 0; i < 10; i ++) {
+for (let i = 0; i < 100; i ++) {
     const { geo } = cube,
         mesh = new Mesh(geo, mat)
     mesh.scaling.set(rand(0.03, 0.3), rand(0.03, 0.3), rand(0.03, 0.3))
