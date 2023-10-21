@@ -59,49 +59,43 @@ export default function wrap<T extends ApiDefinition>({ num, api, fork, send, re
                 parentPort?.postMessage(data, [data.buffer])
             }
         })
-    } else {
-        function start(idx: number) {
-            const worker = fork(),
-                { threadId } = worker
-            console.log(`[WORKER ${threadId}] start`)
-            worker.addListener('message', msg => {
-                const { id, err, ret } = unpack(msg) as any,
-                    call = calls[id]
-                if (call) {
-                    err ? call.reject(err) : call.resolve(ret)
-                    delete calls[id]
-                }
-            })
-            worker.addListener('exit', () => {
-                console.log(`[WORKER ${threadId}] quit`)
-                worker.stdout?.unpipe(process.stdout)
-                worker.stderr?.unpipe(process.stderr)
-                clearInterval(pollAlive)
-                if (workers[idx] === worker) {
-                    workers[idx] = start(idx)
-                }
-            })
-            const pollAlive = setInterval(() => {
-                if (workers[idx] !== worker) {
-                    worker.terminate()
-                }
-            }, 1000)
-            worker.stdout?.pipe(process.stdout)
-            worker.stderr?.pipe(process.stderr)
-            return worker
-        }
-        for (let idx = 0; idx < num; idx ++) {
-            workers[idx] = start(idx)
-        }
+    }
+    function start(idx: number) {
+        const worker = fork(),
+            { threadId } = worker
+        console.log(`[WORKER ${threadId}] start`)
+        worker.addListener('message', msg => {
+            const { id, err, ret } = unpack(msg) as any,
+                call = calls[id]
+            if (call) {
+                err ? call.reject(err) : call.resolve(ret)
+                delete calls[id]
+            }
+        })
+        worker.addListener('exit', () => {
+            console.log(`[WORKER ${threadId}] quit`)
+            worker.stdout?.unpipe(process.stdout)
+            worker.stderr?.unpipe(process.stderr)
+            clearInterval(pollAlive)
+            if (workers[idx] === worker) {
+                workers[idx] = start(idx)
+            }
+        })
+        const pollAlive = setInterval(() => {
+            if (workers[idx] !== worker) {
+                worker.terminate()
+            }
+        }, 1000)
+        worker.stdout?.pipe(process.stdout)
+        worker.stderr?.pipe(process.stderr)
+        return worker
     }
     return hookFunc(api, (...stack) => {
         const entry = stack.map(item => item.propKey).reverse()
         return (...args: any[]) => {
-            const selected = workers[Math.floor(Math.random() * workers.length)],
+            const idx = Math.floor(Math.random() * num),
+                selected = workers[idx] || (workers[idx] = start(idx)),
                 id = Math.random().toString(16).slice(2, 10)
-            if (!selected) {
-                throw Error(`no worker candicate`)
-            }
             if (send) {
                 return send(args, args => {
                     const data = pack({ id, entry, args })
