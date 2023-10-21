@@ -34,8 +34,6 @@ const uint SHADOW_RAY = 1u;
 const uint MAX_DEPTH = 10u;
 const float SHADOW_EPSILON = 1e-3;
 const float RT_DEFAULT_MAX = 3e38;
-const uint SPP = 1u;
-const uint MAX_SPP = 4096u;
 
 // multiple importance sampling path tracing
 void main() {
@@ -43,7 +41,6 @@ void main() {
                           uint(gl_LaunchIDEXT.x);
   uint lauchIndex = gl_LaunchIDEXT.z * gl_LaunchSizeEXT.x * gl_LaunchSizeEXT.y +
                     gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x;
-  const float SPEED_ROTATE = 0.2;
   float frameNum = pixelBuffer.pixels[pixelIndex].w;
   payload.done = false;
   payload.alpha = vec3(1.);
@@ -52,10 +49,6 @@ void main() {
   vec2 pixel_jitter = vec2(rand(payload.seed), rand(payload.seed));
 
   mat4 cam_to_world = pinhole.initial_transform_to_world;
-  // yaw x
-  //rotate_two_axis(cam_to_world, 2, 0, SPEED_ROTATE * uScene.mouse.x);
-  // roll -y
-  //rotate_two_axis(cam_to_world, 1, 2, -SPEED_ROTATE * uScene.mouse.y);
   vec3 rayOrigin = cam_to_world[3].xyz;
   vec3 rayDirection = sampleRayDirection(pinhole.vfov_radian, cam_to_world,
                                          gl_LaunchIDEXT.xy + pixel_jitter);
@@ -77,10 +70,6 @@ void main() {
                 NUM_RAY_TYPES, RADIANCE_RAY, rayOrigin, rayTmin, rayDirection,
                 rayTmax, int(RADIANCE_RAY));
 
-    if (payload.done) {
-      break;
-    }
-
     // bsdf eval
     {
       float wgt = 1.0;
@@ -95,7 +84,12 @@ void main() {
              payload.emit_radiance.xyz;  // f is already absorbed in alpha
     }
     // light eval would be MAX_DEPTH + 1
-    if (currentVertIndex == MAX_DEPTH) break;
+    if (currentVertIndex == MAX_DEPTH) {
+      break;
+    }
+    if (payload.done) {
+      break;
+    }
 
     vec3 absHitP = abs(payload.hitPoint);
     float epsilon = EPSILON * max(max(absHitP.x, absHitP.y), absHitP.z);

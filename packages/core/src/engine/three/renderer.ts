@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader'
 import cache from '../../utils/cache'
 import { parse } from '../../utils/chunk'
 import Camera, { PerspectiveCamera } from '../camera'
@@ -169,6 +170,15 @@ export default class ThreeRenderer extends Renderer {
         const { x, y, z, w } = mat.clip
         return new THREE.Plane(new THREE.Vector3(x, y, z), w)
     })
+    private env = cache((url: string) => {
+        const loader = new RGBELoader(),
+            ret = { value: null as null | THREE.DataTexture }
+        url && loader.load(url, value => {
+            value.mapping = THREE.EquirectangularReflectionMapping
+            ret.value = value
+        })
+        return ret
+    })
     override resize() {
         super.resize()
         this.renderer.setSize(this.renderSize.width, this.renderSize.height, false)
@@ -202,6 +212,7 @@ export default class ThreeRenderer extends Renderer {
         }
 
         const s = new THREE.Scene()
+        s.background = s.environment = this.env(scene.background || '').value
         scene.walk((obj, parent) => {
             const item = this.obj3(obj)
             item.clear()

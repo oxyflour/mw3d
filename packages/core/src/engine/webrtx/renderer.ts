@@ -6,6 +6,7 @@ import { RendererOptions, RenderMesh, RenderOptions } from "../renderer"
 
 import raygenGlsl   from './shaders/raygen.glsl?raw'
 import raymissGlsl  from './shaders/raymiss.glsl?raw'
+import envMapGlsl  from './shaders/envmap.glsl?raw'
 import diffuseRchit from './shaders/diffuse.rchit?raw'
 import shadowRahit  from './shaders/shadow.rahit?raw'
 import mirrorRchit  from './shaders/mirror.rchit?raw'
@@ -31,45 +32,46 @@ export default class WebRTXRenderer extends WebGPURenderer {
         diffuse: ({
             albedo = [0, 0, 0] as [number, number, number],
             light = [0, 0, 0, 0] as [number, number, number, number],
-        } = { }) => [ /* radiance ray */ {
+        } = { }) => [{
             rchit: diffuseRchit,
             shaderRecord: [{
                 type: 'vec4' as 'vec4',
-                data: light /* vec3(light radiance), float(inv_area) */
+                data: light
             }, {
                 type: 'vec3' as 'vec3',
-                data: albedo /* albedo */
+                data: albedo
             }]
-        }, /* shadow ray */ {
+        }, {
             rahit: shadowRahit
         }],
         mirror: ({
             reflection = [0.65, 0.65, 0.65] as [number, number, number],
-        } = { }) => [ /* radiance ray */ {
+        } = { }) => [{
             rchit: mirrorRchit,
             shaderRecord: [{
-                type: 'vec3' as 'vec3', // KR
+                type: 'vec3' as 'vec3',
                 data: reflection
             }]
-        }, /* shadow ray */ {
+        }, {
             rahit: shadowRahit
         }],
         glass: ({
             reflection = [0.65, 0.65, 0.65],
             transmission = [0.65, 0.65, 0.65],
-        } = { }) => [ /* radiance ray */ {
+            refraction = [1.0, 1.5],
+        } = { }) => [{
             rchit: glassRchit,
             shaderRecord: [{
-                type: 'vec3' as 'vec3', // KR
+                type: 'vec3' as 'vec3',
                 data: reflection
             }, {
-                type: 'vec3' as 'vec3', // KT
+                type: 'vec3' as 'vec3',
                 data: transmission
             }, {
                 type: 'vec2' as 'vec2',
-                data: [1.0, 1.5] // etai, etat
+                data: refraction
             }]
-        }, /* shadow ray */ {
+        }, {
             rahit: shadowRahit
         }]
     }
@@ -108,10 +110,10 @@ export default class WebRTXRenderer extends WebGPURenderer {
         camera: new Camera()
     }
     private rtxScene = { } as Partial<LoadedSceneResult> & {
-        updateRayGen?: (camera: Camera, fov: number) => void
+        updateRayGen?: (camera: Camera) => void
         bindGroup?: GPUBindGroup
     }
-    private async load(sorted: RenderMesh[], camera: Camera) {
+    private async load(sorted: RenderMesh[], camera: Camera, background?: string) {
         const rayGenRowMajorMatrix = mat4.create(),
             rayGenFov = { type: 'float', data: 0.343 },
             rayGenReset = { type: 'float', data: 0 },
@@ -124,7 +126,7 @@ export default class WebRTXRenderer extends WebGPURenderer {
                 shader: raygenGlsl,
                 shaderRecord: rayGenShaderRecords
             },
-            rayMiss: raymissGlsl,
+            rayMiss: background ? envMapGlsl : raymissGlsl,
             rayTypes: 2,
             materials: { },
             blas: {
@@ -139,6 +141,13 @@ export default class WebRTXRenderer extends WebGPURenderer {
                     }]
                 }
             },
+            bindings: background ? [{
+                binding: 3,
+                sampler: { magFilter: 'linear', minFilter: 'linear' }
+            }, {
+                binding: 4,
+                texture2D: background
+            }] : [ ],
             tlas: [ ],
             version: '',
             ...this.opts.webrtx
@@ -146,7 +155,9 @@ export default class WebRTXRenderer extends WebGPURenderer {
         for (const { mat, geo, worldMatrix } of sorted) {
             const { r, g, b, emissive } = mat.prop
             scene.materials[mat.id] = mat.opts.webrtx || (mat.prop.a !== 1 ?
-                WebRTXRenderer.Builtin.glass() :
+                WebRTXRenderer.Builtin.glass({
+                    reflection: [r, g, b],
+                }) :
                 WebRTXRenderer.Builtin.diffuse({
                     albedo: [r, g, b],
                     light: emissive ? [emissive, emissive, emissive, 7.33e-5] : [0, 0, 0, 0]
@@ -175,7 +186,8 @@ export default class WebRTXRenderer extends WebGPURenderer {
         }
         const binding = this.binding(this.cache.fragmentTexture),
             [resource] = this.cache.bindings(binding),
-            { pipeline, tlas, userBindGroupEntries, sbt } = this.rtxScene = await loader.load(this.device, scene)
+            { pipeline, tlas, userBindGroupEntries, sbt } =
+                this.rtxScene = await loader.load(this.device, scene)
         this.rtxScene.bindGroup = this.device.createBindGroup({
             layout: pipeline.getBindGroupLayout(0),
             entries: [{
@@ -189,11 +201,11 @@ export default class WebRTXRenderer extends WebGPURenderer {
         const buf = new Float32Array(16 + 1 + 1),
             view = new DataView(buf.buffer),
             cameraWorldMatrix = mat4.create()
-        this.rtxScene.updateRayGen = (camera, fov) => {
-            mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix)
-            rayGenFov.data = fov
+        this.rtxScene.updateRayGen = (camera) => {
+            rayGenFov.data = camera instanceof PerspectiveCamera ? camera.fov / 2 : 0.5
             if (rayGenReset.data = mat4.equals(cameraWorldMatrix, camera.worldMatrix) ? 0 : 1) {
                 mat4.copy(cameraWorldMatrix, camera.worldMatrix)
+                mat4.transpose(rayGenRowMajorMatrix, camera.worldMatrix)
             }
             writeShaderRecords(view, rayGenShaderRecords, 0)
             this.device.queue.writeBuffer(sbt.buffer, this.device.ShaderGroupHandleSize + sbt.rayGen.start, buf)
@@ -203,7 +215,7 @@ export default class WebRTXRenderer extends WebGPURenderer {
         const { sorted } = this.prepare(scene, camera, { disableTransparent: true })
         if (this.cachedRenderPass.compare(sorted)) {
             this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
-            this.load(sorted, camera)
+            this.load(sorted, camera, scene.background)
         }
 
         const cmd = this.device.createCommandEncoder(),
@@ -213,7 +225,7 @@ export default class WebRTXRenderer extends WebGPURenderer {
             pass.setPipeline(pipeline)
             pass.setBindGroup(0, bindGroup)
             camera.updateIfNecessary({ })
-            this.rtxScene.updateRayGen?.(camera, camera instanceof PerspectiveCamera ? camera.fov / 2 : 0.5)
+            this.rtxScene.updateRayGen?.(camera)
             // Note: it requires rounded by 8
             const { width, height } = this.renderSize,
                 [w = 1, h = 1] = [width, height].map(val => Math.floor(val / 8) * 8)

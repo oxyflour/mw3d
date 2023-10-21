@@ -49,7 +49,7 @@ export default class Renderer {
         }
     }
 
-    readonly cachedRenderList = {
+    private readonly cachedRenderList = {
         revs: { } as Record<number, number>,
         list: [] as Obj3[],
         updated: new Set<Mesh | Light | Material>(),
@@ -57,18 +57,18 @@ export default class Renderer {
         translucent: [] as RenderMesh[],
         lights: [] as Light[],
     }
-    addToUpdated = (...objs: (Obj3 | Material)[]) => {
+    protected addToUpdated = (...objs: (Obj3 | Material)[]) => {
         for (const obj of objs) {
             if (obj instanceof Mesh || obj instanceof Light || obj instanceof Material) {
                 this.cachedRenderList.updated.add(obj)
             }
         }
     }
-    getOrderFor(mesh: RenderMesh) {
+    protected getOrderFor(mesh: RenderMesh) {
         mesh
         return 0
     }
-    prepare(scene: Scene, camera: Camera, opts = { } as {
+    protected prepare(scene: Scene, camera: Camera, opts = { } as {
         disableTransparent?: boolean
     }) {
         const { revs, list, updated } = this.cachedRenderList

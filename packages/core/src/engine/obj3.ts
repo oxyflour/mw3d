@@ -8,6 +8,7 @@ import { Vec3, Quat } from '../utils/math'
 //type Obj3WasmExp = typeof import('./wasm/obj3.as')
 
 export class Scene extends Set<Obj3> {
+    background?: string
     walk(func: (obj: Obj3, parent?: Obj3) => void) {
         for (const obj of this) {
             obj.walk(func)

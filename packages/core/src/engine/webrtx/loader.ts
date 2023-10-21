@@ -1,5 +1,7 @@
 import { mat4 } from 'gl-matrix'
-import type { _GPUShaderStageRTX } from 'webrtx';
+import type { _GPUShaderStageRTX } from 'webrtx'
+import { decodeRGBE } from '@derschmale/io-rgbe'
+import { Float16Array } from '@petamoriken/float16'
 
 import commonGlsl from './shaders/common.glsl?raw'
 
@@ -152,18 +154,48 @@ interface Binding {
 }
 
 async function loadTexture(filename: string, device: GPUDevice): Promise<GPUTextureView> {
-    const image = new Image()
-    image.src = filename
-    await image.decode()
-    const size = { width: image.width, height: image.height },
-        source = await createImageBitmap(image),
-        texture = device.createTexture({
-            size,
-            format: 'rgba32float',
-            usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING,
-        })
-    device.queue.copyExternalImageToTexture({ source }, { texture }, size)
-    return texture.createView()
+  const dot = filename.lastIndexOf('.');
+  const fext = filename.slice(dot + 1);
+  switch (fext) {
+    case 'hdr': {
+      const fileContent = await (await fetch(filename)).arrayBuffer();
+      const rgbe = decodeRGBE(new DataView(fileContent));
+      const size = {
+        width: rgbe.width,
+        height: rgbe.height,
+      };
+
+      const tgt = new Float16Array(rgbe.data.length / 3 * 4);
+      _assert(tgt.length / 4 === rgbe.width * rgbe.height, 'buffer wrong size');
+      // const gamma = 1.0 / rgbe.gamma;
+      for (let i = 0, j = 0; i < rgbe.data.length; i += 3) {
+        // Math.pow(rgbe.data[i] * rgbe.exposure, gamma) * 0xff;
+        tgt[j] = rgbe.data[i]! * rgbe.exposure;
+        tgt[j + 1] = rgbe.data[i + 1]! * rgbe.exposure;
+        tgt[j + 2] = rgbe.data[i + 2]! * rgbe.exposure;
+        tgt[j + 3] = 1.0;
+        j += 4;
+      }
+
+
+      // TODO: rgba32float not working because not filterable?
+      const texture = device.createTexture({
+        size,
+        format: 'rgba16float',
+        usage:
+          GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING,
+      });
+      device.queue.writeTexture({
+        texture,
+      }, tgt.buffer, { bytesPerRow: size.width * 4 * 2 }, size);
+      return texture.createView({ // TODO: safe to drop tex?
+        format: 'rgba16float',
+        dimension: '2d',
+      });
+    }
+    default:
+      throw new Error(`unsupported texture file type: ${fext}`);
+  }
 }
 
 async function createBinding(desc: Binding, device: GPUDevice): Promise<GPUBindGroupEntry> {

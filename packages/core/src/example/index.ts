@@ -10,6 +10,9 @@ import { Control } from '../tool/control'
 import { mat4, quat, vec4 } from 'gl-matrix'
 import { Texture } from '../engine/uniform'
 
+// @ts-ignore
+import hdrUrl from './assets/envmap.hdr?url'
+
 const elem = document.createElement('canvas')
 elem.style.width = elem.style.height = '100%'
 elem.oncontextmenu = () => false
@@ -97,11 +100,11 @@ const source = await createImageBitmap(tex)
 let depthMaterial: Material
 
 const camera = new PerspectiveCamera({
-        fov: 5 / 180 * Math.PI,
+        fov: 45 / 180 * Math.PI,
         aspect: elem.clientWidth / elem.clientHeight,
-        near: 1000,
-        far: 20000,
-        position: [0, 0, 5000]
+        near: 10,
+        far: 2000,
+        position: [0, 0, 500]
     }),
     cube = new Mesh(
         new BoxGeometry({ size: 200 }),
@@ -111,7 +114,9 @@ const camera = new PerspectiveCamera({
             new Light({
                 position: [0, 300, 0],
                 children: [
-                    new Mesh(new SphereGeometry({ radius: 20 }), cube.mat)
+                    new Mesh(new SphereGeometry(), cube.mat, {
+                        scaling: [20, 20, 20]
+                    })
                 ]
             })
         ]
@@ -183,6 +188,8 @@ const camera = new PerspectiveCamera({
             click: clickScene
         }
     })
+
+scene.background = hdrUrl
 
 const mat = new BasicMaterial({ color: [Math.random(), Math.random(), Math.random(), 0.5] })
 mat.clip.assign(CLIP_PLANE)
