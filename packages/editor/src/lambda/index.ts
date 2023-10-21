@@ -1,19 +1,27 @@
-import { IncomingMessage, Server as HttpServer } from 'http'
+import type { Middleware } from 'koa'
+import { Server as HttpServer } from 'http'
+import fs from 'fs/promises'
+import path from 'path'
 
 import store from "../utils/node/store"
 import { open } from './shape'
 
 export const koa = {
-    middlewares: [async (ctx: { req: IncomingMessage, body?: any }, next: Function) => {
+    middlewares: [async (ctx, next) => {
         if (ctx.req.url === '/healthz') {
             ctx.body = 'OK'
         } else if (ctx.req.url?.startsWith('/static/geom/')) {
             const key = ctx.req.url.slice('/static/geom/'.length)
             ctx.body = await assets.get(key)
+        } else if (ctx.req.url?.endsWith('.module.wasm')) {
+            const file = ctx.req.url.split('/').pop() || '',
+                dir = path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'webrtx', 'dist')
+            ctx.type = 'application/wasm'
+            ctx.body = await fs.readFile(path.join(dir, file))
         } else {
             await next()
         }
-    }]
+    }] as Middleware[]
 }
 
 export const hooks = {

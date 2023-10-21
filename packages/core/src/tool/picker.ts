@@ -5,7 +5,10 @@ import Geometry, { GeometryPrimitive, PlaneXY } from "../engine/geometry"
 import Material, { BasicMaterial } from "../engine/material"
 import Obj3, { Scene } from "../engine/obj3"
 import Camera, { PerspectiveCamera } from "../engine/camera"
-import { Mesh, Renderer } from '../engine'
+import Mesh from "../engine/mesh"
+import Renderer from "../engine/renderer"
+import WebGPURenderer from "../engine/webgpu/renderer"
+import WebGL2Renderer from "../engine/webgl2/renderer"
 import { Texture } from "../engine/uniform"
 
 import WorkerSelf from './picker?worker&inline'
@@ -234,7 +237,11 @@ const worker = wrap({
     },
     api: {
         async init(canvas: WebGPUOffscreenCanvas, pixels: WebGPUOffscreenCanvas) {
-            const renderer = await Renderer.create(canvas, { devicePixelRatio: 1, sampleCount: 1 }),
+            const opts = { devicePixelRatio: 1, sampleCount: 1 },
+                renderer =
+                    navigator.gpu ?
+                        await WebGPURenderer.create(canvas, opts) :
+                        new WebGL2Renderer(canvas, opts),
                 ctx = pixels.getContext('2d', { willReadFrequently: true })
             if (!ctx) {
                 throw Error(`get context 2d failed`)

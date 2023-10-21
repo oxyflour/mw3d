@@ -32,10 +32,11 @@ export default defineConfig({
             formats: ['es']
         },
         rollupOptions: {
-            external: ['three'],
+            external: ['three', 'webrtx'],
             output: {
                 globals: {
-                    three: 'three'
+                    three: 'three',
+                    webrtx: 'webrtx'
                 }
             }
         }
