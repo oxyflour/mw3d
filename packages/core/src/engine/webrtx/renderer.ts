@@ -89,19 +89,12 @@ export default class WebRTXRenderer extends WebGPURenderer {
         super(canvas, opts)
     }
     private binding = cache((tex: GPUTexture) => {
-        const output = {
-            uniforms: [
-                Object.assign(
-                    [new Float32Array(tex.width * tex.height * 4)],
-                    { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST }),
-            ],
-            bindingGroup: 0,
-        }
-        const mat = this.fullScreenQuad.mat = new BasicMaterial({ wgsl: { frag: quadFrag } }),
-            [resource] = this.cache.bindings(output)
-        if (resource) {
-            mat.uniforms[1] = resource
-        }
+        const buffer = Object.assign(
+                [new Float32Array(tex.width * tex.height * 4)],
+                { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST }),
+            output = { uniforms: [buffer], bindingGroup: 0 },
+            mat = this.fullScreenQuad.mat = new BasicMaterial({ wgsl: { frag: quadFrag } })
+        mat.uniforms[1] = buffer
         return output
     })
     private fullScreenQuad = new Mesh(new SpriteGeometry({ positions: [0, 0, 0], width: 2, height: 2 }))

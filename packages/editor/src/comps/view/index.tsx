@@ -50,13 +50,7 @@ export default ({ tree, ents, view, setView, setEnts, children, onSelect }: {
     return <Canvas className="view"
             camera={ camera }
             style={{ width: '100%', height: '100%' }}
-            options={
-                canvas => {
-                    // TODO: set context menu
-                    canvas.oncontextmenu = () => false
-                    return { sampleCount: 4 }
-                }
-            }>
+            options={{ sampleCount: 4 }}>
         {
             list.map((data, key) => {
                 const active = !selected.length || !!data.nodes?.some(id => tree[id]?.selected),

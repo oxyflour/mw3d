@@ -6,12 +6,12 @@ function rand(begin: number, end = 0) {
     return Math.random() * (end - begin) + begin
 }
 const GEOMS = [
-    new Engine.BoxGeometry({ size: 0.5 }),
-    new Engine.SphereGeometry({ radius: 0.25 }),
+    new Engine.BoxGeometry({ size: 2 }),
+    new Engine.SphereGeometry(),
 ] as Engine.Geometry[]
 
 function makeMesh() {
-    const s = rand(1, 5)
+    const s = rand(0.2, 1.5)
     return {
         position: [rand(-20, 20), rand(-20, 20), rand(-20, 20)] as [number, number, number],
         scaling:  [s, s, s] as [number, number, number],
@@ -42,7 +42,7 @@ function App() {
             rotation={ rotation }>
         </Mesh>)
     return <>
-        <Canvas style={{ width: '50%', height: '50%' }}>
+        <Canvas options={{ useWebRTX: true }} style={{ width: '50%', height: '50%' }}>
             <div style={{
                 position: 'absolute',
                 left: 0,

@@ -69,7 +69,7 @@ export function useTick(func: (time: number) => void, interval = 100) {
 
 export function Canvas({ children, options, style, className, camera: initCamera }: {
     children: any
-    options?: (canvas: HTMLCanvasElement) => Engine.RendererOptions
+    options?: Engine.RendererOptions
     style?: CSSProperties
     className?: string
     camera?: Engine.PerspectiveCamera
@@ -80,8 +80,8 @@ export function Canvas({ children, options, style, className, camera: initCamera
     async function init(canvas: HTMLCanvasElement, handle: { running: boolean }) {
         try {
             const scene = new Engine.Scene(),
-                opts = options?.(canvas) || { },
-                renderer = await Engine.Renderer.create(canvas, opts),
+                container = canvas as any as { __renderer__: Promise<Engine.Renderer> },
+                renderer = await (container.__renderer__ || (container.__renderer__ = Engine.Renderer.create(canvas, options))),
                 camera = initCamera || new Engine.PerspectiveCamera({
                     fov: 2 / 180 * Math.PI,
                     position: [0, 0, 500],
@@ -197,12 +197,8 @@ export function Obj3({ children, create, matrix, position, rotation, scaling }: 
             const [x, y, z] = scaling
             obj.scaling.set(x, y, z)
         }
-        if (obj) {
-            if (matrix) {
-                mat4.copy(obj.worldMatrix, matrix as any)
-            } else {
-                mat4.identity(obj.worldMatrix)
-            }
+        if (obj && matrix) {
+            mat4.copy(obj.worldMatrix, matrix as any)
             obj.setWorldMatrix(obj.worldMatrix)
         }
     }, [obj, matrix, position, rotation, scaling])

@@ -42,7 +42,7 @@ type TransformDescription = {
 };
 
 // to row major 3x4
-function transformComputedValue(ts?: TransformDescription | TransformDescription[]): Float32Array | undefined {
+export function transformComputedValue(ts?: TransformDescription | TransformDescription[]): Float32Array | undefined {
   if (!ts) {
     return undefined;
   }
@@ -555,6 +555,7 @@ export interface LoadedSceneResult {
   tlas: GPURayTracingAccelerationContainer_top;
   sbt: GPUShaderBindingTable;
   userBindGroupEntries: GPUBindGroupEntry[];
+  instances: GPURayTracingAccelerationInstanceDescriptor[]
 }
 
 export default class SceneLoader {
@@ -828,6 +829,6 @@ export default class SceneLoader {
     }
     sbt.buffer.unmap();
 
-    return { pipeline, tlas, sbt, userBindGroupEntries };
+    return { pipeline, tlas, sbt, userBindGroupEntries, instances };
   }
 }

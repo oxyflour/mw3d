@@ -126,25 +126,25 @@ export default class Cache {
         this.cachedUniformBuffer.offset = Math.ceil((offset + size) / 256) * 256
         return { buffer, offset, size }
     }
+    array = cache((items: UniformValue[] & { usage?: number }) => {
+        const list = { size: 0, uniforms: [] as { value: UniformValue, offset: number }[] }
+        for (const value of items) {
+            const offset = list.size
+            if (Array.isArray(value)) {
+                throw Error(`only typed array supported`)
+            } else {
+                list.size += value.byteLength
+                list.uniforms.push({ value, offset })
+            }
+        }
+        const { uniforms, size } = list,
+            { buffer, offset } = this.makeUniformBuffer(size, items.usage)
+        return { uniforms, buffer, offset, size } as BindingResource
+    })
     bindings = cache((obj: { uniforms: Uniform[] }) => {
         return obj.uniforms.map(item => {
-            const resource = item as BindingResource
-            if (resource.uniforms) {
-                return resource
-            } else if (Array.isArray(item)) {
-                const list = { size: 0, uniforms: [] as { value: UniformValue, offset: number }[] }
-                for (const value of item) {
-                    const offset = list.size
-                    if (Array.isArray(value)) {
-                        throw Error(`only typed array supported`)
-                    } else {
-                        list.size += value.byteLength
-                        list.uniforms.push({ value, offset })
-                    }
-                }
-                const { uniforms, size } = list,
-                    { buffer, offset } = this.makeUniformBuffer(size, item.usage)
-                return { uniforms, buffer, offset, size } as BindingResource
+            if (Array.isArray(item)) {
+                return this.array(item)
             } else if (item instanceof Sampler) {
                 return this.sampler(item)
             } else if (item instanceof Texture) {

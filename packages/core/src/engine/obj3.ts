@@ -195,17 +195,19 @@ export default class Obj3 extends AutoIndex {
         vec3.sub(dst, target, pivot)
         vec3.cross(axis, dst, src)
         vec3.normalize(axis, axis)
-        if (vec3.len(axis)) {
-            const rad = vec3.angle(dst, src)
-            mat4.fromRotation(rotation, -rad, axis)
-
-            mat4.getRotation(rot, this.worldMatrix)
-            mat4.fromQuat(tran, rot)
-            mat4.multiply(tran, rotation, tran)
-            mat4.fromTranslation(rotation, target)
-            mat4.multiply(tran, rotation, tran)
-
-            this.setWorldMatrix(tran)
+        if (!vec3.len(axis)) {
+            vec3.set(axis, 0, 1, 0)
         }
+
+        const rad = vec3.angle(dst, src)
+        mat4.fromRotation(rotation, -rad, axis)
+
+        mat4.getRotation(rot, this.worldMatrix)
+        mat4.fromQuat(tran, rot)
+        mat4.multiply(tran, rotation, tran)
+        mat4.fromTranslation(rotation, target)
+        mat4.multiply(tran, rotation, tran)
+
+        this.setWorldMatrix(tran)
     }
 }

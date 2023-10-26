@@ -2,9 +2,20 @@ import cp, { spawn } from 'child_process'
 import os from 'os'
 import path from 'path'
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
 import { mkdir, rm } from 'fs/promises'
 import { defineConfig } from 'vite'
 import { register } from './src/cast/stream'
+
+const webRtxDist = path.join(__dirname, '..', '..', 'node_modules', 'webrtx', 'dist'),
+    targetDist = path.join(__dirname, 'src', 'example')
+for (const item of fs.readdirSync(webRtxDist)) {
+    if (item.endsWith('.module.wasm')) {
+        if (!fs.existsSync(path.join(targetDist, item))) {
+            fs.copyFileSync(path.join(webRtxDist, item), path.join(targetDist, item))
+        }
+    }
+}
 
 export async function fork(channel: string, href: string) {
     const pid = Math.random().toString(16).slice(2, 10),
