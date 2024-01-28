@@ -22,12 +22,12 @@
     "@assemblyscript/loader": "^0.19.23",
     "@derschmale/io-rgbe": "^0.1.1",
     "@petamoriken/float16": "^3.8.4",
+    "@types/gl-matrix": "^3.2.0",
     "assemblyscript": "^0.19.22",
     "gl-matrix": "^3.4.3",
     "gltf-loader-ts": "^0.3.1",
     "keyv": "^4.5.0",
     "rollup-plugin-assemblyscript": "^2.0.0",
-    "three": "^0.145.0",
-    "webrtx": "^0.1.1"
+    "three": "^0.145.0"
   }
 }

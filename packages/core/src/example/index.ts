@@ -25,7 +25,6 @@ const renderer = await Renderer.create(elem, {
     useThree: location.search.includes('use-three'),
     useWebGL2: location.search.includes('use-webgl2'),
     useTracer: location.search.includes('use-tracer'),
-    useWebRTX: location.search.includes('use-webrtx'),
 })
 
 async function updatePivot({ x, y }: { x: number, y: number }) {

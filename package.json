@@ -10,6 +10,8 @@
     "dev:editor": "npm run build:react && npm -w packages/editor run dev",
     "build:core": "npm -w packages/core run build",
     "build:react": "npm run build:core && npm -w packages/react run build",
+    "build:napi": "npm -w packages/napi run build",
+    "test:napi": "npm run build:napi && npm -w packages/napi t",
     "build": "npm run build:react && npm -w packages/editor exec sn build",
     "deploy": "npm -w packages/editor exec sn deploy"
   },
@@ -27,8 +29,8 @@
   "workspaces": [
     "./packages/core",
     "./packages/react",
-    "./packages/tool",
+    "./packages/occ",
     "./packages/editor",
-    "./packages/solver"
+    "./packages/napi"
   ]
 }

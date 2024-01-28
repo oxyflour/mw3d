@@ -5,7 +5,6 @@ import { AutoIndex } from '../utils/common'
 import { MutableArray } from '../utils/math'
 import { GeometryPrimitive } from './geometry'
 import { Sampler, Texture, Uniform } from './uniform'
-import type { MaterialDescription } from './webrtx/loader'
 
 export type ProgramEntry = Partial<{ [k in GeometryPrimitive]: string }> | string
 
@@ -50,7 +49,6 @@ export interface MatOpts {
             factor?: number
         }
     }
-    webrtx?: MaterialDescription
 }
 
 export default class Material extends AutoIndex {
@@ -96,7 +94,6 @@ export class BasicMaterial extends Material {
     constructor(opts = { } as {
         wgsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
         glsl?: { vert?: ProgramEntry, frag?: ProgramEntry },
-        rtx?: MaterialDescription,
         color?: Float32Array | Uint8Array | number[]
         clipPlane?: vec4 | number[]
     } & Partial<MaterialProp> & MatOpts) {

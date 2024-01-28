@@ -1,0 +1,25 @@
+{
+  "name": "@ttk/occ",
+  "version": "2.0.13",
+  "description": "",
+  "main": "index.js",
+  "typings": "index.d.ts",
+  "scripts": {
+    "install": "node install.js && cmake-js compile",
+    "build": "cmake-js compile",
+    "test": "mocha"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^14.0.12",
+    "cmake-js": "^6.1.0",
+    "download": "^8.0.0",
+    "download-cli": "^1.1.1",
+    "node-addon-api": "^2.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^7.1.2"
+  }
+}

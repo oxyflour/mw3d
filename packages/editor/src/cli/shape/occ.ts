@@ -1,7 +1,7 @@
 import path from 'path'
 import os from 'os'
 import { mkdir, readFile, unlink } from 'fs/promises'
-import type { Shape } from '@yff/ncc'
+import type { Shape } from '@ttk/occ'
 
 import { Entity } from '../../utils/data/entity'
 import { Chunks } from '../../utils/node/chunks'
@@ -11,7 +11,7 @@ function rgb(str: string) {
 }
 
 export async function saveSolid(solid: Shape, file: string) {
-    const { step, mesh } = await import('@yff/ncc'),
+    const { step, mesh } = await import('@ttk/occ'),
         { verts, faces, edges, geom } = mesh.topo(solid),
         { min, max } = solid.bound(),
         root = os.tmpdir(),
@@ -43,7 +43,7 @@ export async function saveSolid(solid: Shape, file: string) {
 }
 
 export async function parse(chunks: Chunks, file: string) {
-    const { step, Shape } = await import('@yff/ncc'),
+    const { step, Shape } = await import('@ttk/occ'),
         shapes = step.load(file),
         solids = shapes.find(Shape.types.SOLID),
         entities = [ ] as Entity[],

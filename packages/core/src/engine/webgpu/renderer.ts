@@ -58,7 +58,6 @@ export default class WebGPURenderer extends Renderer {
             multisample: { count: this.opts.sampleCount },
         })
         this.context.configure({
-            size: this.renderSize,
             format: this.format,
             device: this.device,
             alphaMode: 'premultiplied',
@@ -74,7 +73,6 @@ export default class WebGPURenderer extends Renderer {
         super.resize()
         this.cache.resize(this.renderSize)
         this.context.configure({
-            size: this.renderSize,
             format: this.format,
             device: this.device,
             alphaMode: 'premultiplied',

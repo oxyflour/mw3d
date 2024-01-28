@@ -1,0 +1,21 @@
+{
+  "name": "@ttk/napi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "cmake-js configure && cmake-js compile",
+    "test": "node test/test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^14.14.7",
+    "cmake-js": "^6.1.0",
+    "node-addon-api": "^2.0.2",
+    "node-pre-gyp": "^0.17.0",
+    "wrtc": "^0.4.7"
+  }
+}

@@ -42,7 +42,7 @@ function App() {
             rotation={ rotation }>
         </Mesh>)
     return <>
-        <Canvas options={{ useWebRTX: true }} style={{ width: '50%', height: '50%' }}>
+        <Canvas style={{ width: '50%', height: '50%' }}>
             <div style={{
                 position: 'absolute',
                 left: 0,
