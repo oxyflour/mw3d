@@ -96,9 +96,9 @@ export default class WebGPUTracer extends WebGPURenderer {
         }
 
         if (camera instanceof PerspectiveCamera) {
-            const hf = camera.fov / 2
-            this.cameraPropUniform[0] =  Math.tan(hf * camera.aspect)
-            this.cameraPropUniform[1] = -Math.tan(hf)
+            const hf = Math.tan(camera.fov / 2)
+            this.cameraPropUniform[0] =  hf * camera.aspect
+            this.cameraPropUniform[1] = -hf
         }
 
         const cmd = this.device.createCommandEncoder(),

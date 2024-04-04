@@ -355,10 +355,10 @@ const worker = wrap({
                 // https://stackoverflow.com/a/66928245
                 depth = 1 / (v * (1 / near - 1 / far) + 1 / far)
             
-            const [hw, hh, hf] = [width / 2, height / 2, fov / 2],
+            const [hw, hh, hf] = [width / 2, height / 2, Math.tan(fov / 2)],
                 position = vec3.fromValues(
-                    Math.tan(hf * aspect) * (x - hw) / hw,
-                    Math.tan(hf) * (y - hh) / -hh,
+                    hf * aspect * (x - hw) / hw,
+                    hf * (y - hh) / -hh,
                     -1),
                 distance = depth * vec3.len(position)
             vec3.normalize(position, position)

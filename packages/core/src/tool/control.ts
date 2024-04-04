@@ -63,8 +63,8 @@ export class Control {
     update() {
         const { canvas, camera, pivot, opts } = this,
             { left, top } = canvas.getBoundingClientRect(),
-            [hw, hh, hf] = [canvas.clientWidth / 2, canvas.clientHeight / 2, camera.fov / 2],
-            [tx, ty] = [Math.tan(hf * camera.aspect), Math.tan(hf)],
+            [hw, hh, hf] = [canvas.clientWidth / 2, canvas.clientHeight / 2, Math.tan(camera.fov / 2)],
+            [tx, ty] = [hf * camera.aspect, hf],
             setNDC = (out: vec3, x: number, y: number) => vec3.set(out, tx * (x - hw) / hw, ty * (y - hh) / -hh, -1)
         function onRotateAroundPivot(p0: Pos, p1: Pos) {
             vec3.copy(origin, camera.worldPosition as vec3)
