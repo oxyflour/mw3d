@@ -4,7 +4,8 @@ import { Command } from 'commander'
 import { writeFile } from 'fs/promises'
 import { Entity } from '../utils/data/entity'
 import { Chunks } from '../utils/node/chunks'
-import { parse } from './shape/occ'
+import { parse as parseStp } from './shape/occ'
+import { parse as parseObj } from './shape/obj'
 
 const program = new Command()
 
@@ -18,7 +19,9 @@ try {
         entities = [] as Entity[]
     for (const file of files) {
         if (file.toLowerCase().endsWith('.stp')) {
-            entities.push(...await parse(chunks, file))
+            entities.push(...await parseStp(chunks, file))
+        } else if (file.toLowerCase().endsWith('.obj')) {
+            entities.push(...await parseObj(chunks, file))
         } else {
             throw Error(`parsing file ${file} not supported`)
         }
