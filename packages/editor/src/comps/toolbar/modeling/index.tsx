@@ -1,6 +1,7 @@
 import { Entity, TreeEnts } from "../../../utils/data/entity"
 import { getTransformedEntities, ViewOpts } from "../../../utils/data/view"
 import { Menu, MenuGroup, MenuItem } from "../../utils/menu"
+import { OpenFile } from "../file"
 import { Group } from "../utils/group"
 import { IconButton } from "../utils/icon-button"
 import { ImageButton } from "../utils/image-button"
@@ -32,7 +33,7 @@ export default ({ view, tree, ents, updateView, setEnts }: {
     }
     return <>
         <Group title="Exchange">
-            <ImageButton title="Import / Export" />
+            <OpenFile title="Import / Export" add={ true } { ...{ ents, setEnts, updateView } } />
         </Group>
         <Group title="Materials">
             <div>

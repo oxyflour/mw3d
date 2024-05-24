@@ -8,10 +8,12 @@ import { Modal } from "../../utils/model"
 import { Group } from "../utils/group"
 import { ImageButton } from "../utils/image-button"
 
-function OpenFile({ ents, setEnts, updateView }: {
+export function OpenFile({ ents, setEnts, updateView, add, title }: {
     ents: Entity[]
     setEnts: (ents: Entity[]) => void
     updateView: <K extends keyof ViewOpts>(key: K, val: Partial<ViewOpts[K]>) => void
+    add?: boolean
+    title?: string
 }) {
     const [opening, setOpening] = useState(''),
         [logs, setLogs] = useState([] as string[])
@@ -25,7 +27,7 @@ function OpenFile({ ents, setEnts, updateView }: {
                 }
             </Modal>
         }
-        <ImageButton title="Open"
+        <ImageButton title={ title || "Open" }
             onClick={
                 () => upload(async files => {
                     setOpening(Array.from(files || []).map(item => item.name).join(', '))
@@ -40,7 +42,7 @@ function OpenFile({ ents, setEnts, updateView }: {
                                 setLogs(logs.slice())
                             }
                         }
-                        setEnts(ret)
+                        setEnts(add ? ents.concat(ret) : ret)
                         updateView('camera', { resetAt: Date.now() })
                         setOpening('')
                     } catch (err: any) {

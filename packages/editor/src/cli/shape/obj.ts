@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises"
 import { Entity } from "../../utils/data/entity"
 import { Chunks } from "../../utils/node/chunks"
+import path from "path"
 
 export async function parse(chunks: Chunks, file: string) {
     const content = await readFile(file, 'utf-8'),
@@ -35,6 +36,9 @@ export async function parse(chunks: Chunks, file: string) {
         }
     }
     return [{
+        attrs: {
+            $n: path.basename(file),
+        },
         bound: [min.x, min.y, min.z, max.x, max.y, max.z] as Entity['bound'],
         geom: chunks.append({
             faces: {
