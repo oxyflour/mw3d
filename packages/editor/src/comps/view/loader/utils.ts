@@ -46,13 +46,20 @@ const MATERIAL_CACHE = new Utils.LRU<{ default: Engine.Material, dimmed: Engine.
 export function loadMatSet(attrs: Entity['attrs'], mats: ViewOpts['mats']) {
     const mat = attrs?.$m || 'default',
         rgb = attrs?.$rgb || mats?.[mat]?.rgb,
-        metal = mats?.[mat]?.metal
+        metal = mats?.[mat]?.metal,
+        metallic  = metal ? 1.0 : 0.1,
+        roughness = metal ? 0.2 : 0.8,
+        { opts } = MATERIAL_SET.default
     if (rgb) {
         const { r, g, b } = rgb,
-            metallic  = metal ? 1.0 : 0.1,
-            roughness = metal ? 0.2 : 0.8,
-            key = [r, g, b, metal].join(','),
-            { opts } = MATERIAL_SET.default
+            key = [r, g, b, metal].join(',')
+        return MATERIAL_CACHE.get(key) || MATERIAL_CACHE.set(key, {
+            default: new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 1.0], emissive: 0.5 }),
+            dimmed:  new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 0.4] }),
+        })
+    } else if (mat) {
+        const { r, g, b } = { r: Math.random(), g: Math.random(), b: Math.random() },
+            key = mat
         return MATERIAL_CACHE.get(key) || MATERIAL_CACHE.set(key, {
             default: new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 1.0], emissive: 0.5 }),
             dimmed:  new Engine.BasicMaterial({ ...opts, metallic, roughness, color: [r, g, b, 0.4] }),
