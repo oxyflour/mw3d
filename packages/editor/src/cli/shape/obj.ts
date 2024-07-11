@@ -5,11 +5,12 @@ import path from "path"
 
 export async function parse(chunks: Chunks, file: string) {
     const content = await readFile(file, 'utf-8'),
+        lines = content.split('\n'),
         verts = [] as number[],
         faces = [] as number[],
         min = { x:  Infinity, y:  Infinity, z:  Infinity },
         max = { x: -Infinity, y: -Infinity, z: -Infinity }
-    for (const line of content.split('\n')) {
+    for (const line of lines) {
         if (line[0] == 'v') {
             const [, a, b, c] = line.split(/\s/)
             if (a && b && c) {
@@ -25,7 +26,7 @@ export async function parse(chunks: Chunks, file: string) {
         }
     }
     const edges = { } as Record<number, [number, number]>
-    for (const line of content.split('\n')) {
+    for (const line of lines) {
         if (line[0] == 'f') {
             const [, i, j, k] = line.split(/\s/)
             if (i && j && k) {
