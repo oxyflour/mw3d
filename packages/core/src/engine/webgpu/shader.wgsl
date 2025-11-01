@@ -183,6 +183,16 @@ fn preventLayoutChange() {
   }
 }
 
+fn textureSampleDepth(t: texture_depth_2d, s: sampler, p: vec2<f32>) -> f32 {
+  var z = textureDimensions(t);
+  return textureLoad(t, vec2<i32>(p * vec2<f32>(z)), 0);
+}
+
+fn textureMultiSample(t: texture_depth_multisampled_2d, s: sampler, p: vec2<f32>) -> f32 {
+  var z = textureDimensions(t);
+  return textureLoad(t, vec2<i32>(p * vec2<f32>(z)), 1);
+}
+
 fn checkClip(input: FragInput) {
   preventLayoutChange();
   if (material.clipPlane.x != 0. || material.clipPlane.y != 0. || material.clipPlane.z != 0.) {
@@ -239,18 +249,13 @@ fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
 fn fragMainDepth(input: FragInput) -> @location(0) vec4<f32> {
   preventLayoutChange();
   var p = input.position.xy / canvasSize.xy;
-  var d = textureSample(depthTexture, materialSampler, p);
+  var d = textureSampleDepth(depthTexture, materialSampler, p);
   // https://github.com/gpuweb/gpuweb/discussions/2277
   var i = u32(f32(0x1000000) * (d + 1.0) / 2.0);
   var r = (i & 0x0000ffu);
   var g = (i & 0x00ff00u) >> 8u;
   var b = (i & 0xff0000u) >> 16u;
   return vec4<f32>(f32(r) / 255.0, f32(g) / 255.0, f32(b) / 255.0, 1.0);
-}
-
-fn textureMultiSample(t: texture_depth_multisampled_2d, s: sampler, p: vec2<f32>) -> f32 {
-  var z = textureDimensions(t);
-  return textureLoad(depthMultiTexture, vec2<i32>(p * vec2<f32>(z)), 1);
 }
 
 @fragment

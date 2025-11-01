@@ -15,7 +15,7 @@ import WorkerSelf from './picker?worker&inline'
 import { queue } from "../utils/common"
 
 interface WebGPUOffscreenCanvas extends
-        Omit<OffscreenCanvas, 'getContext' | 'addEventListener' | 'removeEventListener'>,
+        Omit<OffscreenCanvas, 'getContext' | 'addEventListener' | 'removeEventListener' | 'oncontextlost' | 'oncontextrestored'>,
         HTMLCanvasElement {
     convertToBlob(): Promise<Blob>
 }
