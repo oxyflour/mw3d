@@ -14,7 +14,7 @@ struct CameraUniforms {
 struct BVHNode {
     min: vec4<f32>,
     max: vec4<f32>,
-    meta: vec4<u32>,
+    data: vec4<u32>,
 }
 
 @group(2) @binding(0) var<storage> meshVerts: array<vec4<f32>>;
@@ -95,9 +95,9 @@ fn ray_trace(o: vec3<f32>, d: vec3<f32>) -> vec4<f32> {
         if (!ray_aabb_test(o, invDir, node.min.xyz, node.max.xyz, ret.t)) {
             continue;
         }
-        if (node.meta.w > 0u) {
-            let start = node.meta.z;
-            let count = node.meta.w;
+        if (node.data.w > 0u) {
+            let start = node.data.z;
+            let count = node.data.w;
             for (var i = 0u; i < count; i ++) {
                 let triIdx = triangleIndex[start + i];
                 let f = meshFaces[triIdx];
@@ -110,12 +110,12 @@ fn ray_trace(o: vec3<f32>, d: vec3<f32>) -> vec4<f32> {
                 }
             }
         } else {
-            if (node.meta.x != 0xffffffffu) {
-                stack[sp] = node.meta.x;
+            if (node.data.x != 0xffffffffu) {
+                stack[sp] = node.data.x;
                 sp ++;
             }
-            if (node.meta.y != 0xffffffffu) {
-                stack[sp] = node.meta.y;
+            if (node.data.y != 0xffffffffu) {
+                stack[sp] = node.data.y;
                 sp ++;
             }
         }
