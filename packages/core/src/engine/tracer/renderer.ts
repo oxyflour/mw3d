@@ -185,16 +185,16 @@ export default class WebGPUTracer extends WebGPURenderer {
                 return idx
             }
 
-            const centroidMin = [Infinity, Infinity, Infinity],
-                centroidMax = [-Infinity, -Infinity, -Infinity]
+            const min = [Infinity, Infinity, Infinity] as [number, number, number],
+                max = [-Infinity, -Infinity, -Infinity] as [number, number, number]
             for (let i = start; i < end; i ++) {
                 const { centroid } = work[i]!
                 for (let j = 0; j < 3; j ++) {
-                    centroidMin[j] = Math.min(centroidMin[j]!, centroid[j]!)
-                    centroidMax[j] = Math.max(centroidMax[j]!, centroid[j]!)
+                    min[j] = Math.min(min[j]!, centroid[j]!)
+                    max[j] = Math.max(max[j]!, centroid[j]!)
                 }
             }
-            const extent = centroidMax.map((val, idx) => val - centroidMin[idx]!),
+            const extent = [max[0] - min[0], max[1] - min[1], max[2] - min[2]] as [number, number, number],
                 axis = extent[1] > extent[0] ? (extent[1] > extent[2] ? 1 : 2) : (extent[0] > extent[2] ? 0 : 2),
                 sorted = work.slice(start, end).sort((a, b) => a.centroid[axis]! - b.centroid[axis]!)
             for (let i = 0; i < sorted.length; i ++) {
