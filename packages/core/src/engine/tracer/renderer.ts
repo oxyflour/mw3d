@@ -1,9 +1,9 @@
 import cache from "../../utils/cache"
-import { BasicMaterial, Camera, Mesh, PerspectiveCamera, Scene, SpriteGeometry, Texture, Uniform, UniformValue, WebGPURenderer } from ".."
+import { BasicMaterial, Camera, Mesh, PerspectiveCamera, Scene, SpriteGeometry, Texture, Uniform, WebGPURenderer } from ".."
 import { RenderOptions } from "../renderer"
 
 import wgsl from './tracer.wgsl?raw'
-import { BindingResource } from "../webgpu/cache"
+import { mat4, vec4 } from "gl-matrix"
 
 export default class WebGPUTracer extends WebGPURenderer {
     private pipeline!: GPUComputePipeline
@@ -44,14 +44,6 @@ export default class WebGPUTracer extends WebGPURenderer {
         scene: new Scene([this.fullScreenQuad]),
         camera: new Camera()
     }
-    private meshesTransformBinding = {} as {
-        map: Record<number, {
-            value: UniformValue
-            offset: number
-        }>
-        buffer: GPUBuffer
-        offset: number
-    }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
             disableBundle?: boolean
@@ -60,39 +52,69 @@ export default class WebGPUTracer extends WebGPURenderer {
         }
     }) {
         const { sorted, updated } = this.prepare(scene, camera, { disableTransparent: true })
-        if (this.cachedRenderPass.compare(sorted)) {
+        const needsMeshUpdate = this.cachedRenderPass.compare(sorted) ||
+            Array.from(updated).some(item => item instanceof Mesh)
+        if (needsMeshUpdate) {
             this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
-            const range = [] as number[],
-                verts = [] as number[],
-                faces = [] as number[]
+            const verts = [] as number[],
+                faces = [] as number[],
+                triangles = [] as {
+                    min: [number, number, number]
+                    max: [number, number, number]
+                    centroid: [number, number, number]
+                    face: number
+                }[],
+                worldPos = vec4.create()
             for (const mesh of sorted) {
-                range.push(faces.length / 4, verts.length / 4)
                 if (mesh.geo.indices) {
+                    const worldMatrix = mat4.clone(mesh.worldMatrix)
+                    const base = verts.length / 4
+                    for (let i = 0; i < mesh.geo.positions.length; i += 3) {
+                        vec4.set(worldPos,
+                            mesh.geo.positions[i]!, mesh.geo.positions[i + 1]!, mesh.geo.positions[i + 2]!, 1)
+                        vec4.transformMat4(worldPos, worldPos, worldMatrix)
+                        verts.push(worldPos[0]!, worldPos[1]!, worldPos[2]!, 1)
+                    }
                     // Fxxk: https://sotrh.github.io/learn-wgpu/showcase/alignment/#alignment-of-vertex-and-index-buffers
                     for (let i = 0; i < mesh.geo.indices.length; i += 3) {
-                        faces.push(...mesh.geo.indices.slice(i, i + 3), 0)
-                    }
-                    for (let i = 0; i < mesh.geo.positions.length; i += 3) {
-                        verts.push(...mesh.geo.positions.slice(i, i + 3), 1)
+                        const faceIndex = faces.length / 4,
+                            a = base + mesh.geo.indices[i]!,
+                            b = base + mesh.geo.indices[i + 1]!,
+                            c = base + mesh.geo.indices[i + 2]!,
+                            min = [
+                                Math.min(verts[a * 4]!, verts[b * 4]!, verts[c * 4]!),
+                                Math.min(verts[a * 4 + 1]!, verts[b * 4 + 1]!, verts[c * 4 + 1]!),
+                                Math.min(verts[a * 4 + 2]!, verts[b * 4 + 2]!, verts[c * 4 + 2]!),
+                            ] as [number, number, number],
+                            max = [
+                                Math.max(verts[a * 4]!, verts[b * 4]!, verts[c * 4]!),
+                                Math.max(verts[a * 4 + 1]!, verts[b * 4 + 1]!, verts[c * 4 + 1]!),
+                                Math.max(verts[a * 4 + 2]!, verts[b * 4 + 2]!, verts[c * 4 + 2]!),
+                            ] as [number, number, number]
+                        faces.push(a, b, c, 0)
+                        triangles.push({
+                            min,
+                            max,
+                            centroid: [
+                                (min[0]! + max[0]!) / 2,
+                                (min[1]! + max[1]!) / 2,
+                                (min[2]! + max[2]!) / 2,
+                            ],
+                            face: faceIndex,
+                        })
                     }
                 }
             }
+            const { nodes, order } = this.buildBVH(triangles)
             this.meshesObject.uniforms = [
-                [new Uint32Array(range)],
                 [new Float32Array(verts)],
                 [new Uint32Array(faces)],
-                sorted.map(mesh => mesh.worldMatrix),
+                [nodes],
+                [order],
             ].map(item => Object.assign(item, {
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
             }))
-            const bindings = this.cache.bindings(this.meshesObject)
-            this.updateUniforms(bindings)
-            const { uniforms = [] } = bindings[3] as BindingResource,
-                { buffer, offset = 0 } = bindings[3] as GPUBufferBinding
-            this.meshesTransformBinding = { buffer, offset, map: { } }
-            for (const [index, item] of uniforms.entries()) {
-                this.meshesTransformBinding.map[sorted[index]?.id || 0] = item
-            }
+            this.updateUniforms(this.cache.bindings(this.meshesObject))
         }
 
         if (camera instanceof PerspectiveCamera) {
@@ -112,11 +134,6 @@ export default class WebGPUTracer extends WebGPURenderer {
         pass.setBindGroup(...cache.bind(pipeline, this.meshesObject))
         this.updateUniforms(cache.bindings(output))
         this.updateUniforms(cache.bindings(camera))
-        {
-            const { buffer, offset, map } = this.meshesTransformBinding,
-                uniforms = Array.from(updated).map(item => map[item.id]!).filter(item => item)
-            this.updateUniforms([{ buffer, offset, uniforms }])
-        }
         pass.dispatchWorkgroups(width, height)
         pass.end()
         if (opts.webgpu?.commandEncoder) {
@@ -128,5 +145,87 @@ export default class WebGPUTracer extends WebGPURenderer {
             webgpu.disableBundle = true
             super.render(scene, camera, opts)
         }
+    }
+    private buildBVH(triangles: {
+        min: [number, number, number]
+        max: [number, number, number]
+        centroid: [number, number, number]
+        face: number
+    }[]) {
+        type Node = {
+            min: [number, number, number]
+            max: [number, number, number]
+            left: number
+            right: number
+            start: number
+            count: number
+        }
+        const nodes: Node[] = [],
+            work = triangles.slice()
+        const build = (start: number, end: number): number => {
+            const node: Node = {
+                min: [Infinity, Infinity, Infinity],
+                max: [-Infinity, -Infinity, -Infinity],
+                left: -1,
+                right: -1,
+                start,
+                count: end - start,
+            }
+            for (let i = start; i < end; i ++) {
+                const tri = work[i]!,
+                    { min, max } = tri
+                for (let j = 0; j < 3; j ++) {
+                    node.min[j] = Math.min(node.min[j]!, min[j]!)
+                    node.max[j] = Math.max(node.max[j]!, max[j]!)
+                }
+            }
+
+            const idx = nodes.push(node) - 1
+            if (node.count <= 4) {
+                return idx
+            }
+
+            const centroidMin = [Infinity, Infinity, Infinity],
+                centroidMax = [-Infinity, -Infinity, -Infinity]
+            for (let i = start; i < end; i ++) {
+                const { centroid } = work[i]!
+                for (let j = 0; j < 3; j ++) {
+                    centroidMin[j] = Math.min(centroidMin[j]!, centroid[j]!)
+                    centroidMax[j] = Math.max(centroidMax[j]!, centroid[j]!)
+                }
+            }
+            const extent = centroidMax.map((val, idx) => val - centroidMin[idx]!),
+                axis = extent[1] > extent[0] ? (extent[1] > extent[2] ? 1 : 2) : (extent[0] > extent[2] ? 0 : 2),
+                sorted = work.slice(start, end).sort((a, b) => a.centroid[axis]! - b.centroid[axis]!)
+            for (let i = 0; i < sorted.length; i ++) {
+                work[start + i] = sorted[i]!
+            }
+            const mid = start + (node.count >> 1)
+            node.left = build(start, mid)
+            node.right = build(mid, end)
+            node.count = 0
+            node.start = 0
+            return idx
+        }
+        if (work.length) {
+            build(0, work.length)
+        }
+        const stride = 12,
+            buffer = new ArrayBuffer(nodes.length * stride * 4),
+            f32 = new Float32Array(buffer),
+            u32 = new Uint32Array(buffer)
+        nodes.forEach((node, idx) => {
+            const offset = idx * stride
+            f32.set([...node.min, 0, ...node.max, 0], offset)
+            u32[offset + 8] = node.left >= 0 ? node.left : 0xffffffff
+            u32[offset + 9] = node.right >= 0 ? node.right : 0xffffffff
+            u32[offset + 10] = node.start
+            u32[offset + 11] = node.count
+        })
+        const order = new Uint32Array(work.length)
+        for (let i = 0; i < work.length; i ++) {
+            order[i] = work[i]!.face
+        }
+        return { nodes: u32, order }
     }
 }
