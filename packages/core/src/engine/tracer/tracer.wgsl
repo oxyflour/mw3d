@@ -11,10 +11,16 @@ struct CameraUniforms {
 }
 @group(1) @binding(0) var<uniform> camera: CameraUniforms;
 
-@group(2) @binding(0) var<storage> meshIndex: array<vec2<u32>>;
-@group(2) @binding(1) var<storage> meshVerts: array<vec4<f32>>;
-@group(2) @binding(2) var<storage> meshFaces: array<vec4<u32>>;
-@group(2) @binding(3) var<storage> meshTrans: array<mat4x4<f32>>;
+struct BVHNode {
+    min: vec4<f32>,
+    max: vec4<f32>,
+    data: vec4<u32>,
+}
+
+@group(2) @binding(0) var<storage> meshVerts: array<vec4<f32>>;
+@group(2) @binding(1) var<storage> meshFaces: array<vec4<u32>>;
+@group(2) @binding(2) var<storage> bvhNodes: array<BVHNode>;
+@group(2) @binding(3) var<storage> triangleIndex: array<u32>;
 
 const f32_max = 1.17549e38;
 struct HitResult {
@@ -62,27 +68,55 @@ fn ray_triangle_test(o: vec3<f32>, d: vec3<f32>, a: vec3<f32>, b: vec3<f32>, c: 
     return ret;
 }
 
+fn ray_aabb_test(o: vec3<f32>, invDir: vec3<f32>, bmin: vec3<f32>, bmax: vec3<f32>, maxT: f32) -> bool {
+    let t0 = (bmin - o) * invDir;
+    let t1 = (bmax - o) * invDir;
+    let tmin = max(max(min(t0.x, t1.x), min(t0.y, t1.y)), min(t0.z, t1.z));
+    let tmax = min(min(max(t0.x, t1.x), max(t0.y, t1.y)), max(t0.z, t1.z));
+    return tmax >= max(0., tmin) && tmin < maxT;
+}
+
 fn ray_trace(o: vec3<f32>, d: vec3<f32>) -> vec4<f32> {
     var ret = HitResult(f32_max, vec3<f32>(0., 0., 0.));
-    let n = arrayLength(&meshIndex);
-    for (var m = 0u; m < n; m ++) {
-        let i0 = meshIndex[m].x;
-        var i1: u32;
-        if (m + 1u < n) {
-            i1 = meshIndex[m + 1u].x;
-        } else {
-            i1 = arrayLength(&meshFaces);
+    let nodeCount = arrayLength(&bvhNodes);
+    if (nodeCount == 0u) {
+        return vec4<f32>(ret.w, 1.);
+    }
+    var stack: array<u32, 128>;
+    var sp = 0u;
+    stack[sp] = 0u;
+    sp = 1u;
+    let invDir = 1. / d;
+    loop {
+        if (sp == 0u) { break; }
+        sp --;
+        let idx = stack[sp];
+        let node = bvhNodes[idx];
+        if (!ray_aabb_test(o, invDir, node.min.xyz, node.max.xyz, ret.t)) {
+            continue;
         }
-        let f0 = meshIndex[m].y;
-        let t = meshTrans[m];
-        for (var i = i0; i < i1; i ++) {
-            let f = meshFaces[i];
-            let a = t * meshVerts[f.x + f0];
-            let b = t * meshVerts[f.y + f0];
-            let c = t * meshVerts[f.z + f0];
-            let hit = ray_triangle_test(o, d, a.xyz, b.xyz, c.xyz);
-            if (hit.t < ret.t) {
-                ret = hit;
+        if (node.data.w > 0u) {
+            let start = node.data.z;
+            let count = node.data.w;
+            for (var i = 0u; i < count; i ++) {
+                let triIdx = triangleIndex[start + i];
+                let f = meshFaces[triIdx];
+                let a = meshVerts[f.x];
+                let b = meshVerts[f.y];
+                let c = meshVerts[f.z];
+                let hit = ray_triangle_test(o, d, a.xyz, b.xyz, c.xyz);
+                if (hit.t < ret.t) {
+                    ret = hit;
+                }
+            }
+        } else {
+            if (node.data.x != 0xffffffffu) {
+                stack[sp] = node.data.x;
+                sp ++;
+            }
+            if (node.data.y != 0xffffffffu) {
+                stack[sp] = node.data.y;
+                sp ++;
             }
         }
     }
