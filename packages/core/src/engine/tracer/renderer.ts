@@ -22,21 +22,30 @@ export default class WebGPUTracer extends WebGPURenderer {
     private lastCameraViewProj = new Float32Array(16)
     private lastCameraWorldPos = new Float32Array(4)
     private sampleCount = 0
-    private lastAccumTexture?: Texture
+    private accumulationTextures: Texture[] = []
+    private accumulationIndex = 0
+    private accumulationSize?: { width: number, height: number }
+    private lastFragmentTexture?: GPUTexture
     private binding = cache((tex: GPUTexture) => {
-        const texture = new Texture({
+        const createAccumulationTexture = () => new Texture({
             size: { width: tex.width, height: tex.height },
-            format: 'rgba32float',
-            usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.STORAGE_BINDING,
+            format: 'rgba16float',
+            usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.STORAGE_BINDING,
         })
+
+        this.accumulationTextures = [createAccumulationTexture(), createAccumulationTexture()]
+        this.accumulationIndex = 0
+        this.accumulationSize = { width: tex.width, height: tex.height }
+
         const output = {
             uniforms: [
-                texture,
+                this.accumulationTextures[0]!,
+                this.accumulationTextures[1]!,
                 [this.cameraPropUniform]
             ],
             bindingGroup: 0,
         }
-        this.fullScreenQuad.mat = new BasicMaterial({ texture })
+        this.fullScreenQuad.mat = new BasicMaterial({ texture: this.accumulationTextures[0]! })
         return output
     })
     private isCameraStable(camera: Camera) {
@@ -147,9 +156,28 @@ export default class WebGPUTracer extends WebGPURenderer {
         }
 
         const { cache, pipeline } = this,
-            output = this.binding(cache.fragmentTexture),
-            targetTexture = output.uniforms[0] as Texture,
-            accumulationChanged = this.lastAccumTexture !== targetTexture,
+            fragmentTextureChanged = this.lastFragmentTexture !== cache.fragmentTexture,
+            output = this.binding(cache.fragmentTexture)
+
+        this.lastFragmentTexture = cache.fragmentTexture
+
+        let accumulationChanged = fragmentTextureChanged
+        if (!this.accumulationSize ||
+            this.accumulationSize.width !== cache.fragmentTexture.width ||
+            this.accumulationSize.height !== cache.fragmentTexture.height) {
+            const createAccumulationTexture = () => new Texture({
+                size: { width: cache.fragmentTexture.width, height: cache.fragmentTexture.height },
+                format: 'rgba16float',
+                usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.STORAGE_BINDING,
+            })
+            this.accumulationTextures = [createAccumulationTexture(), createAccumulationTexture()]
+            this.accumulationIndex = 0
+            this.accumulationSize = { width: cache.fragmentTexture.width, height: cache.fragmentTexture.height }
+            accumulationChanged = true
+        }
+
+        const readTexture = this.accumulationTextures[this.accumulationIndex]!,
+            writeTexture = this.accumulationTextures[1 - this.accumulationIndex]!,
             stable = !needsMeshUpdate && this.isCameraStable(camera) && !accumulationChanged
         if (!stable) {
             this.sampleCount = 0
@@ -160,6 +188,8 @@ export default class WebGPUTracer extends WebGPURenderer {
             pass = cmd.beginComputePass(),
             { width, height } = cache.fragmentTexture
         pass.setPipeline(pipeline)
+        output.uniforms[0] = writeTexture
+        output.uniforms[1] = readTexture
         pass.setBindGroup(...cache.bind(pipeline, output))
         pass.setBindGroup(...cache.bind(pipeline, camera))
         pass.setBindGroup(...cache.bind(pipeline, this.meshesObject))
@@ -178,9 +208,8 @@ export default class WebGPUTracer extends WebGPURenderer {
         }
 
         this.sampleCount ++
-        // Reset accumulation whenever the accumulation surface is re-created (e.g. resize)
-        // so sampleCount always matches the texture contents.
-        this.lastAccumTexture = targetTexture
+        this.accumulationIndex = 1 - this.accumulationIndex
+        this.fullScreenQuad.mat = new BasicMaterial({ texture: writeTexture })
         this.syncCameraState(camera)
     }
     private buildBVH(triangles: {
