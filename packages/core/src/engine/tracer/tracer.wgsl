@@ -224,12 +224,14 @@ fn ray_closest(o: vec3<f32>, d: vec3<f32>, maxD: f32) -> HitResult {
     return ret;
 }
 
+const maxD = 10.0;
+
 @compute @workgroup_size(1, 1, 1)
 fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     let screenPos = vec2(i32(threadId.x), i32(threadId.y));
     let screenSize = vec2<f32>(textureDimensions(outputBuffer));
-    let NDC = vec2<f32>(screenPos) / screenSize * 2. - 1.;
-    let cameraNDC = vec4(NDC * renderer.cameraProp, -1., 1.);
+    let screenNDC = vec2<f32>(screenPos) / screenSize * 2. - 1.;
+    let cameraNDC = vec4(screenNDC * renderer.cameraProp, -1., 1.);
     let cameraNear = camera.worldMatrix * cameraNDC;
     let rayOrigin = camera.worldPosition.xyz;
     let rayDir = normalize(cameraNear.xyz - rayOrigin);
@@ -238,8 +240,8 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
         let hit = ray_trace(rayOrigin, rayDir);
         ret = vec4<f32>(hit.w, 1.);
     } else {
-        let closest = ray_closest(rayOrigin, rayDir, 0.1);
-        ret = vec4<f32>(closest.t * 0.1, 0., 0., 1.);
+        let closest = ray_closest(rayOrigin, rayDir, maxD);
+        ret = vec4<f32>(closest.t / maxD, 0., 0., 1.);
     }
     textureStore(outputBuffer, screenPos, ret);
 }
