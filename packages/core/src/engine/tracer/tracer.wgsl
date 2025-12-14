@@ -1,4 +1,4 @@
-@group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba16float, read_write>;
+@group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba32float, read_write>;
 struct RendererUniforms {
     cameraProp: vec2<f32>,
     sampleCount: f32,

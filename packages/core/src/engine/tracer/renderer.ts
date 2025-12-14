@@ -26,7 +26,7 @@ export default class WebGPUTracer extends WebGPURenderer {
     private binding = cache((tex: GPUTexture) => {
         const texture = new Texture({
             size: { width: tex.width, height: tex.height },
-            format: 'rgba16float',
+            format: 'rgba32float',
             usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.STORAGE_BINDING,
         })
         const output = {
