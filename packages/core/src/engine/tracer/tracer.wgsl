@@ -1,6 +1,6 @@
 @group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba8unorm, write>;
 struct RendererUniforms {
-    cameraProp: vec2<f32>
+    cameraProp: vec2<f32>,
 }
 @group(0) @binding(1) var<uniform> renderer: RendererUniforms;
 
@@ -97,10 +97,10 @@ fn ray_trace(o: vec3<f32>, d: vec3<f32>) -> HitResult {
             let count = node.data.w;
             for (var i = 0u; i < count; i ++) {
                 let j = triangleIndex[start + i];
-                let f = meshFaces[j];
-                let a = meshVerts[f.x];
-                let b = meshVerts[f.y];
-                let c = meshVerts[f.z];
+                let tri = meshFaces[j];
+                let a = meshVerts[tri.x];
+                let b = meshVerts[tri.y];
+                let c = meshVerts[tri.z];
                 let hit = ray_triangle_test(o, d, a.xyz, b.xyz, c.xyz);
                 if (hit.t < ret.t) {
                     ret = hit;
@@ -187,10 +187,10 @@ fn ray_closest(o: vec3<f32>, d: vec3<f32>, maxD: f32) -> HitResult {
             let count = node.data.w;
             for (var i = 0u; i < count; i ++) {
                 let j = triangleIndex[start + i];
-                let f = meshFaces[j];
-                let a = meshVerts[f.x];
-                let b = meshVerts[f.y];
-                let c = meshVerts[f.z];
+                let tri = meshFaces[j];
+                let a = meshVerts[tri.x];
+                let b = meshVerts[tri.y];
+                let c = meshVerts[tri.z];
                 let hit = ray_triangle_test(o, d, a.xyz, b.xyz, c.xyz);
                 if (hit.t < f32_max) {
                     ret.t = 0;
