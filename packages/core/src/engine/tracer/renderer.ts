@@ -22,7 +22,7 @@ export default class WebGPUTracer extends WebGPURenderer {
     private lastCameraViewProj = new Float32Array(16)
     private lastCameraWorldPos = new Float32Array(4)
     private sampleCount = 0
-    private lastOutputTexture?: Texture
+    private lastAccumTexture?: Texture
     private binding = cache((tex: GPUTexture) => {
         const texture = new Texture({
             size: { width: tex.width, height: tex.height },
@@ -149,7 +149,8 @@ export default class WebGPUTracer extends WebGPURenderer {
         const { cache, pipeline } = this,
             output = this.binding(cache.fragmentTexture),
             targetTexture = output.uniforms[0] as Texture,
-            stable = !needsMeshUpdate && this.isCameraStable(camera) && this.lastOutputTexture === targetTexture
+            accumulationChanged = this.lastAccumTexture !== targetTexture,
+            stable = !needsMeshUpdate && this.isCameraStable(camera) && !accumulationChanged
         if (!stable) {
             this.sampleCount = 0
         }
@@ -177,7 +178,9 @@ export default class WebGPUTracer extends WebGPURenderer {
         }
 
         this.sampleCount ++
-        this.lastOutputTexture = targetTexture
+        // Reset accumulation whenever the accumulation surface is re-created (e.g. resize)
+        // so sampleCount always matches the texture contents.
+        this.lastAccumTexture = targetTexture
         this.syncCameraState(camera)
     }
     private buildBVH(triangles: {
