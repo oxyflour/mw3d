@@ -235,6 +235,9 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     let cameraNear = camera.worldMatrix * cameraNDC;
     let rayOrigin = camera.worldPosition.xyz;
     let rayDir = normalize(cameraNear.xyz - rayOrigin);
+    /*
+     * for testing
+     *
     var ret: vec4<f32>;
     if (1 == 0) {
         let hit = ray_trace(rayOrigin, rayDir);
@@ -243,5 +246,8 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
         let closest = ray_closest(rayOrigin, rayDir, maxD);
         ret = vec4<f32>(closest.t / maxD, 0., 0., 1.);
     }
+     */
+    let hit = ray_trace(rayOrigin, rayDir);
+    let ret = vec4<f32>(hit.w, 1.);
     textureStore(outputBuffer, screenPos, ret);
 }
