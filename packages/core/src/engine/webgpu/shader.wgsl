@@ -1,5 +1,4 @@
-// @replace-let-with-const
-let MAX_LIGHTS = 4;
+const MAX_LIGHTS = 4;
 struct Light {
   worldPosition: vec4<f32>,
 }
@@ -119,8 +118,7 @@ struct FragInput {
 
 // https://github.com/samdauwe/webgpu-native-assets/blob/cac1816df6e3778c218bb0df29c1193a27ee0b40/shaders/pbr_basic/pbr.frag
 
-// @replace-let-with-const
-let PI = 3.14159;
+const PI = 3.14159;
 fn D_GGX(dotNH: f32, roughness: f32) -> f32 {
   var alpha = roughness * roughness;
   var alpha2 = alpha * alpha;

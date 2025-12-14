@@ -5,7 +5,7 @@ import { Sampler, Texture, Uniform, UniformValue } from '../uniform'
 import wgsl from './shader.wgsl?raw'
 
 // Note: wgsl global const not yet supported
-const WGSL_CODE = (wgsl + '').replace(/\r\n/g, '\n').replace(/\/\/ @replace-let-with-const\nlet /g, 'const ')
+const WGSL_CODE = (wgsl + '').replace(/\r\n/g, '\n')
 
 export interface CachedAttr {
     buffer: GPUBuffer
