@@ -406,7 +406,6 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     var seed = (u32(threadId.x) * 1973u) ^ (u32(threadId.y) * 9277u) ^ 89173u ^ u32(renderer.frameIndex);
     let color = trace_path(rayOrigin, rayDir, &seed);
     let prev = textureLoad(historyBuffer, screenPos, 0).xyz;
-    let frameIndex = max(renderer.frameIndex, 0.0);
-    let accum = (prev * frameIndex + color) / (frameIndex + 1.0);
+    let accum = (prev * renderer.frameIndex + color) / (renderer.frameIndex + 1.0);
     textureStore(outputBuffer, screenPos, vec4<f32>(accum, 1.0));
 }
