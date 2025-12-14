@@ -349,7 +349,7 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     var seed = hash_u32(u32(screenPos.x * 73856093 ^ screenPos.y * 19349663));
     let color = pbr_trace(rayOrigin, rayDir, &seed);
 
-    let prevColor = textureLoad(prevOutput, screenPos).rgb;
+    let prevColor = textureLoad(prevOutput, screenPos, 0).rgb;
     let count = renderer.sampleCount;
     let blended = (prevColor * count + color) / (count + 1.0);
 
