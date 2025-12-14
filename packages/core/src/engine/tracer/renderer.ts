@@ -18,11 +18,15 @@ export default class WebGPUTracer extends WebGPURenderer {
         })
         return this
     }
-    private cameraPropUniform = new Float32Array([1, 1])
+    private cameraPropUniform = new Float32Array([1, 1, 0, 0])
+    private lastCameraViewProj = new Float32Array(16)
+    private lastCameraWorldPos = new Float32Array(4)
+    private sampleCount = 0
+    private lastOutputTexture?: Texture
     private binding = cache((tex: GPUTexture) => {
         const texture = new Texture({
             size: { width: tex.width, height: tex.height },
-            format: 'rgba8unorm',
+            format: 'rgba16float',
             usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.STORAGE_BINDING,
         })
         const output = {
@@ -35,6 +39,25 @@ export default class WebGPUTracer extends WebGPURenderer {
         this.fullScreenQuad.mat = new BasicMaterial({ texture })
         return output
     })
+    private isCameraStable(camera: Camera) {
+        const viewProj = camera.viewProjection as Float32Array,
+            worldPos = camera.worldPosition as Float32Array
+        for (let i = 0; i < 16; i ++) {
+            if (Math.abs(viewProj[i]! - this.lastCameraViewProj[i]!) > 1e-5) {
+                return false
+            }
+        }
+        for (let i = 0; i < 4; i ++) {
+            if (Math.abs(worldPos[i]! - this.lastCameraWorldPos[i]!) > 1e-5) {
+                return false
+            }
+        }
+        return true
+    }
+    private syncCameraState(camera: Camera) {
+        this.lastCameraViewProj.set(camera.viewProjection as Float32Array)
+        this.lastCameraWorldPos.set(camera.worldPosition as Float32Array)
+    }
     private meshesObject = {
         uniforms: [] as Uniform[],
         bindingGroup: 2,
@@ -123,11 +146,18 @@ export default class WebGPUTracer extends WebGPURenderer {
             this.cameraPropUniform[1] = -hf
         }
 
+        const { cache, pipeline } = this,
+            output = this.binding(cache.fragmentTexture),
+            targetTexture = output.uniforms[0] as Texture,
+            stable = !needsMeshUpdate && this.isCameraStable(camera) && this.lastOutputTexture === targetTexture
+        if (!stable) {
+            this.sampleCount = 0
+        }
+        this.cameraPropUniform[2] = this.sampleCount
+
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginComputePass(),
-            { pipeline, cache } = this,
-            { width, height } = cache.fragmentTexture,
-            output = this.binding(cache.fragmentTexture)
+            { width, height } = cache.fragmentTexture
         pass.setPipeline(pipeline)
         pass.setBindGroup(...cache.bind(pipeline, output))
         pass.setBindGroup(...cache.bind(pipeline, camera))
@@ -145,6 +175,10 @@ export default class WebGPUTracer extends WebGPURenderer {
             webgpu.disableBundle = true
             super.render(scene, camera, opts)
         }
+
+        this.sampleCount ++
+        this.lastOutputTexture = targetTexture
+        this.syncCameraState(camera)
     }
     private buildBVH(triangles: {
         min: [number, number, number]

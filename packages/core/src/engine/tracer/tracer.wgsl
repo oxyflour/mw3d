@@ -1,6 +1,7 @@
-@group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba16float, read_write>;
 struct RendererUniforms {
-    cameraProp: vec2<f32>
+    cameraProp: vec2<f32>,
+    sampleCount: f32,
 }
 @group(0) @binding(1) var<uniform> renderer: RendererUniforms;
 
@@ -347,6 +348,10 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     var seed = hash_u32(u32(screenPos.x * 73856093 ^ screenPos.y * 19349663));
     let color = pbr_trace(rayOrigin, rayDir, &seed);
 
-    let ret = vec4<f32>(color, 1.0);
+    let prevColor = textureLoad(outputBuffer, screenPos).rgb;
+    let count = renderer.sampleCount;
+    let blended = (prevColor * count + color) / (count + 1.0);
+
+    let ret = vec4<f32>(blended, 1.0);
     textureStore(outputBuffer, screenPos, ret);
 }
