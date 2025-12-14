@@ -1,10 +1,11 @@
 @group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(1) var historyBuffer: texture_2d<f32>;
 struct RendererUniforms {
     cameraProp: vec2<f32>,
-    sampleCount: f32,
-    _pad: f32,
+    frameIndex: f32,
+    padding: f32,
 }
-@group(0) @binding(1) var<uniform> renderer: RendererUniforms;
+@group(0) @binding(2) var<uniform> renderer: RendererUniforms;
 
 struct CameraUniforms {
     viewProjection: mat4x4<f32>,
@@ -398,11 +399,14 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     let screenNDC = vec2<f32>(screenPos) / screenSize * 2.0 - 1.0;
     let cameraNDC = vec4<f32>(screenNDC * renderer.cameraProp, -1.0, 1.0);
     let cameraNear = camera.worldMatrix * cameraNDC;
+
     let rayOrigin = camera.worldPosition.xyz;
     let rayDir = normalize(cameraNear.xyz - rayOrigin);
 
-    var seed = (u32(threadId.x) * 1973u) ^ (u32(threadId.y) * 9277u) ^ 89173u ^ u32(renderer.sampleCount);
+    var seed = (u32(threadId.x) * 1973u) ^ (u32(threadId.y) * 9277u) ^ 89173u ^ u32(renderer.frameIndex);
     let color = trace_path(rayOrigin, rayDir, &seed);
-    let mapped = pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
-    textureStore(outputBuffer, screenPos, vec4<f32>(mapped, 1.0));
+    let prev = textureLoad(historyBuffer, screenPos, 0).xyz;
+    let frameIndex = max(renderer.frameIndex, 0.0);
+    let accum = (prev * frameIndex + color) / (frameIndex + 1.0);
+    textureStore(outputBuffer, screenPos, vec4<f32>(accum, 1.0));
 }

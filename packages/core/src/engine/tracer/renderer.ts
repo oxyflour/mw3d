@@ -5,7 +5,7 @@ import { RenderMesh, RenderOptions } from "../renderer"
 import wgsl from './tracer.wgsl?raw'
 import { mat4, vec4 } from "gl-matrix"
 
-function buildMesh(sorted: RenderMesh[]) {
+function mergeMesh(sorted: RenderMesh[]) {
     const verts = [] as number[],
         faces = [] as number[],
         triangles = [] as {
@@ -23,8 +23,8 @@ function buildMesh(sorted: RenderMesh[]) {
             const worldMatrix = mat4.clone(mesh.worldMatrix)
             const base = verts.length / 4
             for (let i = 0; i < mesh.geo.positions.length; i += 3) {
-                vec4.set(worldPos,
-                    mesh.geo.positions[i]!, mesh.geo.positions[i + 1]!, mesh.geo.positions[i + 2]!, 1)
+                const [x = 0, y = 0, z = 0] = mesh.geo.positions.slice(i, i + 3)
+                vec4.set(worldPos, x, y, z, 1)
                 vec4.transformMat4(worldPos, worldPos, worldMatrix)
                 verts.push(worldPos[0]!, worldPos[1]!, worldPos[2]!, 1)
             }
@@ -158,21 +158,29 @@ export default class WebGPUTracer extends WebGPURenderer {
         return this
     }
     private cameraPropUniform = new Float32Array([1, 1, 1, 0])
+    private lastCameraRev = -1
     private binding = cache((tex: GPUTexture) => {
         const texture = new Texture({
             size: { width: tex.width, height: tex.height },
             format: 'rgba8unorm',
-            usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.STORAGE_BINDING,
+            usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.COPY_SRC | Texture.Usage.STORAGE_BINDING,
         })
-        const output = {
+        const history = new Texture({
+            size: { width: tex.width, height: tex.height },
+            format: 'rgba8unorm',
+            usage: Texture.Usage.TEXTURE_BINDING | Texture.Usage.COPY_DST | Texture.Usage.COPY_SRC,
+        })
+        return {
             uniforms: [
                 texture,
-                [this.cameraPropUniform]
+                history,
+                [this.cameraPropUniform],
             ],
             bindingGroup: 0,
+            targetTexture: texture,
+            historyTexture: history,
+            quadMaterial: new BasicMaterial({ texture })
         }
-        this.fullScreenQuad.mat = new BasicMaterial({ texture })
-        return output
     })
     private meshesObject = {
         uniforms: [] as Uniform[],
@@ -195,7 +203,7 @@ export default class WebGPUTracer extends WebGPURenderer {
             Array.from(updated).some(item => item instanceof Mesh || item instanceof Material)
         if (needsMeshUpdate) {
             this.cachedRenderPass.objs = sorted.map(mesh => ({ mesh, geo: mesh.geo, mat: mesh.mat, offset: mesh.offset, count: mesh.count }))
-            const { verts, faces, materials, triangles } = buildMesh(sorted),
+            const { verts, faces, materials, triangles } = mergeMesh(sorted),
                 { nodes, order } = buildBVH(triangles)
             this.meshesObject.uniforms = [
                 [new Float32Array(verts)],
@@ -209,12 +217,17 @@ export default class WebGPUTracer extends WebGPURenderer {
             this.updateUniforms(this.cache.bindings(this.meshesObject))
         }
 
-        this.cameraPropUniform[2] = this.opts.sampleCount || 1
         if (camera instanceof PerspectiveCamera) {
             const hf = Math.tan(camera.fov / 2)
             this.cameraPropUniform[0] =  hf * camera.aspect
             this.cameraPropUniform[1] = -hf
         }
+        if (needsMeshUpdate || this.lastCameraRev !== camera.rev) {
+            this.cameraPropUniform[2] = 0
+        } else {
+            this.cameraPropUniform[2] = this.cameraPropUniform[2]! + 1
+        }
+        this.lastCameraRev = camera.rev
 
         const cmd = this.device.createCommandEncoder(),
             pass = cmd.beginComputePass(),
@@ -229,6 +242,13 @@ export default class WebGPUTracer extends WebGPURenderer {
         this.updateUniforms(cache.bindings(camera))
         pass.dispatchWorkgroups(width, height)
         pass.end()
+        if (output.targetTexture && output.historyTexture) {
+            cmd.copyTextureToTexture(
+                { texture: this.cache.texture(output.targetTexture) },
+                { texture: this.cache.texture(output.historyTexture) },
+                { width, height, depthOrArrayLayers: 1 },
+            )
+        }
         if (opts.webgpu?.commandEncoder) {
             throw Error(`should not use opts.webgpu.commandEncoder with tracer`)
         } else {
@@ -236,6 +256,7 @@ export default class WebGPUTracer extends WebGPURenderer {
                 webgpu = opts.webgpu || (opts.webgpu = { })
             webgpu.commandEncoder = cmd
             webgpu.disableBundle = true
+            this.fullScreenQuad.mat = output.quadMaterial
             super.render(scene, camera, opts)
         }
     }
