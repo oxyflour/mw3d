@@ -296,7 +296,7 @@ fn fresnel_schlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32> {
 }
 
 fn sample_ggx(n: vec3<f32>, roughness: f32, xi: vec2<f32>) -> vec3<f32> {
-    let a = max(0.05, roughness);
+    let a = max(0.001, roughness);
     let a2 = a * a;
     let phi = 2.0 * PI * xi.x;
     let cosTheta = sqrt((1.0 - xi.y) / (1.0 + (a2 - 1.0) * xi.y));
@@ -338,7 +338,7 @@ fn trace_path(rayOrigin: vec3<f32>, rayDir: vec3<f32>, seedPtr: ptr<function, u3
 
         let mat = materials[tri.w];
         let baseColor = mat.color.xyz;
-        let roughness = clamp(mat.roughness, 0.05, 1.0);
+        let roughness = clamp(mat.roughness, 0.01, 1.0);
         let metallic = clamp(mat.metallic, 0.0, 1.0);
         let emissive = mat.emissive;
 
@@ -353,7 +353,7 @@ fn trace_path(rayOrigin: vec3<f32>, rayDir: vec3<f32>, seedPtr: ptr<function, u3
             break;
         }
 
-        let diffuseProb = clamp(1.0 - metallic, 0.05, 0.95);
+        let diffuseProb = clamp(1.0 - metallic, 0.0, 1.0);
         let xi = rand(seedPtr);
 
         var newDir = dir;

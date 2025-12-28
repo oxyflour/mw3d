@@ -6,7 +6,7 @@ import Light from "./light"
 import Camera from "./camera"
 import RendererBase, { RendererOptions as RendererOptionsBase } from "./renderer"
 import WebGPURenderer from "./webgpu/renderer"
-import WebGPUTracer from "./tracer/renderer"
+import WebGPUTracer from "./webgpu/tracer/renderer"
 import WebGL2Renderer from "./webgl2/renderer"
 import ThreeRenderer from "./three/renderer"
 

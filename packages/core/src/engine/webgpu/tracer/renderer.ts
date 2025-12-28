@@ -1,6 +1,7 @@
-import cache from "../../utils/cache"
-import { BasicMaterial, Camera, Material, Mesh, PerspectiveCamera, Scene, SpriteGeometry, Texture, Uniform, WebGPURenderer } from ".."
-import { RenderMesh, RenderOptions } from "../renderer"
+import cache from "../../../utils/cache"
+import { BasicMaterial, Camera, Material, Mesh, PerspectiveCamera, Scene, SpriteGeometry, Texture, Uniform, WebGPURenderer } from "../.."
+import { RenderMesh, RenderOptions } from "../../renderer"
+import { BVH, HybridBuilder, type BVHNode } from "bvh.js"
 
 import wgsl from './tracer.wgsl?raw'
 import { mat4, vec4 } from "gl-matrix"
@@ -61,87 +62,77 @@ function mergeMesh(sorted: RenderMesh[]) {
     return { verts, faces, materials, triangles }
 }
 
+type BVHTreeNode = BVHNode<unknown, number>
+
 function buildBVH(triangles: {
     min: [number, number, number]
     max: [number, number, number]
-    centroid: [number, number, number]
     face: number
 }[]) {
-    type Node = {
-        min: [number, number, number]
-        max: [number, number, number]
-        left: number
-        right: number
-        start: number
-        count: number
+    if (!triangles.length) {
+        return {
+            nodes: new Uint32Array(),
+            order: new Uint32Array(),
+        }
     }
-    const nodes: Node[] = [],
-        work = triangles.slice()
-    const build = (start: number, end: number): number => {
-        const node: Node = {
-            min: [Infinity, Infinity, Infinity],
-            max: [-Infinity, -Infinity, -Infinity],
-            left: -1,
-            right: -1,
-            start,
-            count: end - start,
-        }
-        for (let i = start; i < end; i ++) {
-            const tri = work[i]!,
-                { min, max } = tri
-            for (let j = 0; j < 3; j ++) {
-                node.min[j] = Math.min(node.min[j]!, min[j]!)
-                node.max[j] = Math.max(node.max[j]!, max[j]!)
-            }
-        }
 
-        const idx = nodes.push(node) - 1
-        if (node.count <= 4) {
-            return idx
-        }
+    const boxes = triangles.map(({ min, max }) => new Float32Array([
+        min[0]!, max[0]!,
+        min[1]!, max[1]!,
+        min[2]!, max[2]!,
+    ]))
+    const faces = triangles.map(tri => tri.face)
 
-        const min = [Infinity, Infinity, Infinity] as [number, number, number],
-            max = [-Infinity, -Infinity, -Infinity] as [number, number, number]
-        for (let i = start; i < end; i ++) {
-            const { centroid } = work[i]!
-            for (let j = 0; j < 3; j ++) {
-                min[j] = Math.min(min[j]!, centroid[j]!)
-                max[j] = Math.max(max[j]!, centroid[j]!)
-            }
+    const bvh = new BVH<unknown, number>(new HybridBuilder<unknown, number>())
+    bvh.createFromArray(faces, boxes)
+
+    const flatNodes: BVHTreeNode[] = []
+    const stack: BVHTreeNode[] = [bvh.root as BVHTreeNode]
+    while (stack.length) {
+        const node = stack.pop()!
+        flatNodes.push(node)
+        if (node.right) {
+            stack.push(node.right as BVHTreeNode)
         }
-        const extent = [max[0] - min[0], max[1] - min[1], max[2] - min[2]] as [number, number, number],
-            axis = extent[1] > extent[0] ? (extent[1] > extent[2] ? 1 : 2) : (extent[0] > extent[2] ? 0 : 2),
-            sorted = work.slice(start, end).sort((a, b) => a.centroid[axis]! - b.centroid[axis]!)
-        for (let i = 0; i < sorted.length; i ++) {
-            work[start + i] = sorted[i]!
+        if (node.left) {
+            stack.push(node.left as BVHTreeNode)
         }
-        const mid = start + (node.count >> 1)
-        node.left = build(start, mid)
-        node.right = build(mid, end)
-        node.count = 0
-        node.start = 0
-        return idx
     }
-    if (work.length) {
-        build(0, work.length)
-    }
-    const stride = 12,
-        buffer = new ArrayBuffer(nodes.length * stride * 4),
-        f32 = new Float32Array(buffer),
-        u32 = new Uint32Array(buffer)
-    nodes.forEach((node, idx) => {
-        const offset = idx * stride
-        f32.set([...node.min, 0, ...node.max, 0], offset)
-        u32[offset + 8] = node.left >= 0 ? node.left : 0xffffffff
-        u32[offset + 9] = node.right >= 0 ? node.right : 0xffffffff
-        u32[offset + 10] = node.start
-        u32[offset + 11] = node.count
+
+    const nodeIndex = new Map<BVHTreeNode, number>()
+    flatNodes.forEach((node, idx) => nodeIndex.set(node, idx))
+
+    const order: number[] = []
+    const leafStart = new Map<BVHTreeNode, number>()
+    flatNodes.forEach(node => {
+        if (node.object !== undefined) {
+            leafStart.set(node, order.length)
+            order.push(node.object as number)
+        }
     })
-    const order = new Uint32Array(work.length)
-    for (let i = 0; i < work.length; i ++) {
-        order[i] = work[i]!.face
-    }
-    return { nodes: u32, order }
+
+    const stride = 12
+    const buffer = new ArrayBuffer(flatNodes.length * stride * 4)
+    const f32 = new Float32Array(buffer)
+    const u32 = new Uint32Array(buffer)
+    flatNodes.forEach((node, idx) => {
+        const offset = idx * stride
+        const box = node.box
+        f32.set([box[0]!, box[2]!, box[4]!, 0, box[1]!, box[3]!, box[5]!, 0], offset)
+        const left = node.left ? nodeIndex.get(node.left as BVHTreeNode) ?? 0xffffffff : 0xffffffff
+        const right = node.right ? nodeIndex.get(node.right as BVHTreeNode) ?? 0xffffffff : 0xffffffff
+        u32[offset + 8] = left
+        u32[offset + 9] = right
+        if (leafStart.has(node)) {
+            u32[offset + 10] = leafStart.get(node)!
+            u32[offset + 11] = 1
+        } else {
+            u32[offset + 10] = 0
+            u32[offset + 11] = 0
+        }
+    })
+
+    return { nodes: u32, order: new Uint32Array(order) }
 }
 
 export default class WebGPUTracer extends WebGPURenderer {
