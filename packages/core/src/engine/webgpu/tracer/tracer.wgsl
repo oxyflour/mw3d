@@ -1,4 +1,4 @@
-@group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(0) var outputBuffer: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(1) var historyBuffer: texture_2d<f32>;
 struct RendererUniforms {
     cameraProp: vec2<f32>,
@@ -322,7 +322,7 @@ fn trace_path(rayOrigin: vec3<f32>, rayDir: vec3<f32>, seedPtr: ptr<function, u3
     for (var bounce = 0u; bounce < MAX_BOUNCES; bounce ++) {
         let hit = ray_trace(origin, dir);
         if (hit.t >= f32_max - 1.0 || hit.f == u32_max) {
-            radiance += throughput * sky(dir);
+            radiance += throughput;
             break;
         }
 
@@ -405,7 +405,9 @@ fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
 
     var seed = (u32(threadId.x) * 1973u) ^ (u32(threadId.y) * 9277u) ^ 89173u ^ u32(renderer.frameIndex);
     let color = trace_path(rayOrigin, rayDir, &seed);
-    let prev = textureLoad(historyBuffer, screenPos, 0).xyz;
-    let accum = (prev * renderer.frameIndex + color) / (renderer.frameIndex + 1.0);
-    textureStore(outputBuffer, screenPos, vec4<f32>(accum, 1.0));
+    var prev = textureLoad(historyBuffer, screenPos, 0).xyz;
+    if (all(color == color)) {
+        prev = (prev * renderer.frameIndex + color) / (renderer.frameIndex + 1.0);
+    }
+    textureStore(outputBuffer, screenPos, vec4<f32>(prev, 1.0));
 }

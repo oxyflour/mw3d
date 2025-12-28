@@ -108,7 +108,7 @@ const camera = new PerspectiveCamera({
     }),
     cube = new Mesh(
         new BoxGeometry({ size: 200 }),
-        new BasicMaterial({ color: [1, 1, 1], roughness: 0.0, metallic: 1, clipPlane: CLIP_PLANE })),
+        new BasicMaterial({ color: [1, 0, 0], roughness: 0.0, metallic: 1, clipPlane: CLIP_PLANE })),
     handle = new Obj3({
         children: [
             new Light({
