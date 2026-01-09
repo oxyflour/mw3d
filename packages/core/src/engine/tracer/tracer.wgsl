@@ -392,6 +392,55 @@ fn trace_path(rayOrigin: vec3<f32>, rayDir: vec3<f32>, seedPtr: ptr<function, u3
     return radiance;
 }
 
+fn ray_closest(o: vec3<f32>, d: vec3<f32>) -> vec3<f32> {
+    var hitPoint = vec3<f32>(f32_max, f32_max, f32_max);
+    var ret = HitResult(f32_max, vec3<f32>(0., 0., 0.));
+    let nodeCount = arrayLength(&bvhNodes);
+    if (nodeCount == 0u) {
+        return hitPoint;
+    }
+    var stack: array<u32, 128>;
+    var sp = 0u;
+    stack[sp] = 0u;
+    sp = 1u;
+    let invDir = 1. / d;
+    loop {
+        if (sp == 0u) { break; }
+        sp --;
+        let idx = stack[sp];
+        let node = bvhNodes[idx];
+        if (!ray_aabb_test(o, invDir, node.min.xyz, node.max.xyz, ret.t)) {
+            continue;
+        }
+        if (node.data.w > 0u) {
+            let start = node.data.z;
+            let count = node.data.w;
+            for (var i = 0u; i < count; i ++) {
+                let triIdx = triangleIndex[start + i];
+                let f = meshFaces[triIdx];
+                let a = meshVerts[f.x];
+                let b = meshVerts[f.y];
+                let c = meshVerts[f.z];
+                let hit = ray_triangle_test(o, d, a.xyz, b.xyz, c.xyz);
+                if (hit.t < ret.t) {
+                    ret = hit;
+                    hitPoint = hit.w.x * a.xyz + hit.w.y * b.xyz + hit.w.z * c.xyz;
+                }
+            }
+        } else {
+            if (node.data.x != 0xffffffffu) {
+                stack[sp] = node.data.x;
+                sp ++;
+            }
+            if (node.data.y != 0xffffffffu) {
+                stack[sp] = node.data.y;
+                sp ++;
+            }
+        }
+    }
+    return hitPoint;
+}
+
 @compute @workgroup_size(1, 1, 1)
 fn main(@builtin(global_invocation_id) threadId : vec3<u32>) {
     let screenPos = vec2<i32>(i32(threadId.x), i32(threadId.y));
