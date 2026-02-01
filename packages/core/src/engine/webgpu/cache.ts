@@ -98,7 +98,10 @@ export default class Cache {
     })
     attrs = cache((geo: Geometry) => {
         const list = [] as CachedAttr[]
-        for (const array of geo.attributes) {
+        const arrays = geo.attributes.length >= 2 ?
+            geo.attributes :
+            [geo.positions, new Float32Array(geo.positions.length)]
+        for (const array of arrays) {
             const buffer = this.device.createBuffer({
                 size: array.byteLength,
                 usage: GPUBufferUsage.VERTEX,
@@ -167,21 +170,25 @@ export default class Cache {
     })
 
     private cachedPipelines = { } as Record<string, Record<string, CachedPipeline>>
-    pipeline = (primitive: GeometryPrimitive, mat: Material) => {
+    pipeline = (geo: Geometry, mat: Material) => {
+        const { type: primitive } = geo
+        const attrCount = Math.max(2, geo.attributes.length)
         const cache = this.cachedPipelines[primitive] || (this.cachedPipelines[primitive] = { })
-        if (cache[mat.id]) {
-            return cache[mat.id]!
+        const matKey = `${mat.id}:${attrCount}`
+        if (cache[matKey]) {
+            return cache[matKey]!
         }
         const code = [
             mat.prop.a < 1,
             mat.opts.wgsl?.frag,
             mat.opts.wgsl?.vert,
             mat.opts.texture ? 't' : '',
+            attrCount,
         ].join('###')
         if (cache[code]) {
-            return cache[mat.id] = cache[code]!
+            return cache[matKey] = cache[code]!
         }
-        return cache[mat.id] = cache[code] = this.buildPipeline(primitive, mat)
+        return cache[matKey] = cache[code] = this.buildPipeline(primitive, mat, attrCount)
     }
 
     private cachedModules = { } as Record<string, GPUShaderModule>
@@ -197,15 +204,17 @@ export default class Cache {
             'line-strip': 'fragMainColor',
             'triangle-list': 'fragMain',
             'triangle-strip': 'fragMain',
+            'gaussian-splat': 'fragGaussianMain',
         }
     }
-    private buildPipeline = cache((primitive: GeometryPrimitive, mat: Material) => {
+    private buildPipeline = cache((primitive: GeometryPrimitive, mat: Material, attrCount: number) => {
         const { wgsl: { vert, frag } = { } } = mat.opts,
             id = Object.keys(this.cachedPipelines).length,
             vertEntry = Cache.parseShaderEntry(
                 typeof vert === 'string' ? vert :
                 primitive === 'fat-line-list' ? 'vertLineMain' :
                 primitive === 'point-sprite' ? 'vertSpriteMain' :
+                primitive === 'gaussian-splat' ? 'vertGaussianMain' :
                 (vert?.[primitive] || Cache.defaultEntry.vert)),
             fragEntry = Cache.parseShaderEntry(
                 typeof frag === 'string' ? frag :
@@ -215,6 +224,7 @@ export default class Cache {
             topology =
                 primitive === 'fat-line-list' ? 'triangle-list' :
                 primitive === 'point-sprite' ? 'triangle-list' :
+                primitive === 'gaussian-splat' ? 'triangle-list' :
                 primitive,
             code = WGSL_CODE
                 .replace('// @vert-extra-code', vertEntry.code ? `@vertex ` + vertEntry.code : '')
@@ -226,21 +236,14 @@ export default class Cache {
                     module,
                     entryPoint: vertEntry.name,
                     // TODO
-                    buffers: [{
+                    buffers: Array.from({ length: attrCount }, (_, index) => ({
                         arrayStride: 4 * 3,
                         attributes: [{
-                            shaderLocation: 0,
+                            shaderLocation: index,
                             offset: 0,
                             format: 'float32x3'
                         }]
-                    }, {
-                        arrayStride: 4 * 3,
-                        attributes: [{
-                            shaderLocation: 1,
-                            offset: 0,
-                            format: 'float32x3'
-                        }]
-                    }]
+                    }))
                 },
                 fragment: {
                     module,

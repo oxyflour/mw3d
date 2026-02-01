@@ -39,6 +39,7 @@ const PRIMITIVE_MODES = {
     'triangle-list': WebGL2RenderingContext.TRIANGLES,
     'fat-line-list': WebGL2RenderingContext.TRIANGLES,
     "point-sprite": WebGL2RenderingContext.TRIANGLES,
+    "gaussian-splat": WebGL2RenderingContext.TRIANGLES,
 } as Record<Geometry['type'], number>
 
 export default class WebGL2Renderer extends Renderer {

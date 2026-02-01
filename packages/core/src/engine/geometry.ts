@@ -11,7 +11,7 @@ export interface Attr {
     offset?: number
 }
 
-export type GeometryPrimitive = GPUPrimitiveTopology | 'fat-line-list' | 'point-sprite'
+export type GeometryPrimitive = GPUPrimitiveTopology | 'fat-line-list' | 'point-sprite' | 'gaussian-splat'
 
 export default class Geometry extends AutoIndex {
     readonly type: GeometryPrimitive
@@ -66,6 +66,7 @@ export default class Geometry extends AutoIndex {
                 'triangle-strip': positions.length / 3,
                 'fat-line-list': positions.length / 3,
                 'point-sprite': positions.length / 3,
+                'gaussian-splat': positions.length / 3,
             }[this.type] || 0
         }
     }
@@ -141,6 +142,67 @@ export class LineList extends Geometry {
             normals: new Float32Array(norm),
             indices: new Uint32Array(idx)
         })
+    }
+}
+
+export class GaussianSplatGeometry extends Geometry {
+    readonly pointCount: number
+    readonly pointPositions: Float32Array
+    constructor({ positions, colors, covariances, opacities } = { } as {
+        positions: Float32Array
+        colors: Float32Array
+        covariances: Float32Array
+        opacities: Float32Array
+    }) {
+        const count = positions.length / 3
+        const quadCount = count * 4
+        const quadPositions = new Float32Array(quadCount * 3)
+        const quadColors = new Float32Array(quadCount * 3)
+        const quadCovA = new Float32Array(quadCount * 3)
+        const quadCovB = new Float32Array(quadCount * 3)
+        const quadMisc = new Float32Array(quadCount * 3)
+        const indices = new Uint32Array(count * 6)
+        for (let i = 0; i < count; i++) {
+            const src = i * 3
+            const cov = i * 6
+            const dst = i * 12
+            const opacity = opacities[i]!
+            for (let v = 0; v < 4; v++) {
+                const base = dst + v * 3
+                quadPositions[base] = positions[src]!
+                quadPositions[base + 1] = positions[src + 1]!
+                quadPositions[base + 2] = positions[src + 2]!
+                quadColors[base] = colors[src]!
+                quadColors[base + 1] = colors[src + 1]!
+                quadColors[base + 2] = colors[src + 2]!
+                quadCovA[base] = covariances[cov]!
+                quadCovA[base + 1] = covariances[cov + 1]!
+                quadCovA[base + 2] = covariances[cov + 2]!
+                quadCovB[base] = covariances[cov + 3]!
+                quadCovB[base + 1] = covariances[cov + 4]!
+                quadCovB[base + 2] = covariances[cov + 5]!
+                quadMisc[base] = opacity
+                quadMisc[base + 1] = 0
+                quadMisc[base + 2] = 0
+            }
+            const indexBase = i * 6
+            const vertexBase = i * 4
+            indices[indexBase] = vertexBase
+            indices[indexBase + 1] = vertexBase + 1
+            indices[indexBase + 2] = vertexBase + 2
+            indices[indexBase + 3] = vertexBase + 1
+            indices[indexBase + 4] = vertexBase + 3
+            indices[indexBase + 5] = vertexBase + 2
+        }
+        super({
+            type: 'gaussian-splat',
+            positions: quadPositions,
+            normals: quadColors,
+            indices,
+            attributes: [quadCovA, quadCovB, quadMisc],
+        })
+        this.pointCount = count
+        this.pointPositions = positions
     }
 }
 

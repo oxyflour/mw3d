@@ -4,7 +4,7 @@ import Light from '../engine/light'
 import Material, { BasicMaterial } from '../engine/material'
 import Picker from '../tool/picker'
 import { rand } from '../utils/math'
-import { BoxGeometry, BoxLines, PlaneXY, Renderer, SphereGeometry, SpriteGeometry } from '../engine'
+import { BoxGeometry, BoxLines, PlaneXY, Renderer, SphereGeometry, SpriteGeometry, createGaussianPointCloud } from '../engine'
 import { PerspectiveCamera } from '../engine/camera'
 import { Control } from '../tool/control'
 import { mat4, quat, vec4 } from 'gl-matrix'
@@ -12,6 +12,9 @@ import { Texture } from '../engine/uniform'
 
 // @ts-ignore
 import hdrUrl from './assets/envmap.hdr?url'
+// @ts-ignore
+//import plyUrl from '../../build/point_cloud_2.ply?url'
+import plyUrl from '../../build/3DGS_PLY_sample_data/PLY(postshot)/cactus_splat3_30kSteps_142k_splats.ply?url'
 
 const elem = document.createElement('canvas')
 elem.style.width = elem.style.height = '100%'
@@ -172,17 +175,17 @@ const camera = new PerspectiveCamera({
         pivot: new Mesh(new SphereGeometry(), new BasicMaterial()),
         zoom: {
             distance: {
-                min: camera.near + (camera.far - camera.near) * 0.1,
-                max: camera.far  - (camera.far - camera.near) * 0.1,
+                //min: camera.near + (camera.far - camera.near) * 0.1,
+                //max: camera.far  - (camera.far - camera.near) * 0.1,
             }
         },
         hooks: {
             mouse: async (evt, next) => {
-                updatePivot({ x: evt.clientX, y: evt.clientY })
+                //updatePivot({ x: evt.clientX, y: evt.clientY })
                 await next(evt)
             },
             wheel: async (evt, next) => {
-                updatePivot({ x: evt.clientX, y: evt.clientY })
+                //updatePivot({ x: evt.clientX, y: evt.clientY })
                 await next(evt)
             },
             click: clickScene
@@ -200,6 +203,24 @@ for (let i = 0; i < 100; i ++) {
     mesh.position.set(rand(-200, 200), rand(-200, 200), rand(-200, 200))
     mesh.rotation.rotX(rand(0, 10)).rotY(rand(0, 10))
     scene.add(mesh)
+}
+
+if (!opts.useThree && !opts.useWebGL2 && !opts.useTracer) {
+    const resp = await fetch(plyUrl)
+    const buffer = await resp.arrayBuffer()
+    const gaussian = createGaussianPointCloud(buffer, {
+        sizeScale: 1,
+        opacityScale: 1,
+        materialAlpha: 0.9,
+    })
+    gaussian.scaling.set(10, 10, 10)
+    control.pivot.position.set(0, 0, 0)
+    for (const obj of scene) {
+        if (obj instanceof Mesh && obj !== gaussian) {
+            obj.isVisible = false
+        }
+    }
+    scene.add(gaussian)
 }
 
 renderer.width = elem.clientWidth

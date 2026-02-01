@@ -106,6 +106,84 @@ fn vertLineMain(input: VertexInput) -> VertexOutput {
   return output;
 }
 
+struct GaussianVertexInput {
+  @builtin(vertex_index) vertexID : u32,
+  @location(0) position: vec4<f32>,
+  @location(1) color: vec3<f32>,
+  @location(2) covA: vec3<f32>,
+  @location(3) covB: vec3<f32>,
+  @location(4) misc: vec3<f32>,
+}
+
+struct GaussianVertexOutput {
+  @builtin(position) position : vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) color: vec4<f32>,
+  @location(2) worldPosition: vec4<f32>,
+};
+
+fn mulMat3Vec3(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  return vec3<f32>(dot(m0, v), dot(m1, v), dot(m2, v));
+}
+
+@vertex
+fn vertGaussianMain(input: GaussianVertexInput) -> GaussianVertexOutput {
+  var output: GaussianVertexOutput;
+  let worldPos = mesh.modelMatrix * input.position;
+  let clip = camera.viewProjection * worldPos;
+  let ndc = clip.xy / clip.w;
+  let m = camera.viewProjection * mesh.modelMatrix;
+  let m0 = vec3<f32>(m[0].x, m[1].x, m[2].x);
+  let m1 = vec3<f32>(m[0].y, m[1].y, m[2].y);
+  let m3 = vec3<f32>(m[0].w, m[1].w, m[2].w);
+  let j0 = (m0 - ndc.x * m3) / clip.w;
+  let j1 = (m1 - ndc.y * m3) / clip.w;
+
+  let s0 = vec3<f32>(input.covA.x, input.covB.x, input.covB.y);
+  let s1 = vec3<f32>(input.covB.x, input.covA.y, input.covB.z);
+  let s2 = vec3<f32>(input.covB.y, input.covB.z, input.covA.z);
+
+  let j0s = mulMat3Vec3(s0, s1, s2, j0);
+  let j1s = mulMat3Vec3(s0, s1, s2, j1);
+  let a = dot(j0, j0s);
+  let b = dot(j0, j1s);
+  let c = dot(j1, j1s);
+  let t = a - c;
+  let d = sqrt(max(0.0, t * t + 4.0 * b * b));
+  let l1 = max(0.0, 0.5 * (a + c + d));
+  let l2 = max(0.0, 0.5 * (a + c - d));
+  var v1 = vec2<f32>(2.0 * b, c - a + d);
+  if (length(v1) < 1e-6) {
+    v1 = vec2<f32>(1.0, 0.0);
+  } else {
+    v1 = normalize(v1);
+  }
+  let v2 = vec2<f32>(-v1.y, v1.x);
+  let radius = 3.0;
+  let axis0 = v1 * sqrt(l1) * radius;
+  let axis1 = v2 * sqrt(l2) * radius;
+
+  var idx = input.vertexID % 4u;
+  var delta = vec2<f32>(0.0, 0.0);
+  if (idx == 0u) {
+    delta = vec2<f32>(-1.0, -1.0);
+  } else if (idx == 1u) {
+    delta = vec2<f32>( 1.0, -1.0);
+  } else if (idx == 2u) {
+    delta = vec2<f32>(-1.0,  1.0);
+  } else if (idx == 3u) {
+    delta = vec2<f32>( 1.0,  1.0);
+  }
+  let offset = axis0 * delta.x + axis1 * delta.y;
+  output.position = clip;
+  output.position.x += offset.x * clip.w;
+  output.position.y += offset.y * clip.w;
+  output.local = delta * radius;
+  output.color = vec4<f32>(input.color, input.misc.x);
+  output.worldPosition = worldPos;
+  return output;
+}
+
 // @vert-extra-code
 
 // frag
@@ -241,6 +319,28 @@ fn fragMainSprite(input: FragInput) -> @location(0) vec4<f32> {
     discard;
   }
   return vec4<f32>(C.xyz, material.color.a);
+}
+
+struct GaussianFragInput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) color: vec4<f32>,
+  @location(2) worldPosition: vec4<f32>,
+};
+
+@fragment
+fn fragGaussianMain(input: GaussianFragInput) -> @location(0) vec4<f32> {
+  var r2 = dot(input.local, input.local);
+  var alpha = exp(-0.5 * r2) * input.color.a * material.color.a;
+  if (alpha < 0.01) {
+    discard;
+  }
+  var clipInput: FragInput;
+  clipInput.position = input.position;
+  clipInput.normal = vec3<f32>(0.0, 0.0, 0.0);
+  clipInput.worldPosition = input.worldPosition;
+  checkClip(clipInput);
+  return vec4<f32>(input.color.rgb * material.color.rgb, alpha);
 }
 
 @fragment

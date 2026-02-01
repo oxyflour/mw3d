@@ -5,6 +5,7 @@ import Light from '../light'
 import { Scene } from "../obj3"
 
 import Cache, { BindingResource } from './cache'
+import GaussianSorter from './gaussian/sorter'
 import Geometry from "../geometry"
 import { Sampler, Texture, UniformValue } from "../uniform"
 import { ClipMeshes } from "./clip"
@@ -29,6 +30,7 @@ export default class WebGPURenderer extends Renderer {
     protected device!: GPUDevice
     protected format!: GPUTextureFormat
     protected context!: GPUCanvasContext
+    private gaussianSorter!: GaussianSorter
     protected async init() {
         const opts = this.opts.webgpu || { },
             adaptor = await navigator.gpu.requestAdapter(opts.adaptorOptions)
@@ -57,6 +59,7 @@ export default class WebGPURenderer extends Renderer {
             depthFormat: 'depth24plus-stencil8',
             multisample: { count: this.opts.sampleCount },
         })
+        this.gaussianSorter = new GaussianSorter(device, this.cache)
         this.context.configure({
             format: this.format,
             device: this.device,
@@ -123,7 +126,7 @@ export default class WebGPURenderer extends Renderer {
             mat!: Material,
             geo!: Geometry
         for (const mesh of sorted) {
-            const cache = this.cache.pipeline(mesh.geo.type, mesh.mat)
+            const cache = this.cache.pipeline(mesh.geo, mesh.mat)
             if (pipeline !== cache.pipeline && (pipeline = cache.pipeline)) {
                 pass.setPipeline(pipeline)
                 pass.setBindGroup(...this.cache.bind(pipeline, camera))
@@ -138,19 +141,29 @@ export default class WebGPURenderer extends Renderer {
                 for (const [slot, { buffer }] of attrs.entries()) {
                     pass.setVertexBuffer(slot, buffer)
                 }
-                if (geo.indices) {
-                    pass.setIndexBuffer(...this.cache.idx(geo.indices))
-                }
             }
             pass.setBindGroup(...this.cache.bind(pipeline, mesh))
-            const count = mesh.count > 0 ? mesh.count : (mesh.geo.count - mesh.offset)
+            const isGaussian = mesh.geo.type === 'gaussian-splat'
             if (geo.indices) {
-                pass.drawIndexed(count, 1, mesh.offset, 0)
+                if (isGaussian) {
+                    const cache = this.gaussianSorter.indexFor(mesh)
+                    if (!cache || cache.count <= 0) {
+                        continue
+                    }
+                    pass.setIndexBuffer(cache.buffer, 'uint32')
+                    pass.drawIndexed(mesh.count > 0 ? mesh.count : cache.count, 1, mesh.offset, 0)
+                } else {
+                    pass.setIndexBuffer(...this.cache.idx(geo.indices))
+                    const count = mesh.count > 0 ? mesh.count : (mesh.geo.count - mesh.offset)
+                    pass.drawIndexed(count, 1, mesh.offset, 0)
+                }
             } else {
+                const count = mesh.count > 0 ? mesh.count : (mesh.geo.count - mesh.offset)
                 pass.draw(count, 1, mesh.offset, 0)
             }
         }
     }
+
 
     readonly bindingGroup = 0
     readonly uniforms = [
@@ -197,7 +210,7 @@ export default class WebGPURenderer extends Renderer {
     }
 
     override getOrderFor(mesh: RenderMesh) {
-        return this.cache.pipeline(mesh.geo.type, mesh.mat).id
+        return this.cache.pipeline(mesh.geo, mesh.mat).id
     }
     override render(scene: Scene, camera: Camera, opts = { } as RenderOptions & {
         webgpu?: {
@@ -211,14 +224,23 @@ export default class WebGPURenderer extends Renderer {
         const { lights, updated, sorted } = opts.renderClips ?
             this.prepareClips(scene, camera) :
             this.prepare(scene, camera)
+        const hasGaussian = this.gaussianSorter.hasGaussian(sorted)
+        if (hasGaussian) {
+            opts.webgpu = opts.webgpu || { }
+            opts.webgpu.disableBundle = true
+        }
         this.updateUniforms(this.buildRenderUnifroms(lights))
         this.updateUniforms(this.cache.bindings(camera))
         for (const obj of updated) {
             this.updateUniforms(this.cache.bindings(obj))
         }
 
-        const cmd = opts.webgpu?.commandEncoder || this.device.createCommandEncoder(),
-            colorTexture = opts.colorTexture ? this.cache.texture(opts.colorTexture) : this.context.getCurrentTexture(),
+        const cmd = opts.webgpu?.commandEncoder || this.device.createCommandEncoder()
+        if (hasGaussian) {
+            this.gaussianSorter.prepare(sorted, camera, cmd)
+        }
+
+        const colorTexture = opts.colorTexture ? this.cache.texture(opts.colorTexture) : this.context.getCurrentTexture(),
             depthTexture = opts.depthTexture ? this.cache.texture(opts.depthTexture) : this.cache.depthTexture,
             pass = cmd.beginRenderPass({
                 colorAttachments: [{

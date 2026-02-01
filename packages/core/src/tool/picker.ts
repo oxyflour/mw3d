@@ -394,7 +394,8 @@ async function prepare(scene: Set<Obj3>, camera: Camera) {
                     clipPlane = mat.clip.data,
                     transparent = a < 1
                 meshes[obj.id] = { worldMatrix, id, offset, count, clipPlane, lineWidth, transparent, geoId: geo.id }
-                const { type, positions, normals, indices, min, max } = geo
+                const { positions, normals, indices, min, max } = geo
+                const type: GeometryPrimitive = geo.type === 'gaussian-splat' ? 'triangle-list' : geo.type
                 geometries[geo.id] = { type, positions, normals, indices, min, max }
             }
         })
